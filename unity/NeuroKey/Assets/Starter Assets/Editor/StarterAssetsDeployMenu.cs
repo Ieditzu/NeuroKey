@@ -3,7 +3,6 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
-using Cinemachine;
 
 namespace StarterAssets
 {
@@ -25,16 +24,38 @@ namespace StarterAssets
         private const string CinemachineTargetTag = "CinemachineTarget";
 
         private static GameObject _cinemachineVirtualCamera;
+        private static Type _cinemachineVirtualCameraType;
+        private static Type _cinemachineBrainType;
+
+        private static bool TryGetCinemachineTypes(out Type virtualCameraType, out Type brainType)
+        {
+            if (_cinemachineVirtualCameraType == null)
+                _cinemachineVirtualCameraType = Type.GetType("Cinemachine.CinemachineVirtualCamera, Cinemachine");
+
+            if (_cinemachineBrainType == null)
+                _cinemachineBrainType = Type.GetType("Cinemachine.CinemachineBrain, Cinemachine");
+
+            virtualCameraType = _cinemachineVirtualCameraType;
+            brainType = _cinemachineBrainType;
+
+            return virtualCameraType != null && brainType != null;
+        }
 
         private static void CheckCameras(Transform targetParent, string prefabFolder)
         {
+            if (!TryGetCinemachineTypes(out Type virtualCameraType, out _))
+            {
+                Debug.LogWarning("Starter Assets camera setup requires the Cinemachine package. Install it to use the deploy menu camera reset actions.");
+                return;
+            }
+
             CheckMainCamera(prefabFolder);
 
             GameObject vcam = GameObject.Find(CinemachineVirtualCameraName);
 
             if (!vcam)
             {
-                if (TryLocatePrefab(CinemachineVirtualCameraName, new string[]{prefabFolder}, new[] { typeof(CinemachineVirtualCamera) }, out GameObject vcamPrefab, out string _))
+                if (TryLocatePrefab(CinemachineVirtualCameraName, new string[]{prefabFolder}, new[] { virtualCameraType }, out GameObject vcamPrefab, out string _))
                 {
                     HandleInstantiatingPrefab(vcamPrefab, out vcam);
                     _cinemachineVirtualCamera = vcam;
@@ -65,12 +86,17 @@ namespace StarterAssets
 
         private static void CheckMainCamera(string inFolder)
         {
+            if (!TryGetCinemachineTypes(out _, out Type brainType))
+            {
+                return;
+            }
+
             GameObject[] mainCameras = GameObject.FindGameObjectsWithTag(MainCameraTag);
 
             if (mainCameras.Length < 1)
             {
                 // if there are no MainCameras, add one
-                if (TryLocatePrefab(MainCameraPrefabName, new string[]{inFolder}, new[] { typeof(CinemachineBrain), typeof(Camera) }, out GameObject camera, out string _))
+                if (TryLocatePrefab(MainCameraPrefabName, new string[]{inFolder}, new[] { brainType, typeof(Camera) }, out GameObject camera, out string _))
                 {
                     HandleInstantiatingPrefab(camera, out _);
                 }
@@ -82,16 +108,27 @@ namespace StarterAssets
             else
             {
                 // make sure the found camera has a cinemachine brain (we only need 1)
-                if (!mainCameras[0].TryGetComponent(out CinemachineBrain cinemachineBrain))
-                    mainCameras[0].AddComponent<CinemachineBrain>();
+                if (mainCameras[0].GetComponent(brainType) == null)
+                    mainCameras[0].AddComponent(brainType);
             }
         }
 
         private static void CheckVirtualCameraFollowReference(GameObject target,
             GameObject cinemachineVirtualCamera)
         {
-            var serializedObject =
-                new SerializedObject(cinemachineVirtualCamera.GetComponent<CinemachineVirtualCamera>());
+            if (!TryGetCinemachineTypes(out Type virtualCameraType, out _))
+            {
+                return;
+            }
+
+            var component = cinemachineVirtualCamera.GetComponent(virtualCameraType);
+            if (component == null)
+            {
+                Debug.LogWarning("Starter Assets could not find a Cinemachine Virtual Camera component on the follow camera object.");
+                return;
+            }
+
+            var serializedObject = new SerializedObject(component);
             var serializedProperty = serializedObject.FindProperty("m_Follow");
             serializedProperty.objectReferenceValue = target.transform;
             serializedObject.ApplyModifiedProperties();
