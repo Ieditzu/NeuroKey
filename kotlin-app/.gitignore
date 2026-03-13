@@ -1,50 +1,70 @@
-# Project settings
-.vs/
-.vscode/
-.idea/
-.settings/
-
-# Build systems
-.m2/
+# Built artifacts
+bin/
+gen/
+out/
+build/
 .gradle/
 
-# Project files
-.classpath
-.project
+# Android Studio / IntelliJ IDEA
+.idea/assetWizardSettings.xml
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/caches/
+.idea/libraries/
 *.iml
 *.ipr
 *.iws
+.idea/modules/
+.idea/shelf/
+.idea/assetWizardSettings.xml
 
-# Common compiler output directories
-target/
-!src/**/target/
+# Local configuration file (contains SDK paths, etc)
+local.properties
+
+# Gradle
+.gradle/
 build/
-!src/**/build/
-out/
-!src/**/out/
+gradle-app.setting
+!gradle-wrapper.jar
 
-# Common working directories
-run/
-!src/**/run/
-test_run/
-!src/**/test_run/
-work/
-!src/**/work/
-workspace/
-!src/**/workspace/
-
-# Ignored by default
-*.class
+# Log Files
 *.log
 
-# Ignored by default
-*.jar
-*.jar.*
+# Android Studio Captures
+captures/
 
-# JVM Crash Logs
-hs_err_pid*
-replay_pid*
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# Obfuscation
-obfuscate/
-ZKM_log.txt
+# NDK
+obj/
+libs/
+
+# Proguard / R8
+app/proguard-rules.pro
+!app/proguard-rules.pro
+# Keep the rules, ignore the mappings if they are generated in the root (usually they are in build/)
+# *.txt
+# *.map
+
+# Backup files
+*.bak
+*.swp
+*~
+
+# Kotlin
+.kotlin/
+
+# Secrets
+.env
+signing.properties
+*.jks
+*.keystore
+!debug.keystore
