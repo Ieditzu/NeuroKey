@@ -1,0 +1,53 @@
+package io.github.kawase.database.services;
+
+import io.github.kawase.database.entity.Child;
+import io.github.kawase.database.entity.Parent;
+import io.github.kawase.database.repository.ChildRepository;
+import io.github.kawase.database.repository.ParentRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class ChildService {
+
+    private final ChildRepository childRepository;
+    private final ParentRepository parentRepository;
+
+    @Transactional
+    public Child addChildToParent(final Long parentId, final String childName) {
+        final Parent parent = parentRepository.findById(parentId)
+                .orElseThrow(() -> new RuntimeException("Parent not found with ID: " + parentId));
+
+        final Child newChild = new Child();
+        newChild.setName(childName);
+        newChild.setParent(parent);
+        
+        return childRepository.save(newChild);
+    }
+
+    public java.util.Optional<Child> findById(final Long id) {
+        return childRepository.findById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<io.github.kawase.database.entity.Goal> getGoals(final Long childId) {
+        return childRepository.findById(childId)
+                .map(child -> {
+                    child.getGoals().size(); // Force initialization
+                    return child.getGoals();
+                })
+                .orElse(java.util.List.of());
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<io.github.kawase.database.entity.CompletedTask> getCompletedTasks(final Long childId) {
+        return childRepository.findById(childId)
+                .map(child -> {
+                    child.getCompletedTasks().size(); // Force initialization
+                    return child.getCompletedTasks();
+                })
+                .orElse(java.util.List.of());
+    }
+}
