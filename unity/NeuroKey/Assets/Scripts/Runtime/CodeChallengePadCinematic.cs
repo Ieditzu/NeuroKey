@@ -1478,7 +1478,7 @@ public static class CodeChallengePadCinematicBootstrap
     private static void AttachIfNeeded()
     {
         Attach("MediumQuestionPad", 0);
-        Attach("HardQuestionPad", 1);
+        Attach("HardQuestionPad", 0);
     }
 
     private static void Attach(string padName, int mode)
