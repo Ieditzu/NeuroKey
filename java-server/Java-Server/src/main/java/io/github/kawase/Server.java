@@ -20,7 +20,6 @@ public class Server {
     // we will init every manager here :pray:.
     private PacketManager packetManager = new PacketManager();
 
-    // todo: socket
     public void init(final int port) {
         this.packetManager = new PacketManager();
         this.activeConnections = new ConcurrentHashMap<>();
