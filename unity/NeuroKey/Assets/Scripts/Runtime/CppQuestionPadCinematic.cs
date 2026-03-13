@@ -287,8 +287,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
         yield return AnimateMenuCard(true);
         yield return ShowLanguageSelection();
         yield return RunQuiz();
-        yield return AnimateMenuCard(false);
-        ShowLeaveButton(false);
+        ResetOverlay();
         SetCursorVisible(false);
 
         Vector3 exitPosition = GetSafeExitPosition(startPosition, playerRoot);
@@ -716,14 +715,17 @@ public class CppQuestionPadCinematic : MonoBehaviour
 
     private IEnumerator AnimateMenuCard(bool show)
     {
-        menuCard.gameObject.SetActive(true);
-        titleText.gameObject.SetActive(true);
-        counterText.gameObject.SetActive(true);
-        questionText.gameObject.SetActive(true);
-        feedbackText.gameObject.SetActive(true);
-        languagePromptText.gameObject.SetActive(false);
-        languageRoButton.gameObject.SetActive(false);
-        languageEnButton.gameObject.SetActive(false);
+        if (show)
+        {
+            menuCard.gameObject.SetActive(true);
+            titleText.gameObject.SetActive(true);
+            counterText.gameObject.SetActive(true);
+            questionText.gameObject.SetActive(true);
+            feedbackText.gameObject.SetActive(true);
+            languagePromptText.gameObject.SetActive(false);
+            languageRoButton.gameObject.SetActive(false);
+            languageEnButton.gameObject.SetActive(false);
+        }
 
         RectTransform rect = menuCard.rectTransform;
         Vector3 startScale = show ? new Vector3(0.94f, 0.94f, 1f) : rect.localScale;
@@ -759,16 +761,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
     {
         hintScreenBackRequested = false;
 
-        menuCard.gameObject.SetActive(false);
-        titleText.gameObject.SetActive(false);
-        counterText.gameObject.SetActive(false);
-        questionText.gameObject.SetActive(false);
-        feedbackText.gameObject.SetActive(false);
-        languagePromptText.gameObject.SetActive(false);
-        HideOptions();
-        nextButton.gameObject.SetActive(false);
-        retryWrongButton.gameObject.SetActive(false);
-        hintButton.gameObject.SetActive(false);
+        HideOverlayImmediate();
 
         hintScreenText.text = hintText;
         hintScreenText.gameObject.SetActive(true);
@@ -785,6 +778,11 @@ public class CppQuestionPadCinematic : MonoBehaviour
 
         hintScreenText.gameObject.SetActive(false);
         hintScreenBackButton.gameObject.SetActive(false);
+        if (leaveRequested)
+        {
+            yield break;
+        }
+
         menuCard.gameObject.SetActive(true);
         titleText.gameObject.SetActive(true);
         counterText.gameObject.SetActive(true);
@@ -1548,6 +1546,26 @@ public class CppQuestionPadCinematic : MonoBehaviour
         HideOptions();
     }
 
+    private void HideOverlayImmediate()
+    {
+        menuCard.gameObject.SetActive(false);
+        titleText.gameObject.SetActive(false);
+        counterText.gameObject.SetActive(false);
+        questionText.gameObject.SetActive(false);
+        feedbackText.gameObject.SetActive(false);
+        languagePromptText.gameObject.SetActive(false);
+        hintScreenText.gameObject.SetActive(false);
+        leaveButton.gameObject.SetActive(false);
+        hintScreenBackButton.gameObject.SetActive(false);
+        nextButton.gameObject.SetActive(false);
+        backButton.gameObject.SetActive(false);
+        hintButton.gameObject.SetActive(false);
+        retryWrongButton.gameObject.SetActive(false);
+        languageRoButton.gameObject.SetActive(false);
+        languageEnButton.gameObject.SetActive(false);
+        HideOptions();
+    }
+
     private void ShowLeaveButton(bool visible)
     {
         leaveButton.onClick.RemoveAllListeners();
@@ -1560,6 +1578,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
 
     private void OnLeaveClicked()
     {
+        HideOverlayImmediate();
         leaveRequested = true;
     }
 

@@ -473,10 +473,7 @@ public class MediumQuestionPadStartSequence : MonoBehaviour
     {
         padCollider = GetComponent<Collider>();
         EnsureOverlay();
-        SetOverlayVisible(false);
-        SetWhiteAlpha(0f);
-        SetStartTextVisible(false);
-        SetMediumPromptVisible(false);
+        HideOverlayImmediate();
     }
 
     private void Update()
@@ -585,6 +582,7 @@ public class MediumQuestionPadStartSequence : MonoBehaviour
     private IEnumerator PlaySequence(SphereController sphere, FirstPersonControllerSimple fps)
     {
         running = true;
+        HideAllSequenceOverlays();
         FreezeCameraIfNeeded();
         Vector3 originalSphereScale = sphere != null ? sphere.transform.localScale : Vector3.one;
 
@@ -649,6 +647,9 @@ public class MediumQuestionPadStartSequence : MonoBehaviour
         {
             yield return FadeWhite(0f, 1f, fadeToWhiteDuration);
         }
+
+        // Keep the screen fully white for one frame before any question UI appears.
+        yield return null;
 
         if (isFollowupTestPad)
         {
@@ -1826,16 +1827,36 @@ public class MediumQuestionPadStartSequence : MonoBehaviour
             overlayCanvas.enabled = visible;
         }
 
+        SetStartTextVisible(false);
+        SetMediumPromptVisible(false);
+        SetCodeExerciseVisible(false);
+
         if (!visible)
         {
-            SetStartTextVisible(false);
-            SetMediumPromptVisible(false);
-            SetCodeExerciseVisible(false);
             SetWhiteAlpha(0f);
         }
-        else
+    }
+
+    private void HideOverlayImmediate()
+    {
+        SetOverlayVisible(false);
+        SetWhiteAlpha(0f);
+        SetStartTextVisible(false);
+        SetMediumPromptVisible(false);
+    }
+
+    private static void HideAllSequenceOverlays()
+    {
+        MediumQuestionPadStartSequence[] sequences = Object.FindObjectsOfType<MediumQuestionPadStartSequence>();
+        for (int i = 0; i < sequences.Length; i++)
         {
-            SetCodeExerciseVisible(true);
+            MediumQuestionPadStartSequence sequence = sequences[i];
+            if (sequence == null)
+            {
+                continue;
+            }
+
+            sequence.HideOverlayImmediate();
         }
     }
 
@@ -1866,6 +1887,12 @@ public class MediumQuestionPadStartSequence : MonoBehaviour
         if (mediumPromptText == null)
         {
             return;
+        }
+
+        Transform promptRoot = mediumPromptText.transform.parent;
+        if (promptRoot != null)
+        {
+            promptRoot.gameObject.SetActive(visible);
         }
 
         mediumPromptText.enabled = visible;
@@ -2193,6 +2220,7 @@ public class MediumQuestionPadStartSequence : MonoBehaviour
     private void OnLeavePressed()
     {
         leavePressed = true;
+        HideAllSequenceOverlays();
     }
 
     private void OnContinuePressed()

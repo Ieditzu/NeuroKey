@@ -5,6 +5,8 @@ using UnityEngine.Serialization;
 [RequireComponent(typeof(Collider))]
 public class TubeLiftPlatform : MonoBehaviour
 {
+    private const float RuntimeSpeedMultiplier = 2.5f;
+
     public float bottomY = 0.12f;
     public float topY = 8f;
     public float riseSpeed = 6.1f;
@@ -69,7 +71,7 @@ public class TubeLiftPlatform : MonoBehaviour
     private void Update()
     {
         UpdatePassengers();
-        float dt = Time.deltaTime;
+        float dt = Time.deltaTime * RuntimeSpeedMultiplier;
         float previousY = transform.position.y;
 
         switch (state)
