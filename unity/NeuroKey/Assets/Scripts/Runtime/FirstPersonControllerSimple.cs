@@ -15,7 +15,7 @@ public class FirstPersonControllerSimple : MonoBehaviour
     [SerializeField] private float gravity = 18f;
 
     [Header("Look")]
-    [SerializeField] private float mouseSensitivity = 1.8f;
+    [SerializeField] private float mouseSensitivity = 60f;
     [SerializeField] private float minPitch = -80f;
     [SerializeField] private float maxPitch = 80f;
     [Tooltip("Optional anchor (e.g., head bone) to position the camera. If null, a local offset is used.")]
@@ -72,6 +72,8 @@ public class FirstPersonControllerSimple : MonoBehaviour
     private float lastForwardTapTime = -10f;
     private bool doubleTapSprintActive;
     private float jumpPower;
+    private Vector2 lastTouchPos;
+    private bool touchLookActive;
     public void SetHeadAnchor(Transform anchor)
     {
         headAnchor = anchor;
@@ -211,6 +213,12 @@ public class FirstPersonControllerSimple : MonoBehaviour
 
         float h = GetAxisRawCompat("Horizontal");
         float v = GetAxisRawCompat("Vertical");
+        Vector2 touchMove = MobileTouchInput.Move;
+        if (touchMove.sqrMagnitude > 0.0001f)
+        {
+            h = touchMove.x;
+            v = touchMove.y;
+        }
         Vector3 input = (transform.right * h + transform.forward * v).normalized;
         if (IsVrActive() && camTransform != null)
         {
@@ -231,7 +239,8 @@ public class FirstPersonControllerSimple : MonoBehaviour
 
         controller.Move(input * speed * Time.deltaTime);
 
-        if (grounded && GetKeyDownCompat(jumpKey))
+        bool jumpRequested = GetKeyDownCompat(jumpKey) || MobileTouchInput.ConsumeJumpRequest();
+        if (grounded && jumpRequested)
         {
             float effectiveJump = Mathf.Max(0.05f, jumpHeight + jumpPower);
             velocity.y = Mathf.Sqrt(effectiveJump * 2f * gravity);
@@ -261,9 +270,34 @@ public class FirstPersonControllerSimple : MonoBehaviour
 
     private Vector2 GetLookDeltaCompat()
     {
+        Touchscreen touchscreen = Touchscreen.current;
+        if (touchscreen != null)
+        {
+            TouchControl touch = touchscreen.primaryTouch;
+            if (touch.press.isPressed)
+            {
+                Vector2 pos = touch.position.ReadValue();
+                if (!touchLookActive)
+                {
+                    touchLookActive = true;
+                    lastTouchPos = pos;
+                    return Vector2.zero;
+                }
+
+                Vector2 touchDelta = pos - lastTouchPos;
+                lastTouchPos = pos;
+                return touchDelta * (mouseSensitivity * 0.002f);
+            }
+
+            touchLookActive = false;
+        }
+
         if (Mouse.current == null)
         {
-            return Vector2.zero;
+            // Legacy mouse fallback
+            float mouseX = Input.GetAxis("Mouse X");
+            float mouseY = Input.GetAxis("Mouse Y");
+            return new Vector2(mouseX, mouseY) * (mouseSensitivity * 0.02f);
         }
 
         Vector2 delta = Mouse.current.delta.ReadValue();
@@ -275,7 +309,8 @@ public class FirstPersonControllerSimple : MonoBehaviour
         Keyboard keyboard = Keyboard.current;
         if (keyboard == null)
         {
-            return 0f;
+            // Legacy axis fallback (e.g., Standalone with old input only)
+            return Input.GetAxisRaw(axisName);
         }
 
         switch (axisName)
@@ -310,19 +345,34 @@ public class FirstPersonControllerSimple : MonoBehaviour
     private static bool GetKeyCompat(KeyCode key)
     {
         ButtonControl control = GetKeyboardControl(key);
-        return control != null && control.isPressed;
+        if (control != null)
+        {
+            return control.isPressed;
+        }
+
+        return Input.GetKey(key);
     }
 
     private static bool GetKeyDownCompat(KeyCode key)
     {
         ButtonControl control = GetKeyboardControl(key);
-        return control != null && control.wasPressedThisFrame;
+        if (control != null)
+        {
+            return control.wasPressedThisFrame;
+        }
+
+        return Input.GetKeyDown(key);
     }
 
     private static bool GetKeyUpCompat(KeyCode key)
     {
         ButtonControl control = GetKeyboardControl(key);
-        return control != null && control.wasReleasedThisFrame;
+        if (control != null)
+        {
+            return control.wasReleasedThisFrame;
+        }
+
+        return Input.GetKeyUp(key);
     }
 
     private static ButtonControl GetKeyboardControl(KeyCode key)
