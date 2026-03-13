@@ -62,7 +62,7 @@ public class ClientSocket extends WebSocketClient {
 
     public static void main(String[] args) {
         try {
-            final ClientSocket client = new ClientSocket(new URI("ws://127.0.0.1:69420"));
+            final ClientSocket client = new ClientSocket(new URI("ws://127.0.0.1:8887"));
             client.connect();
 
             client.awaitConnection();
