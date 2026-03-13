@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -50,51 +49,13 @@ namespace Gtec.UnityInterface
             _connected = false;
 
             _btnConnect.onClick.AddListener(btnConnect_OnClick);
-
-            // Ensure the dropdown is populated even when the Unicorn discovery service
-            // does not fire (e.g., when the native DLLs are missing on the host).
-            UpdateAvailableDevices(devices: null);
         }
 
         public void UpdateAvailableDevices(List<string> devices)
         {
             _ddDevices.ClearOptions();
-
-            var deviceIds = devices?.Where(d => !string.IsNullOrWhiteSpace(d)).ToList() ?? new List<string>();
-
-            // Replace the prefab placeholder (UN-XXXX.XX.XX) with real serial/COM ports when discovery fails.
-            if (deviceIds.Count == 0 || deviceIds.All(IsPlaceholderId))
-            {
-                var ports = GetSerialPorts();
-
-                if (ports.Count > 0)
-                {
-                    _ddDevices.AddOptions(ports);
-                    _ddDevices.interactable = true;
-                    return;
-                }
-
-                _ddDevices.AddOptions(new List<string> { "No devices found" });
-                _ddDevices.interactable = false;
-                return;
-            }
-
-            if (deviceIds.Count > 0)
-            {
-                _ddDevices.AddOptions(deviceIds);
-                _ddDevices.interactable = true;
-            }
-        }
-
-        private static bool IsPlaceholderId(string id)
-        {
-            // g.tec ships the dropdown with UN-XXXX.XX.XX as a design-time placeholder.
-            return id.IndexOf('x') >= 0 || id.IndexOf('X') >= 0;
-        }
-
-        private static List<string> GetSerialPorts()
-        {
-            return new List<string>();
+            if (devices != null && devices.Count > 0)
+                _ddDevices.AddOptions(devices);
         }
 
         public void OnDeviceStateChanged(States state)
