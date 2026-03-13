@@ -14,11 +14,10 @@ public class ServerSocket extends WebSocketServer {
 
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
-        final String type = handshake.getFieldValue("Type");
-
         final String remoteID = conn.getRemoteSocketAddress().getHostString() + ":" +
                 conn.getRemoteSocketAddress().getPort();
 
+        System.out.println("Started socket");
     }
 
     @Override
@@ -28,7 +27,7 @@ public class ServerSocket extends WebSocketServer {
 
     @Override
     public void onMessage(WebSocket conn, ByteBuffer blob) {
-
+        System.out.println("Got message");
     }
 
     @Override
