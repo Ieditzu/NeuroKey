@@ -1,15 +1,19 @@
 package io.github.kawase.packet.impl;
 
 import io.github.kawase.packet.Packet;
+import lombok.Getter;
 
 import java.nio.ByteBuffer;
 
+@Getter
 public class AuthPacket extends Packet {
-    private String email, passwordHash;
+    private String emailHash, passwordHash;
 
-    public AuthPacket(final String email, final String passwordHash) {
+    // hash these before sending them off, todo: dont forget.
+    public AuthPacket(final String emailHash, final String passwordHash) {
         super(0x02);
-        this.email = email;
+
+        this.emailHash = emailHash;
         this.passwordHash = passwordHash;
     }
 
@@ -18,12 +22,14 @@ public class AuthPacket extends Packet {
     }
 
     @Override
-    protected void write(ByteBuffer buffer) {
-
+    public void write(final ByteBuffer buffer) {
+        putString(emailHash, buffer);
+        putString(passwordHash, buffer);
     }
 
     @Override
-    protected void read(ByteBuffer buffer) {
-
+    public void read(final ByteBuffer buffer) {
+        this.emailHash = readString(buffer);
+        this.passwordHash = readString(buffer);
     }
 }
