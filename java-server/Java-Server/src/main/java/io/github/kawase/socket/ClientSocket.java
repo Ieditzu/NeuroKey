@@ -2,7 +2,8 @@ package io.github.kawase.socket;
 
 import io.github.kawase.packet.Packet;
 import io.github.kawase.packet.PacketManager;
-import io.github.kawase.packet.impl.HandShakePacket;
+import io.github.kawase.packet.impl.*;
+import io.github.kawase.utility.HashUtility;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
@@ -14,8 +15,13 @@ public class ClientSocket extends WebSocketClient {
     private final CountDownLatch connectLatch = new CountDownLatch(1);
     private final PacketManager packetManager = new PacketManager();
 
-    public ClientSocket(final URI serverUri) {
+    // Test states
+    private long loggedInParentId = -1;
+    private String testEmail;
+
+    public ClientSocket(final URI serverUri, String testEmail) {
         super(serverUri);
+        this.testEmail = testEmail;
     }
 
     @Override
@@ -35,8 +41,67 @@ public class ClientSocket extends WebSocketClient {
             final Packet packet = Packet.construct(bytes, packetManager);
 
             switch (packet) {
-                case HandShakePacket handShakePacket -> {
-                    System.out.println("Got handshake");
+                case AuthResponsePacket authResponsePacket -> {
+                    System.out.println("Auth response: Success=" + authResponsePacket.isSuccess() + ", Message='" + authResponsePacket.getMessage() + "', ParentID=" + authResponsePacket.getParentId());
+                    if (authResponsePacket.isSuccess()) {
+                        loggedInParentId = authResponsePacket.getParentId();
+                        System.out.println("Sending AddChild packet...");
+                        send(new AddChildPacket("Timmy").encode());
+                    }
+                }
+
+                case ActionResponsePacket actionResponsePacket -> {
+                    System.out.println("Action response: PacketID=" + actionResponsePacket.getRequestPacketId() +
+                            ", Success=" + actionResponsePacket.isSuccess() +
+                            ", Message='" + actionResponsePacket.getMessage() + "'" +
+                            ", ResultID=" + actionResponsePacket.getResultId());
+
+                    if (actionResponsePacket.getRequestPacketId() == 3 && actionResponsePacket.isSuccess()) {
+                        System.out.println("Sending Auth packet to log in...");
+                        send(new AuthPacket(testEmail, HashUtility.hash("mySecurePassword123")).encode());
+                    }
+
+                    if (actionResponsePacket.getRequestPacketId() == 4 && actionResponsePacket.isSuccess()) {
+                        long childId = actionResponsePacket.getResultId();
+                        System.out.println("Sending AddGoal packet for Child ID: " + childId);
+                        send(new AddGoalPacket(childId, "Be a good boy", "New Lego Set", 50, -1).encode());
+
+                        System.out.println("Fetching Tasks...");
+                        send(new FetchTasksPacket().encode());
+
+                        System.out.println("Fetching Children...");
+                        send(new FetchChildrenPacket().encode());
+                    }
+                }
+
+                case FetchChildrenResponsePacket fetchChildrenResponsePacket -> {
+                    System.out.println("Received Children: " + fetchChildrenResponsePacket.getChildren().size());
+                    for (var c : fetchChildrenResponsePacket.getChildren()) {
+                        System.out.println(" - [" + c.id + "] " + c.name + " (" + c.totalPoints + " pts)");
+                        System.out.println("Fetching History for " + c.name + "...");
+                        send(new FetchCompletedTasksPacket(c.id).encode());
+                    }
+                }
+
+                case FetchCompletedTasksResponsePacket fetchCompletedTasksResponsePacket -> {
+                    System.out.println("Received Task History: " + fetchCompletedTasksResponsePacket.getCompletedTasks().size());
+                    for (var ct : fetchCompletedTasksResponsePacket.getCompletedTasks()) {
+                        System.out.println(" - [" + ct.id + "] " + ct.taskTitle + " at " + ct.completedAt);
+                    }
+                }
+
+                case FetchTasksResponsePacket fetchTasksResponsePacket -> {
+                    System.out.println("Received Tasks: " + fetchTasksResponsePacket.getTasks().size());
+                    for (var t : fetchTasksResponsePacket.getTasks()) {
+                        System.out.println(" - [" + t.id + "] " + t.title + " (" + t.pointValue + " pts)");
+                    }
+                }
+
+                case FetchGoalsResponsePacket fetchGoalsResponsePacket -> {
+                    System.out.println("Received Goals: " + fetchGoalsResponsePacket.getGoals().size());
+                    for (var g : fetchGoalsResponsePacket.getGoals()) {
+                        System.out.println(" - [" + g.id + "] " + g.title + " -> " + g.reward + " (Completed: " + g.isCompleted + ")");
+                    }
                 }
 
                 default -> System.out.println("Unexpected packet received: " + packet.getClass().getSimpleName());
@@ -62,15 +127,26 @@ public class ClientSocket extends WebSocketClient {
 
     public static void main(String[] args) {
         try {
-            final ClientSocket client = new ClientSocket(new URI("ws://127.0.0.1:8887"));
+            String dynamicEmail = "parent" + System.currentTimeMillis() + "@email.com";
+            final ClientSocket client = new ClientSocket(new URI("ws://127.0.0.1:8887"), dynamicEmail);
             client.connect();
 
             client.awaitConnection();
 
-            System.out.println("Connected");
+            System.out.println("Sending Handshake...");
+            client.send(new HandShakePacket("test_client").encode());
+
+            System.out.println("Sending Registration packet...");
+            client.send(new RegisterParentPacket(dynamicEmail, HashUtility.hash("mySecurePassword123")).encode());
+
+            // Let the client thread run for a bit to receive the chained async responses
+            Thread.sleep(5000);
+
+            System.out.println("Test sequence complete. Closing connection.");
+            client.close();
 
         } catch (Exception e) {
-            System.out.println("Failed to connected.");
+            System.out.println("Failed to connected to IRC server.");
             e.printStackTrace();
         }
     }
