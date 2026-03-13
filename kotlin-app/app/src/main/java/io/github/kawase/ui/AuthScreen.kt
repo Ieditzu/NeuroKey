@@ -23,6 +23,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.graphicsLayer
+import io.github.kawase.R
+
 @Composable
 fun AuthScreen(viewModel: SocketViewModel) {
     var isLogin by remember { mutableStateOf(true) }
@@ -39,10 +45,14 @@ fun AuthScreen(viewModel: SocketViewModel) {
         initialValue = 0f, targetValue = 1000f,
         animationSpec = infiniteRepeatable(tween(25000, easing = LinearEasing), RepeatMode.Reverse), label = "2"
     )
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(40000, easing = LinearEasing), RepeatMode.Restart), label = "rot"
+    )
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        // Advanced Dynamic Background
-        Canvas(modifier = Modifier.fillMaxSize().blur(80.dp)) {
+        // Enhanced Dynamic Background
+        Canvas(modifier = Modifier.fillMaxSize().blur(80.dp).graphicsLayer(rotationZ = rotation)) {
             drawCircle(
                 color = viewModel.primaryColor.value.copy(alpha = 0.4f),
                 radius = 600f,
@@ -60,21 +70,16 @@ fun AuthScreen(viewModel: SocketViewModel) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Unique Glass Logo
-            Box(contentAlignment = Alignment.Center) {
-                Surface(
-                    modifier = Modifier.size(100.dp).border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(30.dp)),
-                    shape = RoundedCornerShape(30.dp),
-                    color = Color.White.copy(alpha = 0.1f),
-                ) {}
-                Text(
-                    "N K",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 4.sp
-                )
-            }
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "Neuro Key Logo",
+                modifier = Modifier
+                    .size(150.dp)
+                    .shadow(30.dp, RoundedCornerShape(40.dp))
+                    .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(40.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(40.dp))
+                    .padding(20.dp)
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
 

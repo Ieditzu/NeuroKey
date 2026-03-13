@@ -59,11 +59,17 @@ fun MainDashboard(viewModel: SocketViewModel) {
     val currentRoute = navBackStackEntry?.destination?.route
     var showAddGoalDialog by remember { mutableStateOf(false) }
 
+    val infiniteTransition = rememberInfiniteTransition(label = "bg")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(50000, easing = LinearEasing), RepeatMode.Restart), label = "rot"
+    )
+
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        // Decorative blurred circles
-        Box(modifier = Modifier.fillMaxSize().blur(100.dp)) {
-            Box(modifier = Modifier.offset(x = (-50).dp, y = (-50).dp).size(200.dp).background(viewModel.primaryColor.value.copy(alpha = 0.15f), CircleShape))
-            Box(modifier = Modifier.align(Alignment.BottomEnd).offset(x = 50.dp, y = 50.dp).size(250.dp).background(viewModel.primaryColor.value.copy(alpha = 0.1f), CircleShape))
+        // Dynamic Glass Background
+        Box(modifier = Modifier.fillMaxSize().blur(100.dp).graphicsLayer(rotationZ = rotation)) {
+            Box(modifier = Modifier.offset(x = (-100).dp, y = (-100).dp).size(300.dp).background(viewModel.primaryColor.value.copy(alpha = 0.15f), CircleShape))
+            Box(modifier = Modifier.align(Alignment.BottomEnd).offset(x = 100.dp, y = 100.dp).size(400.dp).background(viewModel.primaryColor.value.copy(alpha = 0.1f), CircleShape))
         }
 
         Scaffold(
