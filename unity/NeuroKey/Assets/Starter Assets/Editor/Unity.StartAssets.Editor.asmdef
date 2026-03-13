@@ -2,8 +2,7 @@
     "name": "Unity.StarterAssets.Editor",
     "rootNamespace": "",
     "references": [
-        "Unity.StarterAssets",
-        "Cinemachine"
+        "Unity.StarterAssets"
     ],
     "includePlatforms": [
         "Editor"
