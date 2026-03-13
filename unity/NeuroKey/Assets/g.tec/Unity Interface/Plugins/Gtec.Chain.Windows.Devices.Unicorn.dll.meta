@@ -19,16 +19,9 @@ PluginImporter:
   - first:
       Editor: Editor
     second:
-      enabled: 1
+      enabled: 0
       settings:
-        CPU: x86_64
         DefaultValueInitialized: true
-  - first:
-      Windows: Windows
-    second:
-      enabled: 1
-      settings:
-        CPU: x86_64
   - first:
       Windows Store Apps: WindowsStoreApps
     second:
