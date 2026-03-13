@@ -11,51 +11,53 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
 public class ServerSocket extends WebSocketServer {
+
     public ServerSocket(int port) {
         super(new InetSocketAddress("0.0.0.0", port));
     }
 
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
+        final String type = handshake.getFieldValue("Type");
+
         final String remoteID = conn.getRemoteSocketAddress().getHostString() + ":" +
                 conn.getRemoteSocketAddress().getPort();
 
         final Client client = new Client(remoteID, Server.getInstance().getPacketManager());
-        final ClientHandler clientHandler = new ClientHandler(client);
+        final ClientHandler handler = new ClientHandler(conn, client, this);
 
-        // we prob shouldn't make the client object as the key for the hash map.
-        Server.getInstance().getActiveConnections().put(client, clientHandler);
+        conn.setAttachment(handler);
 
-        conn.setAttachment(clientHandler);
+        Server.getInstance().getActiveConnections().put(client, handler);
 
-        System.out.println("Started server socket.");
+        System.out.println("Client " + client.getHostID() + " connected.");
+
+        handler.onOpen();
     }
 
     @Override
     public void onMessage(WebSocket conn, String message) {
-        final ClientHandler clientHandler = conn.getAttachment();
+        final ClientHandler handler = conn.getAttachment();
 
-        System.out.println("Invalid protocol detected, disconnecting: " + clientHandler.getClient().getHostID());
-
-        Server.getInstance().getActiveConnections().remove(clientHandler.getClient());
+        System.out.println("Invalid message detected for " + handler.getClient().getHostID());
         conn.close();
     }
 
     @Override
     public void onMessage(WebSocket conn, ByteBuffer blob) {
-        final ClientHandler clientHandler = conn.getAttachment();
+        final ClientHandler handler = conn.getAttachment();
 
-        clientHandler.onMessage(blob);
+        handler.onMessage(blob);
     }
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-        final ClientHandler clientHandler = conn.getAttachment();
+        final ClientHandler handler = conn.getAttachment();
 
-        Server.getInstance().getActiveConnections().remove(clientHandler.getClient());
-        conn.close();
+        Server.getInstance().getActiveConnections().remove(handler.getClient());
+        handler.onClose();
 
-        System.out.println("Closed connection: " + clientHandler.getClient().getHostID());
+        System.out.println("WebSocket closed " + handler.getClient().getHostID() + (reason != null ? " " + reason : ""));
     }
 
     @Override
