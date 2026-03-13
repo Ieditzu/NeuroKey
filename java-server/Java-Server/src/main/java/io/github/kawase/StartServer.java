@@ -1,13 +1,14 @@
 package io.github.kawase;
 
-import io.github.kawase.packet.Packet;
-import io.github.kawase.packet.PacketManager;
-import io.github.kawase.packet.impl.HandShakePacket;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ApplicationContext;
 
-import java.nio.ByteBuffer;
-
+@SpringBootApplication
 public class StartServer {
-    public static void main(String[] args) throws Exception {
-        Server.getInstance().init(69420);
+    public static void main(String[] args) {
+        final ApplicationContext context = SpringApplication.run(StartServer.class, args);
+
+        Server.getInstance().init(8887, context);
     }
 }
