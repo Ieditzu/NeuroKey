@@ -186,9 +186,6 @@ public class CodeChallengePadCinematic : MonoBehaviour
         {
             oldSequence.enabled = false;
         }
-
-        EnsureOverlay();
-        ResetOverlay();
     }
 
     private void OnTriggerEnter(Collider other)
@@ -254,15 +251,21 @@ public class CodeChallengePadCinematic : MonoBehaviour
         yield return new WaitForSeconds(waitBeforeSuction);
         yield return PullPlayerToPortal(playerRoot, camTransform, activeCamera, startCameraLocalPosition, startCameraLocalRotation, startFov, portalPosition);
 
+        EnsureOverlay();
+        ResetOverlay();
+        SetOverlayVisible(true);
         yield return FadeImage(whiteImage, 0f, 1f, fadeToWhiteDuration, pageTint);
         whiteImage.color = new Color(pageTint.r, pageTint.g, pageTint.b, 1f);
         yield return null;
         ShowMainUi(true);
         ShowLeaveButton(true);
         yield return RunChallenges();
-        ShowMainUi(false);
-        ShowLeaveButton(false);
-        ResetOverlay();
+        if (!leaveRequested)
+        {
+            ShowMainUi(false);
+            ShowLeaveButton(false);
+            ResetOverlay();
+        }
 
         Vector3 exitPosition = GetSafeExitPosition(startPosition, playerRoot);
         if (activePortal == null)
@@ -531,6 +534,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
     private IEnumerator ShowHintScreen(string hintText)
     {
         hintScreenBackRequested = false;
+        SetOverlayVisible(true);
         ShowMainUi(false);
         ShowChallengeButtons(false, false, false, false, false);
 
@@ -549,10 +553,24 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
         hintScreenText.gameObject.SetActive(false);
         hintScreenBackButton.gameObject.SetActive(false);
+        if (leaveRequested)
+        {
+            yield break;
+        }
     }
 
     private void ShowMainUi(bool visible)
     {
+        if (panelImage == null || titleText == null || counterText == null || promptText == null || feedbackText == null || codeInput == null)
+        {
+            return;
+        }
+
+        if (visible)
+        {
+            SetOverlayVisible(true);
+        }
+
         overlayInteractionActive = visible;
         panelImage.gameObject.SetActive(visible);
         titleText.gameObject.SetActive(visible);
@@ -582,6 +600,11 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
     private void ShowChallengeButtons(bool showBack, bool showHint, bool showVerify, bool showContinue, bool showRetryWrong)
     {
+        if (backButton == null || hintButton == null || verifyButton == null || continueButton == null || retryWrongButton == null)
+        {
+            return;
+        }
+
         backButton.gameObject.SetActive(showBack);
         hintButton.gameObject.SetActive(showHint);
         verifyButton.gameObject.SetActive(showVerify);
@@ -713,8 +736,8 @@ public class CodeChallengePadCinematic : MonoBehaviour
         {
             fps.SetCameraControlEnabled(true);
         }
-        ResetOverlay();
         overlayInteractionActive = false;
+        TearDownOverlay();
         SetCursorVisible(false);
         running = false;
     }
@@ -1329,6 +1352,10 @@ public class CodeChallengePadCinematic : MonoBehaviour
         {
             EventSystem.current.SetSelectedGameObject(null);
         }
+        if (overlayCanvas == null || whiteImage == null || panelImage == null)
+        {
+            return;
+        }
         whiteImage.color = new Color(pageTint.r, pageTint.g, pageTint.b, 0f);
         whiteImage.enabled = false;
         panelImage.color = new Color(cardColor.r, cardColor.g, cardColor.b, 0f);
@@ -1346,6 +1373,55 @@ public class CodeChallengePadCinematic : MonoBehaviour
         hintButton.gameObject.SetActive(false);
         continueButton.gameObject.SetActive(false);
         retryWrongButton.gameObject.SetActive(false);
+        SetOverlayVisible(false);
+    }
+
+    private void SetOverlayVisible(bool visible)
+    {
+        if (overlayCanvas != null)
+        {
+            overlayCanvas.gameObject.SetActive(visible);
+        }
+    }
+
+    private void TearDownOverlay()
+    {
+        overlayInteractionActive = false;
+        if (EventSystem.current != null)
+        {
+            EventSystem.current.SetSelectedGameObject(null);
+        }
+
+        if (overlayCanvas != null)
+        {
+            Destroy(overlayCanvas.gameObject);
+        }
+
+        overlayCanvas = null;
+        whiteImage = null;
+        panelImage = null;
+        titleText = null;
+        counterText = null;
+        promptText = null;
+        feedbackText = null;
+        codeInput = null;
+        codeInputText = null;
+        codePlaceholder = null;
+        hintScreenText = null;
+        leaveButton = null;
+        leaveButtonText = null;
+        verifyButton = null;
+        verifyButtonText = null;
+        backButton = null;
+        backButtonText = null;
+        hintButton = null;
+        hintButtonText = null;
+        continueButton = null;
+        continueButtonText = null;
+        retryWrongButton = null;
+        retryWrongButtonText = null;
+        hintScreenBackButton = null;
+        hintScreenBackButtonText = null;
     }
 
     private void ShowLeaveButton(bool visible)
@@ -1361,11 +1437,8 @@ public class CodeChallengePadCinematic : MonoBehaviour
     private void OnLeaveClicked()
     {
         leaveRequested = true;
-        ShowMainUi(false);
-        ShowChallengeButtons(false, false, false, false, false);
-        hintScreenText.gameObject.SetActive(false);
-        hintScreenBackButton.gameObject.SetActive(false);
-        leaveButton.gameObject.SetActive(false);
+        TearDownOverlay();
+        SetCursorVisible(false);
         if (EventSystem.current != null)
         {
             EventSystem.current.SetSelectedGameObject(null);
