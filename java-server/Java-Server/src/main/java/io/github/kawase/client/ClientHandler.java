@@ -2,7 +2,7 @@ package io.github.kawase.client;
 
 import io.github.kawase.Server;
 import io.github.kawase.packet.Packet;
-import io.github.kawase.packet.impl.HandShakePacket;
+import io.github.kawase.packet.impl.*;
 import io.github.kawase.socket.ServerSocket;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -23,14 +23,174 @@ public class ClientHandler {
             final Packet packet = Packet.construct(byteBuffer, client.getPacketManager());
             currentPacketId = packet.getId();
 
+            // Handshake and Registration/Auth are the only ones allowed before auth
+            // we should prob not hard code this but oh well.
+            if (currentPacketId != 1 && currentPacketId != 2 && currentPacketId != 3 && !client.isAuth()) {
+                connection.send(new ActionResponsePacket(currentPacketId, false, "Unauthorized. Please log in first.", -1).encode());
+                return;
+            }
+
             switch (packet) {
                 case HandShakePacket handShakePacket -> {
-                    System.out.println("Got Hand shake");
+                    System.out.println("Got handshake from " + client.getHostID());
                 }
-                default -> System.out.println("Unknown packet!: " + currentPacketId);
+
+                case AuthPacket authPacket -> {
+                    System.out.println("Auth attempt: " + authPacket.getEmailHash());
+                    final boolean success = Server.getInstance().getParentService().loginParent(
+                            authPacket.getEmailHash(), authPacket.getPasswordHash()
+                    );
+                    if (success) {
+                        final var parentOpt = Server.getInstance().getParentService().findByEmail(authPacket.getEmailHash());
+                        if (parentOpt.isPresent()) {
+                            final var parent = parentOpt.get();
+                            client.setAuth(true);
+                            client.setParentId(parent.getId());
+                            connection.send(new AuthResponsePacket(true, parent.getId(), "Login successful").encode());
+                        } else {
+                            connection.send(new AuthResponsePacket(false, -1, "User not found").encode());
+                        }
+                    } else {
+                        connection.send(new AuthResponsePacket(false, -1, "Invalid credentials").encode());
+                    }
+                }
+
+                case RegisterParentPacket registerParentPacket -> {
+                    System.out.println("Register Parent: " + registerParentPacket.getEmail());
+                    final var parent = Server.getInstance().getParentService().createParentAccount(
+                            registerParentPacket.getEmail(),
+                            registerParentPacket.getPasswordHash()
+                    );
+                    client.setAuth(true);
+                    client.setParentId(parent.getId());
+                    connection.send(new ActionResponsePacket(packet.getId(), true, "Registered successfully", parent.getId()).encode());
+                }
+
+                case AddChildPacket addChildPacket -> {
+                    System.out.println("Add Child: " + addChildPacket.getChildName());
+                    final var child = Server.getInstance().getChildService().addChildToParent(
+                            client.getParentId(),
+                            addChildPacket.getChildName()
+                    );
+                    connection.send(new ActionResponsePacket(packet.getId(), true, "Child added successfully", child.getId()).encode());
+                }
+
+                case AddGoalPacket addGoalPacket -> {
+                    System.out.println("Add Goal: " + addGoalPacket.getTitle());
+                    // Verify ownership
+                    final var child = Server.getInstance().getChildService().findById(addGoalPacket.getChildId())
+                            .orElseThrow(() -> new RuntimeException("Child not found"));
+
+                    if (!child.getParent().getId().equals(client.getParentId())) {
+                        throw new RuntimeException("Access denied: This child does not belong to you.");
+                    }
+
+                    io.github.kawase.database.entity.Goal goal;
+                    if (addGoalPacket.getRequiredTaskId() != -1) {
+                        goal = Server.getInstance().getGoalService().createTaskGoal(
+                                client.getParentId(),
+                                addGoalPacket.getChildId(),
+                                addGoalPacket.getTitle(),
+                                addGoalPacket.getReward(),
+                                addGoalPacket.getRequiredTaskId()
+                        );
+                    } else {
+                        goal = Server.getInstance().getGoalService().createPointsGoal(
+                                client.getParentId(),
+                                addGoalPacket.getChildId(),
+                                addGoalPacket.getTitle(),
+                                addGoalPacket.getReward(),
+                                addGoalPacket.getRequiredPoints()
+                        );
+                    }
+                    connection.send(new ActionResponsePacket(packet.getId(), true, "Goal added successfully", goal.getId()).encode());
+                }
+
+                case CompleteTaskPacket completeTaskPacket -> {
+                    System.out.println("Complete Task: Child " + completeTaskPacket.getChildId() + ", Task " + completeTaskPacket.getTaskId());
+                    // Unity game might use this - typically you'd verify game session, but here we check child ownership
+                    final var child = Server.getInstance().getChildService().findById(completeTaskPacket.getChildId())
+                            .orElseThrow(() -> new RuntimeException("Child not found"));
+
+                    if (!child.getParent().getId().equals(client.getParentId())) {
+                        throw new RuntimeException("Access denied.");
+                    }
+
+                    Server.getInstance().getTaskService().completeTask(
+                            completeTaskPacket.getChildId(),
+                            completeTaskPacket.getTaskId()
+                    );
+
+                    connection.send(new ActionResponsePacket(packet.getId(), true, "Task completed", -1).encode());
+                }
+
+                case FetchTasksPacket fetchTasksPacket -> {
+                    System.out.println("Fetch Tasks for Parent: " + client.getParentId());
+                    final var tasks = Server.getInstance().getParentService().getTasks(client.getParentId());
+                    final var dtos = new java.util.ArrayList<FetchTasksResponsePacket.TaskDto>();
+                    for (final var task : tasks) {
+                        dtos.add(new FetchTasksResponsePacket.TaskDto(task.getId(), task.getTitle(), task.getPointValue()));
+                    }
+                    connection.send(new FetchTasksResponsePacket(dtos).encode());
+                }
+
+                case FetchChildrenPacket fetchChildrenPacket -> {
+                    System.out.println("Fetch Children for Parent: " + client.getParentId());
+                    final var children = Server.getInstance().getParentService().getChildren(client.getParentId());
+                    final var dtos = new java.util.ArrayList<FetchChildrenResponsePacket.ChildDto>();
+                    for (final var child : children) {
+                        dtos.add(new FetchChildrenResponsePacket.ChildDto(child.getId(), child.getName(), child.getTotalPoints()));
+                    }
+                    connection.send(new FetchChildrenResponsePacket(dtos).encode());
+                }
+
+                case FetchGoalsPacket fetchGoalsPacket -> {
+                    System.out.println("Fetch Goals for Child ID: " + fetchGoalsPacket.getChildId());
+                    final var child = Server.getInstance().getChildService().findById(fetchGoalsPacket.getChildId())
+                            .orElseThrow(() -> new RuntimeException("Child not found"));
+
+                    if (!child.getParent().getId().equals(client.getParentId())) {
+                        throw new RuntimeException("Access denied.");
+                    }
+
+                    final var goals = Server.getInstance().getChildService().getGoals(fetchGoalsPacket.getChildId());
+                    final var dtos = new java.util.ArrayList<FetchGoalsResponsePacket.GoalDto>();
+                    for (final var goal : goals) {
+                        dtos.add(new FetchGoalsResponsePacket.GoalDto(goal.getId(), goal.getTitle(), goal.getReward(), goal.getIsCompleted()));
+                    }
+                    connection.send(new FetchGoalsResponsePacket(dtos).encode());
+                }
+
+                case FetchCompletedTasksPacket fetchCompletedTasksPacket -> {
+                    System.out.println("Fetch Completed Tasks for Child: " + fetchCompletedTasksPacket.getChildId());
+                    final var child = Server.getInstance().getChildService().findById(fetchCompletedTasksPacket.getChildId())
+                            .orElseThrow(() -> new RuntimeException("Child not found"));
+
+                    if (!child.getParent().getId().equals(client.getParentId())) {
+                        throw new RuntimeException("Access denied.");
+                    }
+
+                    final var completedTasks = Server.getInstance().getChildService().getCompletedTasks(fetchCompletedTasksPacket.getChildId());
+                    final var dtos = new java.util.ArrayList<FetchCompletedTasksResponsePacket.CompletedTaskDto>();
+                    for (final var ct : completedTasks) {
+                        final var fmt = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+                        dtos.add(new FetchCompletedTasksResponsePacket.CompletedTaskDto(
+                                ct.getId(),
+                                ct.getTask().getTitle(),
+                                ct.getTask().getPointValue(),
+                                ct.getCompletedAt().format(fmt)
+                        ));
+                    }
+                    connection.send(new FetchCompletedTasksResponsePacket(dtos).encode());
+                }
+
+                default -> throw new IllegalStateException("Unexpected Packet: " + packet);
             }
-        } catch (Exception e ) {
+        } catch (Exception e) {
             e.printStackTrace();
+            if (currentPacketId != -1 && connection.isOpen()) {
+                connection.send(new ActionResponsePacket(currentPacketId, false, e.getMessage() != null ? e.getMessage() : "Unknown error", -1).encode());
+            }
         }
     }
 
