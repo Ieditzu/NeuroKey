@@ -36,6 +36,7 @@ public class MobileJoystick : MonoBehaviour, IPointerDownHandler, IDragHandler, 
     public void OnPointerDown(PointerEventData eventData)
     {
         MobileTouchInput.SetJoystickActive(true);
+        MobileTouchInput.SetJoystickPointer(eventData.pointerId);
         OnDrag(eventData);
     }
 
@@ -68,6 +69,7 @@ public class MobileJoystick : MonoBehaviour, IPointerDownHandler, IDragHandler, 
         input = Vector2.zero;
         MobileTouchInput.ResetMove();
         MobileTouchInput.SetJoystickActive(false);
+        MobileTouchInput.ClearJoystickPointer();
         UpdateVisual();
     }
 
