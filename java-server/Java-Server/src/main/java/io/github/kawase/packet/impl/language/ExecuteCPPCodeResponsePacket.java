@@ -1,4 +1,4 @@
-package io.github.kawase.packet.impl.game.language;
+package io.github.kawase.packet.impl.language;
 
 import io.github.kawase.packet.Packet;
 import lombok.Getter;

@@ -2,10 +2,14 @@ package io.github.kawase.socket;
 
 import io.github.kawase.packet.Packet;
 import io.github.kawase.packet.PacketManager;
+import io.github.kawase.packet.impl.ai.AiResponsePacket;
+import io.github.kawase.packet.impl.ai.AskAiPacket;
 import io.github.kawase.packet.impl.auth.*;
 import io.github.kawase.packet.impl.child.*;
 import io.github.kawase.packet.impl.core.*;
 import io.github.kawase.packet.impl.game.*;
+import io.github.kawase.packet.impl.language.ExecuteCPPCodePacket;
+import io.github.kawase.packet.impl.language.ExecuteCPPCodeResponsePacket;
 import io.github.kawase.packet.impl.qr.*;
 import io.github.kawase.utility.HashUtility;
 import org.java_websocket.client.WebSocketClient;
@@ -45,6 +49,14 @@ public class ClientSocket extends WebSocketClient {
             final Packet packet = Packet.construct(bytes, packetManager);
 
             switch (packet) {
+                case ExecuteCPPCodeResponsePacket executeCPPCodeResponsePacket -> {
+                    System.out.println("Received response for cpp code execution: " + executeCPPCodeResponsePacket.getOutput() + ", error: " + executeCPPCodeResponsePacket.getError());
+                }
+
+                case AiResponsePacket aiResponsePacket -> {
+                    System.out.println("Ai response: " + aiResponsePacket.getResponse());
+                }
+
                 case AuthResponsePacket authResponsePacket -> {
                     System.out.println("Auth response: Success=" + authResponsePacket.isSuccess() + ", Message='" + authResponsePacket.getMessage() + "', ParentID=" + authResponsePacket.getParentId());
                     if (authResponsePacket.isSuccess()) {
@@ -132,22 +144,26 @@ public class ClientSocket extends WebSocketClient {
     public static void main(String[] args) {
         try {
             String dynamicEmail = "parent" + System.currentTimeMillis() + "@email.com";
-            final ClientSocket client = new ClientSocket(new URI("wss://neuro.serenityutils.club"), dynamicEmail);
+            final ClientSocket client = new ClientSocket(new URI("ws://localhost:49154"), dynamicEmail);
             client.connect();
 
             client.awaitConnection();
 
-            System.out.println("Sending Handshake...");
-            client.send(new HandShakePacket("test_client").encode());
-
-            System.out.println("Sending Registration packet...");
             client.send(new RegisterParentPacket(dynamicEmail, HashUtility.hash("mySecurePassword123")).encode());
+            client.send(new AuthPacket(dynamicEmail, HashUtility.hash("mySecurePassword123")).encode());
 
-            // Let the client thread run for a bit to receive the chained async responses
-            Thread.sleep(5000);
+            String cppCode = """
+                    #include <iostream>
+                    
+                    int main() {
+                        std::cout << "Hello, World!" << std::endl;
+                        return 0;
+                    }
+                    """;
 
-            System.out.println("Test sequence complete. Closing connection.");
-            client.close();
+            client.send(new HandShakePacket("nigger").encode());
+            client.send(new AskAiPacket("Help fr", "idk").encode());
+            client.send(new ExecuteCPPCodePacket(cppCode).encode());
 
         } catch (Exception e) {
             System.out.println("Failed to connected to IRC server.");

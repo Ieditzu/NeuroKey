@@ -2,6 +2,7 @@ package io.github.kawase.socket.packet;
 
 import io.github.kawase.socket.exceptions.PacketException;
 import io.github.kawase.socket.packet.impl.*;
+import io.github.kawase.socket.packet.impl.ai.*;
 
 public class PacketManager {
     public Packet createPacket(final int id) {
@@ -25,6 +26,8 @@ public class PacketManager {
             case 21: return new ClaimQRLoginPacket();
             case 26: return new UpdatePfpPacket();
             case 27: return new RemoveChildPacket();
+            case 30: return new AskAiPacket();
+            case 31: return new AiResponsePacket();
         }
 
         return null;

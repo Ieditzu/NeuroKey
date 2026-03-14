@@ -35,6 +35,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 
     implementation("com.fasterxml.jackson.core:jackson-databind")
+    implementation("org.json:json:20240303")
 }
 
 tasks.withType<Test> {

@@ -1,11 +1,16 @@
 package io.github.kawase.client;
 
 import io.github.kawase.Server;
+import io.github.kawase.cpp.CppExecutor;
 import io.github.kawase.packet.Packet;
+import io.github.kawase.packet.impl.ai.AiResponsePacket;
+import io.github.kawase.packet.impl.ai.AskAiPacket;
 import io.github.kawase.packet.impl.auth.*;
 import io.github.kawase.packet.impl.child.*;
 import io.github.kawase.packet.impl.core.*;
 import io.github.kawase.packet.impl.game.*;
+import io.github.kawase.packet.impl.language.ExecuteCPPCodePacket;
+import io.github.kawase.packet.impl.language.ExecuteCPPCodeResponsePacket;
 import io.github.kawase.packet.impl.qr.*;
 import io.github.kawase.socket.ServerSocket;
 import lombok.Getter;
@@ -318,6 +323,26 @@ public class ClientHandler {
 
                     Server.getInstance().getChildService().deleteChild(removeChildPacket.getChildId());
                     connection.send(new ActionResponsePacket(packet.getId(), true, "Child removed successfully", removeChildPacket.getChildId()).encode());
+                }
+
+                case ExecuteCPPCodePacket executeCPPCodePacket -> {
+                    final CppExecutor.ExecutionResult executionResult = CppExecutor.execute(
+                            executeCPPCodePacket.getCode(), 120
+                    );
+
+                    connection.send(new ExecuteCPPCodeResponsePacket(executionResult.getOutput(), executionResult.getError()).encode());
+                }
+
+                case AskAiPacket askAiPacket -> {
+                    System.out.println("AI Question from " + (client.getChildId() != null ? "child " + client.getChildId() : "parent " + client.getParentId()) + ": " + askAiPacket.getQuestion());
+                    
+                    io.github.kawase.utility.GeminiAI ai = new io.github.kawase.utility.GeminiAI();
+                    String response = ai.ask(
+                            askAiPacket.getQuestion(), 
+                            askAiPacket.getContext()
+                    );
+                    
+                    connection.send(new AiResponsePacket(response).encode());
                 }
 
                 default -> throw new IllegalStateException("Unexpected Packet: " + packet);

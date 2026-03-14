@@ -1,12 +1,14 @@
 package io.github.kawase.packet;
 
 import io.github.kawase.exceptions.PacketException;
+import io.github.kawase.packet.impl.ai.AiResponsePacket;
+import io.github.kawase.packet.impl.ai.AskAiPacket;
 import io.github.kawase.packet.impl.auth.*;
 import io.github.kawase.packet.impl.child.*;
 import io.github.kawase.packet.impl.core.*;
 import io.github.kawase.packet.impl.game.*;
-import io.github.kawase.packet.impl.game.language.ExecuteCPPCodePacket;
-import io.github.kawase.packet.impl.game.language.ExecuteCPPCodeResponsePacket;
+import io.github.kawase.packet.impl.language.ExecuteCPPCodePacket;
+import io.github.kawase.packet.impl.language.ExecuteCPPCodeResponsePacket;
 import io.github.kawase.packet.impl.qr.*;
 
 public class PacketManager {
@@ -39,9 +41,10 @@ public class PacketManager {
             case 27 -> new RemoveChildPacket();
             case 28 -> new ExecuteCPPCodePacket();
             case 29 -> new ExecuteCPPCodeResponsePacket();
+            case 30 -> new AskAiPacket();
+            case 31 -> new AiResponsePacket();
 
             default -> throw new PacketException("Unknown packet ID: " + id);
         };
     }
 }
-
