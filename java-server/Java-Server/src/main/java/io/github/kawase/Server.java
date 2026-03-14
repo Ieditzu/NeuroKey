@@ -57,5 +57,7 @@ public class Server {
 
         // start the socket itself.
         socket.start();
+
+        this.taskService.initializeGlobalTasks();
     }
 }

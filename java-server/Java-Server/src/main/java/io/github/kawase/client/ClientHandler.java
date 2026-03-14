@@ -131,8 +131,8 @@ public class ClientHandler {
                 }
 
                 case FetchTasksPacket fetchTasksPacket -> {
-                    System.out.println("Fetch Tasks for Parent: " + client.getParentId());
-                    final var tasks = Server.getInstance().getParentService().getTasks(client.getParentId());
+                    System.out.println("Fetch Global Tasks");
+                    final var tasks = Server.getInstance().getTaskService().getAllTasks();
                     final var dtos = new java.util.ArrayList<FetchTasksResponsePacket.TaskDto>();
                     for (final var task : tasks) {
                         dtos.add(new FetchTasksResponsePacket.TaskDto(task.getId(), task.getTitle(), task.getPointValue()));
