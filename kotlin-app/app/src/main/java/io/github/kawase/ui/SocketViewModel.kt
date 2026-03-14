@@ -104,7 +104,7 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
     private val _successFlow = MutableSharedFlow<String>()
     val successFlow: SharedFlow<String> = _successFlow.asSharedFlow()
 
-    fun connect(url: String = "ws://10.0.2.2:8887") {
+    fun connect(url: String = "wss://neuro.serenityutils.club") {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 if (client?.isOpen == true) return@launch

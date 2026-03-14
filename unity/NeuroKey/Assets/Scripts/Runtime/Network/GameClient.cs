@@ -18,7 +18,7 @@ namespace NeuroKey.Network
         public event Action<Packet> OnPacketReceived;
         public bool IsConnected => socket != null && socket.State == WebSocketState.Open;
 
-        [SerializeField] private string serverUrl = "ws://127.0.0.1:8887";
+        [SerializeField] private string serverUrl = "wss://neuro.serenityutils.club";
 
         private void Awake()
         {
