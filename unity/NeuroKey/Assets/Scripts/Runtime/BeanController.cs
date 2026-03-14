@@ -9,6 +9,9 @@ public class BeanController : MonoBehaviour
     [SerializeField] private float fallYThreshold = -6f;
     [SerializeField] private float jumpForce = 5f;
     [SerializeField] private float mouseSensitivity = 2f;
+    [Header("Bean Visual")]
+    [SerializeField] private GameObject beanVisualPrefab;
+    [SerializeField] private float beanVisualScale = 2f;
 
     private Rigidbody rb;
     private Vector3 input;
@@ -70,6 +73,7 @@ public class BeanController : MonoBehaviour
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
         }
+        SpawnVisualBeanIfNeeded();
 
         startPosition = transform.position;
         startRotation = transform.rotation;
@@ -80,6 +84,13 @@ public class BeanController : MonoBehaviour
     private void Update()
     {
         if (hardFreeze)
+        {
+            input = Vector3.zero;
+            isSprinting = false;
+            return;
+        }
+
+        if (PauseMenuManager.IsGamePaused || Cursor.lockState != CursorLockMode.Locked)
         {
             input = Vector3.zero;
             isSprinting = false;
@@ -184,6 +195,32 @@ public class BeanController : MonoBehaviour
         rb.rotation = startRotation;
         transform.position = startPosition;
         transform.rotation = startRotation;
+    }
+
+    private void SpawnVisualBeanIfNeeded()
+    {
+        if (beanVisualPrefab == null)
+        {
+            return;
+        }
+
+        // Disable the simple mesh so only the bean visual shows.
+        var selfRenderer = GetComponent<Renderer>();
+        if (selfRenderer != null)
+        {
+            selfRenderer.enabled = false;
+        }
+
+        var visual = Instantiate(beanVisualPrefab, transform);
+        visual.name = "BeanVisual";
+        visual.transform.localPosition = Vector3.zero;
+        visual.transform.localRotation = Quaternion.identity;
+        visual.transform.localScale = Vector3.one * beanVisualScale;
+
+        foreach (var col in visual.GetComponentsInChildren<Collider>())
+        {
+            Destroy(col);
+        }
     }
 
     public void SetMovementLocked(bool locked)
