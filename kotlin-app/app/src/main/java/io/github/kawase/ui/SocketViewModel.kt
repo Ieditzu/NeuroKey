@@ -179,8 +179,26 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
         sendPacket(ClaimQRLoginPacket(token, childId))
     }
 
+    fun removeChild(childId: Long) {
+        sendPacket(RemoveChildPacket(childId))
+    }
+
     fun updatePfp(childId: Long, base64Pfp: String) {
-        sendPacket(UpdatePfpPacket(childId, base64Pfp))
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val fileName = if (childId == -1L) "pfp_parent.jpg" else "pfp_child_$childId.jpg"
+                val file = java.io.File(getApplication<Application>().filesDir, fileName)
+                val bytes = android.util.Base64.decode(base64Pfp, android.util.Base64.NO_WRAP)
+                file.writeBytes(bytes)
+                
+                // Still send to server as backup
+                sendPacket(UpdatePfpPacket(childId, base64Pfp))
+                
+                fetchChildren()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     private fun sendPacket(packet: Packet) {
@@ -262,13 +280,8 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
                 viewModelScope.launch {
                     if (packet.isSuccess) {
                         _successFlow.emit(packet.message ?: "Action successful")
-                        if (packet.requestPacketId == 4) { // AddChild
+                        if (packet.requestPacketId == 4 || packet.requestPacketId == 27) { // AddChild or RemoveChild
                             fetchChildren()
-                        }
-                        if (packet.requestPacketId == 26) { // UpdatePfp
-                            fetchChildren()
-                            // If it was parent PFP, we don't have a direct way to refresh it easily without re-auth 
-                            // or adding a FetchParentStats packet. For now let's just assume it worked.
                         }
                     } else {
                         _errorFlow.emit("Action failed: ${packet.message}")

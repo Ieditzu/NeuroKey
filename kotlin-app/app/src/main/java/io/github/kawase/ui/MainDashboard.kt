@@ -458,9 +458,7 @@ fun HomeScreen(viewModel: SocketViewModel, children: List<Child>, onChildSelecte
                             .padding(24.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            PfpView(child.pfp, child.name, viewModel.primaryColor.value, Modifier.size(60.dp)) {
-                                // PFP change handled in settings for now or we could add it here
-                            }
+                            PfpView(child.pfp, child.name, viewModel.primaryColor.value, Modifier.size(60.dp), null)
                             
                             Spacer(modifier = Modifier.width(20.dp))
                             
@@ -573,21 +571,32 @@ fun DefaultAvatar(name: String, primaryColor: Color) {
 @Composable
 fun ImagePickerBottomSheet(onImageSelected: (String) -> Unit, onDismiss: () -> Unit) {
     val context = LocalContext.current
+    
+    fun processBitmap(bitmap: Bitmap) {
+        val size = 200 // Max 200x200
+        val scaled = if (bitmap.width > size || bitmap.height > size) {
+            val ratio = bitmap.width.toFloat() / bitmap.height.toFloat()
+            val w = if (ratio > 1) size else (size * ratio).toInt()
+            val h = if (ratio > 1) (size / ratio).toInt() else size
+            Bitmap.createScaledBitmap(bitmap, w, h, true)
+        } else bitmap
+        
+        val outputStream = ByteArrayOutputStream()
+        scaled.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)
+        onImageSelected(Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP))
+    }
+
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
             val inputStream = context.contentResolver.openInputStream(it)
-            val bytes = inputStream?.readBytes()
-            bytes?.let { b -> onImageSelected(Base64.encodeToString(b, Base64.DEFAULT)) }
+            val bitmap = BitmapFactory.decodeStream(inputStream)
+            bitmap?.let { b -> processBitmap(b) }
         }
         onDismiss()
     }
     
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap: Bitmap? ->
-        bitmap?.let {
-            val outputStream = ByteArrayOutputStream()
-            it.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)
-            onImageSelected(Base64.encodeToString(outputStream.toByteArray(), Base64.DEFAULT))
-        }
+        bitmap?.let { processBitmap(it) }
         onDismiss()
     }
 
@@ -719,7 +728,11 @@ fun SettingsScreen(viewModel: SocketViewModel) {
                         showPfpPickerForId = child.id
                     }
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text(child.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(child.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                    
+                    IconButton(onClick = { viewModel.removeChild(child.id) }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Remove Child", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
+                    }
                 }
             }
         }
@@ -951,22 +964,6 @@ fun GoalsScreen(viewModel: SocketViewModel, childId: Long) {
         }
         Spacer(modifier = Modifier.height(100.dp))
     }
-}
-
-@Composable
-fun ColorPickerOption(color: Color, selectedColor: Color, onColorSelected: (Color) -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(44.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(color)
-            .clickable { onColorSelected(color) }
-            .border(
-                if (color == selectedColor) { 3.dp } else 0.dp, 
-                if (color == selectedColor) { (if(selectedColor.luminance() < 0.3f) Color.White else Color.Black) } else Color.Transparent, 
-                RoundedCornerShape(12.dp)
-            )
-    )
 }
 
 @Composable

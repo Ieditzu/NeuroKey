@@ -30,6 +30,7 @@ public class PacketManager {
             case 24 -> new FetchChildStatsResponsePacket();
             case 25 -> new VerifySessionPacket();
             case 26 -> new UpdatePfpPacket();
+            case 27 -> new RemoveChildPacket();
 
             default -> throw new PacketException("Unknown packet ID: " + id);
         };
