@@ -23,9 +23,9 @@ public class ClientHandler {
             final Packet packet = Packet.construct(byteBuffer, client.getPacketManager());
             currentPacketId = packet.getId();
 
-            // Handshake and Registration/Auth are the only ones allowed before auth
+            // Handshake and Registration/Auth/QR Login are the only ones allowed before auth
             // we should prob not hard code this but oh well.
-            if (currentPacketId != 1 && currentPacketId != 2 && currentPacketId != 3 && !client.isAuth()) {
+            if (currentPacketId != 1 && currentPacketId != 2 && currentPacketId != 3 && currentPacketId != 19 && !client.isAuth()) {
                 connection.send(new ActionResponsePacket(currentPacketId, false, "Unauthorized. Please log in first.", -1).encode());
                 return;
             }
@@ -182,6 +182,41 @@ public class ClientHandler {
                         ));
                     }
                     connection.send(new FetchCompletedTasksResponsePacket(dtos).encode());
+                }
+
+                case GenerateQRLoginPacket generateQRLoginPacket -> {
+                    final String token = java.util.UUID.randomUUID().toString();
+                    System.out.println("Generating QR token: " + token);
+                    Server.getInstance().getPendingQRLogins().put(token, this);
+                    connection.send(new QRLoginResponsePacket(token).encode());
+                }
+
+                case ClaimQRLoginPacket claimQRLoginPacket -> {
+                    System.out.println("Claiming QR token: " + claimQRLoginPacket.getToken() + " for child " + claimQRLoginPacket.getChildId());
+                    final ClientHandler gameHandler = Server.getInstance().getPendingQRLogins().remove(claimQRLoginPacket.getToken());
+                    
+                    if (gameHandler != null && gameHandler.getConnection().isOpen()) {
+                        final var childOpt = Server.getInstance().getChildService().findById(claimQRLoginPacket.getChildId());
+                        if (childOpt.isPresent()) {
+                            final var child = childOpt.get();
+                            
+                            // Verify that the parent claiming the token actually owns this child
+                            if (child.getParent().getId().equals(client.getParentId())) {
+                                gameHandler.getClient().setAuth(true);
+                                gameHandler.getClient().setChildId(child.getId());
+                                gameHandler.getClient().setParentId(child.getParent().getId());
+                                
+                                gameHandler.getConnection().send(new ChildAuthResponsePacket(true, child.getId(), child.getName()).encode());
+                                connection.send(new ActionResponsePacket(packet.getId(), true, "Child logged into game successfully", child.getId()).encode());
+                            } else {
+                                connection.send(new ActionResponsePacket(packet.getId(), false, "Access denied: You don't own this child", -1).encode());
+                            }
+                        } else {
+                            connection.send(new ActionResponsePacket(packet.getId(), false, "Child not found", -1).encode());
+                        }
+                    } else {
+                        connection.send(new ActionResponsePacket(packet.getId(), false, "Invalid or expired QR code", -1).encode());
+                    }
                 }
 
                 default -> throw new IllegalStateException("Unexpected Packet: " + packet);

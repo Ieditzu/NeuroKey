@@ -20,6 +20,8 @@ public class Server {
 
     private ConcurrentHashMap<Client, ClientHandler> activeConnections;
 
+    private ConcurrentHashMap<String, ClientHandler> pendingQRLogins = new ConcurrentHashMap<>();
+
     private ServerSocket socket;
 
     // we will init every manager here :pray:.

@@ -58,6 +58,7 @@ fun MainDashboard(viewModel: SocketViewModel) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     var showAddGoalDialog by remember { mutableStateOf(false) }
+    var showQRDialog by remember { mutableStateOf<Child?>(null) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "bg")
     val rotation by infiniteTransition.animateFloat(
@@ -173,11 +174,16 @@ fun MainDashboard(viewModel: SocketViewModel) {
         ) { innerPadding ->
             NavHost(navController, startDestination = "home", modifier = Modifier.padding(innerPadding)) {
                 composable("home") {
-                    HomeScreen(viewModel, children) { childId ->
-                        selectedChildId = childId
-                        viewModel.fetchGoals(childId)
-                        navController.navigate("goals")
-                    }
+                    HomeScreen(viewModel, children, 
+                        onChildSelected = { childId ->
+                            selectedChildId = childId
+                            viewModel.fetchGoals(childId)
+                            navController.navigate("goals")
+                        },
+                        onLogIntoGame = { child ->
+                            showQRDialog = child
+                        }
+                    )
                 }
                 composable("history") {
                     HistoryScreen(viewModel)
@@ -204,10 +210,76 @@ fun MainDashboard(viewModel: SocketViewModel) {
             }
         )
     }
+
+    showQRDialog?.let { child ->
+        QRScannerSimulatorDialog(
+            child = child,
+            isDarkMode = viewModel.isDarkMode.value,
+            primaryColor = viewModel.primaryColor.value,
+            onDismiss = { showQRDialog = null },
+            onConfirm = { token ->
+                viewModel.claimQRLogin(token, child.id)
+                showQRDialog = null
+            }
+        )
+    }
 }
 
 @Composable
-fun HomeScreen(viewModel: SocketViewModel, children: List<Child>, onChildSelected: (Long) -> Unit) {
+fun QRScannerSimulatorDialog(
+    child: Child,
+    isDarkMode: Boolean,
+    primaryColor: Color,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var token by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(32.dp))
+                .border(1.dp, if(isDarkMode) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), RoundedCornerShape(32.dp)),
+            color = if(isDarkMode) Color(0xFF1A1A1A) else MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp
+        ) {
+            Column(modifier = Modifier.padding(32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("Log ${child.name} into Game", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+                Text("In the game settings, click 'Generate QR' and enter the code below (simulating a scan).", color = MaterialTheme.colorScheme.onSurface)
+                
+                OutlinedTextField(
+                    value = token,
+                    onValueChange = { token = it },
+                    label = { Text("QR Code Token") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = primaryColor,
+                        focusedLabelColor = primaryColor,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface
+                    )
+                )
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    Button(
+                        onClick = { onConfirm(token) },
+                        enabled = token.isNotBlank(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
+                    ) {
+                        Text("Log In", fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HomeScreen(viewModel: SocketViewModel, children: List<Child>, onChildSelected: (Long) -> Unit, onLogIntoGame: (Child) -> Unit) {
     Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
         Text(
             "My Kids",
@@ -280,6 +352,20 @@ fun HomeScreen(viewModel: SocketViewModel, children: List<Child>, onChildSelecte
                                     )
                                 }
                             }
+
+                            IconButton(
+                                onClick = { onLogIntoGame(child) },
+                                modifier = Modifier.size(44.dp).background(viewModel.primaryColor.value.copy(alpha = 0.1f), CircleShape)
+                            ) {
+                                Icon(
+                                    Icons.Default.QrCodeScanner,
+                                    contentDescription = "Log into Game",
+                                    tint = viewModel.primaryColor.value,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.width(8.dp))
                             
                             Icon(
                                 Icons.AutoMirrored.Filled.KeyboardArrowRight,

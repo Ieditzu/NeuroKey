@@ -172,6 +172,10 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
         sendPacket(AddGoalPacket(childId, title, reward, points, taskId))
     }
 
+    fun claimQRLogin(token: String, childId: Long) {
+        sendPacket(ClaimQRLoginPacket(token, childId))
+    }
+
     private fun sendPacket(packet: Packet) {
         viewModelScope.launch(Dispatchers.IO) {
             client?.let {

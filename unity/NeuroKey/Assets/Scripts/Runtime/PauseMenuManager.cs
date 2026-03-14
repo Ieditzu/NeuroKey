@@ -4,6 +4,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using NeuroKey.Network;
 
 public class PauseMenuManager : MonoBehaviour
 {
@@ -20,6 +21,11 @@ public class PauseMenuManager : MonoBehaviour
     private float previousTimeScale = 1f;
     private bool initialized;
 
+    private Text qrStatusText;
+    private Button qrButton;
+    private long loggedInChildId = -1;
+    private string loggedInChildName = "";
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
@@ -31,7 +37,47 @@ public class PauseMenuManager : MonoBehaviour
 
         GameObject root = new GameObject("PauseMenuManager");
         instance = root.AddComponent<PauseMenuManager>();
+        root.AddComponent<GameClient>(); // Add network client
         DontDestroyOnLoad(root);
+    }
+
+    private void Start()
+    {
+        if (GameClient.Instance != null)
+        {
+            GameClient.Instance.OnPacketReceived += OnPacketReceived;
+            _ = GameClient.Instance.Connect();
+        }
+    }
+
+    private void OnPacketReceived(Packet packet)
+    {
+        if (packet is QRLoginResponsePacket qrResp)
+        {
+            UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                if (qrStatusText != null)
+                    qrStatusText.text = "TOKEN: " + qrResp.Token;
+            });
+        }
+        else if (packet is ChildAuthResponsePacket authResp)
+        {
+            UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                if (authResp.Success)
+                {
+                    loggedInChildId = authResp.ChildId;
+                    loggedInChildName = authResp.ChildName;
+                    if (qrStatusText != null)
+                        qrStatusText.text = "LOGGED IN AS: " + authResp.ChildName;
+                    if (qrButton != null)
+                        qrButton.interactable = false;
+                }
+                else
+                {
+                    if (qrStatusText != null)
+                        qrStatusText.text = "LOGIN FAILED";
+                }
+            });
+        }
     }
 
     private void Awake()
@@ -154,13 +200,30 @@ public class PauseMenuManager : MonoBehaviour
 
         CreateSensitivitySection(panel.transform);
 
-        Button resumeButton = CreateButton(panel.transform, "ResumeButton", "Resume", new Vector2(0f, -60f), new Color(0.18f, 0.63f, 0.43f, 1f));
+        GameObject qrSection = CreateUiObject("QrSection", panel.transform);
+        RectTransform qrRect = qrSection.GetComponent<RectTransform>();
+        qrRect.sizeDelta = new Vector2(540f, 100f);
+        qrRect.anchorMin = new Vector2(0.5f, 0.5f);
+        qrRect.anchorMax = new Vector2(0.5f, 0.5f);
+        qrRect.pivot = new Vector2(0.5f, 0.5f);
+        qrRect.anchoredPosition = new Vector2(0f, -70f);
+
+        qrStatusText = CreateText("QrStatus", qrSection.transform, 
+            loggedInChildId == -1 ? "Not logged in" : "Logged in as " + loggedInChildName, 
+            16, FontStyle.Italic, TextAnchor.MiddleCenter, Color.white, new Vector2(0, 30), new Vector2(500, 30));
+
+        qrButton = CreateButton(qrSection.transform, "QrButton", "Generate QR Login", new Vector2(0f, -10f), new Color(0.4f, 0.2f, 0.8f, 1f));
+        qrButton.GetComponent<RectTransform>().sizeDelta = new Vector2(300f, 40f);
+        qrButton.onClick.AddListener(GenerateQrLogin);
+        if (loggedInChildId != -1) qrButton.interactable = false;
+
+        Button resumeButton = CreateButton(panel.transform, "ResumeButton", "Resume", new Vector2(0f, -150f), new Color(0.18f, 0.63f, 0.43f, 1f));
         resumeButton.onClick.AddListener(ResumeGame);
 
-        Button saveButton = CreateButton(panel.transform, "SaveButton", "Save Settings", new Vector2(0f, -140f), new Color(0.14f, 0.44f, 0.80f, 1f));
+        Button saveButton = CreateButton(panel.transform, "SaveButton", "Save Settings", new Vector2(0f, -220f), new Color(0.14f, 0.44f, 0.80f, 1f));
         saveButton.onClick.AddListener(SaveSettings);
 
-        Button quitButton = CreateButton(panel.transform, "QuitButton", "Quit Game", new Vector2(0f, -220f), new Color(0.72f, 0.24f, 0.26f, 1f));
+        Button quitButton = CreateButton(panel.transform, "QuitButton", "Quit Game", new Vector2(0f, -290f), new Color(0.72f, 0.24f, 0.26f, 1f));
         quitButton.onClick.AddListener(QuitGame);
 
         canvasObject.SetActive(false);
@@ -361,6 +424,20 @@ public class PauseMenuManager : MonoBehaviour
     private static float LoadSavedSensitivity()
     {
         return PlayerPrefs.GetFloat(MouseSensitivityPrefKey, 1.8f);
+    }
+
+    private void GenerateQrLogin()
+    {
+        if (GameClient.Instance != null && GameClient.Instance.IsConnected)
+        {
+            qrStatusText.text = "Generating...";
+            GameClient.Instance.SendPacket(new GenerateQRLoginPacket());
+        }
+        else
+        {
+            if (qrStatusText != null) qrStatusText.text = "Connecting to server...";
+            _ = GameClient.Instance.Connect();
+        }
     }
 
     private static void EnsureEventSystem()
