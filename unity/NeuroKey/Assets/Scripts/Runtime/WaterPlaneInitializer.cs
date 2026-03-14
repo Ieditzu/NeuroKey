@@ -40,20 +40,17 @@ public static class WaterPlaneInitializer
             renderer.sharedMaterial = CreateWaterSurfaceMaterial();
         }
 
-        // Surface at y=0 for visible water top.
-        GameObject surface = GameObject.CreatePrimitive(PrimitiveType.Plane);
-        surface.name = "WaterSurface";
+        // Surface at y=0 for visible water top, with animated vertex waves.
+        GameObject surface = new GameObject("WaterSurface");
         surface.transform.position = new Vector3(0f, 0.01f, 0f);
-        surface.transform.localScale = new Vector3(40f, 1f, 40f);
-        var surfCol = surface.GetComponent<Collider>();
-        if (surfCol != null) Object.Destroy(surfCol);
-        var surfRend = surface.GetComponent<Renderer>();
-        if (surfRend != null)
-        {
-            surfRend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            surfRend.receiveShadows = false;
-            surfRend.sharedMaterial = CreateWaterSurfaceMaterial();
-        }
+        surface.transform.localScale = Vector3.one;
+        var mf = surface.AddComponent<MeshFilter>();
+        mf.sharedMesh = BuildGridMesh(800f, 180);
+        var mr = surface.AddComponent<MeshRenderer>();
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        mr.receiveShadows = false;
+        mr.sharedMaterial = CreateWaterSurfaceMaterial();
+        surface.AddComponent<WaterWaveAnimator>();
     }
 
     /// <summary>
