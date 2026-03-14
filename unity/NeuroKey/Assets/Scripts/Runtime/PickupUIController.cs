@@ -16,7 +16,8 @@ public class PickupUIController : MonoBehaviour
 
     private bool visible;
     private string jumpInput = "0";
-    private bool boxPushable;
+    private bool boxPushable = false;
+    private string boxInput = "false";
 
     private void Awake()
     {
@@ -114,17 +115,19 @@ public class PickupUIController : MonoBehaviour
         GUILayout.Space(6f);
         GUI.SetNextControlName("BoxField");
         GUILayout.BeginHorizontal();
-        GUILayout.Label("boxRigidbody =", GUILayout.Width(90f));
-        string boolText = boxPushable ? "true" : "false";
-        string newBoolText = GUILayout.TextField(boolText, 6).ToLowerInvariant();
+        GUILayout.Label("boxRigidbody =", GUILayout.Width(100f));
+        boxInput = GUILayout.TextField(boxInput, 8).ToLowerInvariant();
         GUILayout.EndHorizontal();
-        if (enterPressed && targetBox != null && GUI.GetNameOfFocusedControl() == "BoxField")
+        if (enterPressed && GUI.GetNameOfFocusedControl() == "BoxField")
         {
-            bool parsed = newBoolText == "true";
+            bool parsed = boxInput == "true";
             if (parsed != boxPushable)
             {
                 boxPushable = parsed;
-                targetBox.isKinematic = !boxPushable;
+                if (targetBox != null)
+                {
+                    targetBox.isKinematic = !boxPushable;
+                }
             }
         }
 
