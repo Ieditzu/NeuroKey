@@ -37,6 +37,18 @@ public class SphereRiftPortalSequence : MonoBehaviour
         new Vector3(0f, 0.34f, 0f),
         new Vector3(0.45f, 0.08f, 0f)
     };
+    private static readonly Color[] PortalCoreColors =
+    {
+        new Color(0.95f, 0.88f, 1f, 0.98f),
+        new Color(0.9f, 0.98f, 1f, 0.98f),
+        new Color(1f, 0.93f, 0.86f, 0.98f)
+    };
+    private static readonly Color[] PortalRingColors =
+    {
+        new Color(0.73f, 0.48f, 1f, 0.96f),
+        new Color(0.3f, 0.88f, 1f, 0.96f),
+        new Color(1f, 0.67f, 0.36f, 0.96f)
+    };
     private bool running;
 
     private void Awake()
@@ -62,7 +74,9 @@ public class SphereRiftPortalSequence : MonoBehaviour
         }
 
         Vector3 portalPosition = GetClosestPortalCenter(playerRoot.position);
-        float distance = Vector3.Distance(playerRoot.position, portalPosition);
+        Vector3 flatPlayer = new Vector3(playerRoot.position.x, 0f, playerRoot.position.z);
+        Vector3 flatPortal = new Vector3(portalPosition.x, 0f, portalPosition.z);
+        float distance = Vector3.Distance(flatPlayer, flatPortal);
         if (distance <= pullRadius)
         {
             StartCoroutine(PlaySequence(sphere, fps, playerRoot, portalPosition));
@@ -166,7 +180,7 @@ public class SphereRiftPortalSequence : MonoBehaviour
             core.SetParent(singleRoot, false);
             core.localScale = new Vector3(0.17f, 0.28f, 0.07f);
             Destroy(core.GetComponent<Collider>());
-            ApplyEmissionMaterial(core.gameObject, riftCoreColor, 6.2f);
+            ApplyEmissionMaterial(core.gameObject, PortalCoreColors[i], 6.2f);
             cores[i] = core;
 
             Transform outerRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder).transform;
@@ -175,7 +189,7 @@ public class SphereRiftPortalSequence : MonoBehaviour
             outerRing.localRotation = Quaternion.Euler(90f, 0f, 0f);
             outerRing.localScale = new Vector3(0.22f, 0.016f, 0.22f);
             Destroy(outerRing.GetComponent<Collider>());
-            ApplyEmissionMaterial(outerRing.gameObject, riftRingColor, 8.8f);
+            ApplyEmissionMaterial(outerRing.gameObject, PortalRingColors[i], 8.8f);
             outerRings[i] = outerRing;
 
             Transform innerRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder).transform;
@@ -184,7 +198,7 @@ public class SphereRiftPortalSequence : MonoBehaviour
             innerRing.localRotation = Quaternion.Euler(90f, 0f, 0f);
             innerRing.localScale = new Vector3(0.15f, 0.011f, 0.15f);
             Destroy(innerRing.GetComponent<Collider>());
-            ApplyEmissionMaterial(innerRing.gameObject, riftGlowColor, 7.6f);
+            ApplyEmissionMaterial(innerRing.gameObject, Color.Lerp(PortalCoreColors[i], Color.white, 0.35f), 7.6f);
             innerRings[i] = innerRing;
 
             GameObject lightRoot = new GameObject("RiftLight");
@@ -193,7 +207,7 @@ public class SphereRiftPortalSequence : MonoBehaviour
             portalLight.type = LightType.Point;
             portalLight.range = 18f;
             portalLight.intensity = 9.5f;
-            portalLight.color = riftGlowColor;
+            portalLight.color = Color.Lerp(PortalRingColors[i], Color.white, 0.3f);
             portalLights[i] = portalLight;
         }
 

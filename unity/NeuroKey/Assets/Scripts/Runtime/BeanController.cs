@@ -7,11 +7,11 @@ public class BeanController : MonoBehaviour
     [SerializeField] private float sprintMultiplier = 2f;
     [SerializeField] private float gravityMultiplier = 3f;
     [SerializeField] private float fallYThreshold = -6f;
-    [SerializeField] private float jumpForce = 5f;
+    [SerializeField] private float jumpForce = 10f;
     [SerializeField] private float mouseSensitivity = 2f;
     [Header("Bean Visual")]
     [SerializeField] private GameObject beanVisualPrefab;
-    [SerializeField] private float beanVisualScale = 2f;
+    [SerializeField] private float beanVisualScale = 4.4f;
 
     private Rigidbody rb;
     private Vector3 input;
@@ -43,10 +43,10 @@ public class BeanController : MonoBehaviour
         if (capCol == null)
         {
             capCol = gameObject.AddComponent<CapsuleCollider>();
-            capCol.height = 2f;
-            capCol.radius = 0.5f;
-            capCol.center = new Vector3(0, 1f, 0);
         }
+        capCol.height = 4.4f;
+        capCol.radius = 1.1f;
+        capCol.center = new Vector3(0f, 2.2f, 0f);
 
         var filter = GetComponent<MeshFilter>();
         if (filter != null)
@@ -68,7 +68,7 @@ public class BeanController : MonoBehaviour
 
             camTransform = mainCam.transform;
             camTransform.SetParent(transform, false);
-            camTransform.localPosition = new Vector3(0f, 1.1f, 0f);
+            camTransform.localPosition = new Vector3(0f, 2.35f, 0f);
             camTransform.localRotation = Quaternion.identity;
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
