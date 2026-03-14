@@ -358,7 +358,7 @@ fun HomeScreen(viewModel: SocketViewModel, children: List<Child>, onChildSelecte
                                 modifier = Modifier.size(44.dp).background(viewModel.primaryColor.value.copy(alpha = 0.1f), CircleShape)
                             ) {
                                 Icon(
-                                    Icons.Default.QrCodeScanner,
+                                    Icons.Default.Place,
                                     contentDescription = "Log into Game",
                                     tint = viewModel.primaryColor.value,
                                     modifier = Modifier.size(24.dp)
