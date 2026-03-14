@@ -535,7 +535,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                         yield break;
                     }
                     ShowMainUi(true);
-                    ShowChallengeButtons(current > 0, true, true, true, true, false, false);
+                    ShowChallengeButtons(current > 0, true, true, true, false, false);
                 }
                 else if (aiChatRequested)
                 {
@@ -546,14 +546,14 @@ public class CodeChallengePadCinematic : MonoBehaviour
                         yield break;
                     }
                     ShowMainUi(true);
-                    ShowChallengeButtons(current > 0, true, true, true, true, false, false);
+                    ShowChallengeButtons(current > 0, true, true, true, false, false);
                 }
                 else if (runRequested)
                 {
                     runRequested = false;
                     yield return RunCodeOnly(codeInput.text);
                     ShowMainUi(true);
-                    ShowChallengeButtons(current > 0, true, true, true, true, false, false);
+                    ShowChallengeButtons(current > 0, true, true, true, false, false);
                 }
 
                 yield return null;
@@ -592,7 +592,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
                 feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
                 feedbackText.color = correctColor;
-                ShowChallengeButtons(current > 0, true, true, true, false, true, false);
+                ShowChallengeButtons(current > 0, true, true, false, true, false);
                 while (!continueRequested && !backRequested && !runRequested && !leaveRequested)
                 {
                     if (hintRequested)
@@ -604,7 +604,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                             yield break;
                         }
                         ShowMainUi(true);
-                        ShowChallengeButtons(current > 0, true, true, true, false, true, false);
+                        ShowChallengeButtons(current > 0, true, true, false, true, false);
                         feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
                         feedbackText.color = correctColor;
                     }
@@ -617,7 +617,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                             yield break;
                         }
                         ShowMainUi(true);
-                        ShowChallengeButtons(current > 0, true, true, true, false, true, false);
+                        ShowChallengeButtons(current > 0, true, true, false, true, false);
                         feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
                         feedbackText.color = correctColor;
                     }
@@ -626,7 +626,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                         runRequested = false;
                         yield return RunCodeOnly(codeInput.text);
                         ShowMainUi(true);
-                        ShowChallengeButtons(current > 0, true, true, true, false, true, false);
+                        ShowChallengeButtons(current > 0, true, true, false, true, false);
                         feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
                         feedbackText.color = correctColor;
                     }
@@ -677,7 +677,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                         yield break;
                     }
                     ShowMainUi(true);
-                    ShowChallengeButtons(current > 0, true, true, true, true, false, false);
+                    ShowChallengeButtons(current > 0, true, true, true, false, false);
                     feedbackText.text = Localize("Incorect. Mai ai ", "Incorrect. You have ") + attemptsLeft[current] + Localize(" incercari.", " attempts left.");
                     feedbackText.color = wrongColor;
                 }
@@ -690,7 +690,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                         yield break;
                     }
                     ShowMainUi(true);
-                    ShowChallengeButtons(current > 0, true, true, true, true, false, false);
+                    ShowChallengeButtons(current > 0, true, true, true, false, false);
                     feedbackText.text = Localize("Incorect. Mai ai ", "Incorrect. You have ") + attemptsLeft[current] + Localize(" incercari.", " attempts left.");
                     feedbackText.color = wrongColor;
                 }
@@ -699,7 +699,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                     runRequested = false;
                     yield return RunCodeOnly(codeInput.text);
                     ShowMainUi(true);
-                    ShowChallengeButtons(current > 0, true, true, true, true, false, false);
+                    ShowChallengeButtons(current > 0, true, true, true, false, false);
                     feedbackText.text = Localize("Incorect. Mai ai ", "Incorrect. You have ") + attemptsLeft[current] + Localize(" incercari.", " attempts left.");
                     feedbackText.color = wrongColor;
                 }
@@ -922,7 +922,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                 outputText.text = Localize("Nu pot contacta serverul de executie.", "Can't reach the execution server.");
                 outputText.color = wrongColor;
             }
-            return;
+            yield break;
         }
 
         float execElapsed = 0f;
@@ -940,7 +940,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                 outputText.text = Localize("Timeout la executie.", "Execution timed out.");
                 outputText.color = wrongColor;
             }
-            return;
+            yield break;
         }
 
         if (outputText != null)
@@ -1521,25 +1521,14 @@ public class CodeChallengePadCinematic : MonoBehaviour
                         yield break;
                     }
                     ShowMainUi(true);
-                    ShowChallengeButtons(current > 0, true, true, true, true, false, false);
-                }
-                else if (aiChatRequested)
-                {
-                    aiChatRequested = false;
-                    yield return ShowAiChatScreen();
-                    if (leaveRequested)
-                    {
-                        yield break;
-                    }
-                    ShowMainUi(true);
-                    ShowChallengeButtons(current > 0, true, true, true, true, false, false);
+                    ShowChallengeButtons(current > 0, true, true, true, false, false);
                 }
                 else if (runRequested)
                 {
                     runRequested = false;
                     yield return RunCodeOnly(codeInput.text);
                     ShowMainUi(true);
-                    ShowChallengeButtons(current > 0, true, true, true, true, false, false);
+                    ShowChallengeButtons(current > 0, true, true, true, false, false);
                 }
 
                 yield return null;
@@ -1573,7 +1562,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                 solved[retrySourceIndex[current]] = true;
                 feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
                 feedbackText.color = correctColor;
-                ShowChallengeButtons(current > 0, true, true, true, false, true, false);
+                ShowChallengeButtons(current > 0, true, true, false, true, false);
 
                 while (!continueRequested && !runRequested && !leaveRequested)
                 {
@@ -1582,7 +1571,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                         runRequested = false;
                         yield return RunCodeOnly(codeInput.text);
                         ShowMainUi(true);
-                        ShowChallengeButtons(current > 0, true, true, true, false, true, false);
+                        ShowChallengeButtons(current > 0, true, true, false, true, false);
                     }
                     yield return null;
                 }
