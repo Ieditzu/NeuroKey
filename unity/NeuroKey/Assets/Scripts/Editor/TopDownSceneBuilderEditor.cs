@@ -2095,27 +2095,7 @@ public static class TopDownSceneBuilderEditor
         RemoveIfExists(parent, "MediumSecondQuestionArea");
         RemoveIfExists(parent, "MediumThirdQuestionArea");
         RemoveIfExists(parent, "MediumFourthQuestionArea");
-
-        Vector3 padCenter = topCenter + (forwardDirection * 14.2f);
-        EnsureTrackPartWorld(
-            parent,
-            "MediumQuestionPad",
-            padCenter + new Vector3(0f, -0.02f, 0f),
-            rot,
-            new Vector3(3.2f, 0.2f, 2.4f),
-            new Color(0.63f, 0.86f, 0.95f, 1f),
-            null
-        );
-
-        Transform mediumPad = parent.Find("MediumQuestionPad");
-        if (mediumPad != null)
-        {
-            var startSequence = mediumPad.GetComponent<MediumQuestionPadStartSequence>();
-            if (startSequence == null)
-            {
-                startSequence = mediumPad.gameObject.AddComponent<MediumQuestionPadStartSequence>();
-            }
-        }
+        RemoveIfExists(parent, "MediumQuestionPad");
     }
 
     private static void EnsureHardTopChallenge(Transform parent, Vector3 topCenter, Vector3 forwardDirection, Color accentColor)
@@ -2138,29 +2118,7 @@ public static class TopDownSceneBuilderEditor
         RemoveIfExists(parent, "HardSecondQuestionArea");
         RemoveIfExists(parent, "HardThirdQuestionArea");
         RemoveIfExists(parent, "HardFourthQuestionArea");
-
-        Vector3 padCenter = topCenter + (forwardDirection * 14.2f);
-        EnsureTrackPartWorld(
-            parent,
-            "HardQuestionPad",
-            padCenter + new Vector3(0f, -0.02f, 0f),
-            rot,
-            new Vector3(3.2f, 0.2f, 2.4f),
-            new Color(0.96f, 0.62f, 0.5f, 1f),
-            null
-        );
-
-        Transform hardPad = parent.Find("HardQuestionPad");
-        if (hardPad != null)
-        {
-            var startSequence = hardPad.GetComponent<MediumQuestionPadStartSequence>();
-            if (startSequence == null)
-            {
-                startSequence = hardPad.gameObject.AddComponent<MediumQuestionPadStartSequence>();
-            }
-
-            startSequence.ConfigureAsHardStart();
-        }
+        RemoveIfExists(parent, "HardQuestionPad");
     }
 
     private static void EnsureEasyAnswerPlatforms(Transform parent, Vector3 origin, Vector3 forwardDirection, CppQuestionTrigger trigger)

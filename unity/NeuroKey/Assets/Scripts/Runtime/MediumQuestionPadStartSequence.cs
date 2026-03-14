@@ -3258,8 +3258,6 @@ public static class MediumQuestionPadStartSequenceBootstrap
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void AttachIfNeeded()
     {
-        AttachToPad("MediumQuestionPad");
-        AttachToPad("HardQuestionPad");
     }
 
     private static void AttachToPad(string padName)
