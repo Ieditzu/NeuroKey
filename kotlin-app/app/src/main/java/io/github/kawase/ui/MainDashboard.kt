@@ -289,12 +289,24 @@ fun QRScannerSimulatorDialog(
                 }
 
                 var manualToken by remember { mutableStateOf("") }
+                val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+
                 OutlinedTextField(
                     value = manualToken,
-                    onValueChange = { manualToken = it },
+                    onValueChange = { if (!it.contains("\n")) manualToken = it },
                     label = { Text("Or enter token manually") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                    ),
+                    keyboardActions = androidx.compose.ui.text.input.KeyboardActions(
+                        onDone = {
+                            keyboardController?.hide()
+                            if (manualToken.isNotBlank()) onConfirm(manualToken)
+                        }
+                    ),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = primaryColor,
                         focusedLabelColor = primaryColor,
@@ -306,7 +318,10 @@ fun QRScannerSimulatorDialog(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text("Cancel") }
                     Button(
-                        onClick = { onConfirm(manualToken) },
+                        onClick = { 
+                            keyboardController?.hide()
+                            onConfirm(manualToken) 
+                        },
                         enabled = manualToken.isNotBlank(),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
@@ -337,7 +352,12 @@ fun QRScannerView(onCodeScanned: (String) -> Unit) {
                     it.setSurfaceProvider(previewView.surfaceProvider)
                 }
 
-                val scanner = BarcodeScanning.getClient()
+                val scanner = BarcodeScanning.getClient(
+                    com.google.mlkit.vision.barcode.common.BarcodeScannerOptions.Builder()
+                        .setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_QR_CODE)
+                        .build()
+                )
+                
                 val imageAnalysis = ImageAnalysis.Builder()
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
@@ -350,8 +370,10 @@ fun QRScannerView(onCodeScanned: (String) -> Unit) {
                             .addOnSuccessListener { barcodes ->
                                 for (barcode in barcodes) {
                                     barcode.rawValue?.let { code ->
-                                        scanned = true
-                                        onCodeScanned(code)
+                                        if (!scanned) {
+                                            scanned = true
+                                            onCodeScanned(code)
+                                        }
                                     }
                                 }
                             }
