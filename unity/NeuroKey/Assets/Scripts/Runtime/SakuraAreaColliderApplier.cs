@@ -1,27 +1,99 @@
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 [ExecuteAlways]
 public class SakuraAreaColliderApplier : MonoBehaviour
 {
+    [SerializeField] private bool autoApplyDisabled = true;
+
+    private static readonly string[] WalkableSurfaceNames =
+    {
+        "plasnapython",
+        "Plane.001",
+        "shpere",
+        "insulac++",
+        "insulapython",
+        "insulapthon",
+        "insula3",
+    };
+
+    private bool applyQueued;
+
     private void OnEnable()
     {
-        ApplyColliders();
+        if (autoApplyDisabled)
+        {
+            return;
+        }
+
+        QueueApplyColliders();
     }
 
     private void OnValidate()
     {
-        ApplyColliders();
+        if (autoApplyDisabled)
+        {
+            return;
+        }
+
+        QueueApplyColliders();
     }
 
     [ContextMenu("Apply Sakura Area Colliders")]
     public void ApplyColliders()
     {
+        if (autoApplyDisabled)
+        {
+            return;
+        }
+
+        applyQueued = false;
         ApplyToRootAndChildren(GameObject.Find("sakura2"), false);
         ApplyWalkableTopSurface(GameObject.Find("low_poly_treesNXT_5flat"));
         ApplySketchfabWalkableSurfaces();
         ApplyWalkableBridgeColliders();
-        ApplyWalkableTopSurface("plasnapython");
-        ApplyWalkableTopSurface("Plane.001");
+        ApplyNamedWalkableSurfaces();
+    }
+
+    private void QueueApplyColliders()
+    {
+#if UNITY_EDITOR
+        if (!Application.isPlaying)
+        {
+            if (applyQueued)
+            {
+                return;
+            }
+
+            applyQueued = true;
+            EditorApplication.delayCall += ApplyCollidersIfAlive;
+            return;
+        }
+#endif
+
+        ApplyColliders();
+    }
+
+#if UNITY_EDITOR
+    private void ApplyCollidersIfAlive()
+    {
+        if (this == null)
+        {
+            return;
+        }
+
+        ApplyColliders();
+    }
+#endif
+
+    private static void ApplyNamedWalkableSurfaces()
+    {
+        for (int i = 0; i < WalkableSurfaceNames.Length; i++)
+        {
+            ApplyWalkableTopSurface(WalkableSurfaceNames[i]);
+        }
     }
 
     private static void ApplyWalkableTopSurface(string objectName)
@@ -29,7 +101,7 @@ public class SakuraAreaColliderApplier : MonoBehaviour
         GameObject[] allObjects = GameObject.FindObjectsOfType<GameObject>(true);
         for (int i = 0; i < allObjects.Length; i++)
         {
-            if (allObjects[i].name == objectName)
+            if (string.Equals(allObjects[i].name, objectName, System.StringComparison.OrdinalIgnoreCase))
             {
                 ApplyWalkableTopSurface(allObjects[i]);
             }
@@ -55,8 +127,21 @@ public class SakuraAreaColliderApplier : MonoBehaviour
 
             AddBestCollider(
                 meshFilters[i].gameObject,
-                preferWalkable || meshFilters[i].name == "Plane.001" || meshFilters[i].name == "plasnapython");
+                preferWalkable || IsNamedWalkableSurface(meshFilters[i].name));
         }
+    }
+
+    private static bool IsNamedWalkableSurface(string objectName)
+    {
+        for (int i = 0; i < WalkableSurfaceNames.Length; i++)
+        {
+            if (string.Equals(WalkableSurfaceNames[i], objectName, System.StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void ApplyWalkableBridgeColliders()
@@ -95,7 +180,103 @@ public class SakuraAreaColliderApplier : MonoBehaviour
             return;
         }
 
+        if (string.Equals(root.name, "shpere", System.StringComparison.OrdinalIgnoreCase))
+        {
+            BuildFlatPlatformSurface(root);
+            return;
+        }
+
         BuildSimpleWalkSurface(root);
+    }
+
+    private static void BuildFlatPlatformSurface(GameObject root)
+    {
+        if (root == null)
+        {
+            return;
+        }
+
+        Transform existing = root.transform.Find("VisiblePlatformReplacement");
+        if (existing != null)
+        {
+            DestroySafe(existing.gameObject);
+        }
+
+        Collider[] colliders = root.GetComponentsInChildren<Collider>(true);
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            if (colliders[i] != null)
+            {
+                DestroySafe(colliders[i]);
+            }
+        }
+
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (renderers[i] != null)
+            {
+                renderers[i].enabled = false;
+            }
+        }
+
+        Bounds? localBounds = CalculateCombinedLocalBounds(root.transform);
+        if (!localBounds.HasValue)
+        {
+            return;
+        }
+
+        Bounds bounds = localBounds.Value;
+        float platformHeight = 0.18f;
+        float visibleTopScale = 0.56f;
+        float visualHeight = Mathf.Max(0.22f, bounds.size.y * 0.12f);
+        float visibleWidth = Mathf.Max(0.35f, bounds.size.x * visibleTopScale);
+        float visibleDepth = Mathf.Max(0.35f, bounds.size.z * visibleTopScale);
+
+        GameObject platform = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        platform.name = "VisiblePlatformReplacement";
+        platform.transform.SetParent(root.transform, false);
+        platform.transform.localPosition = new Vector3(
+            bounds.center.x,
+            bounds.max.y - (visualHeight * 0.15f),
+            bounds.center.z);
+        platform.transform.localRotation = Quaternion.identity;
+        platform.transform.localScale = new Vector3(
+            visibleWidth,
+            visualHeight * 0.5f,
+            visibleDepth);
+
+        Collider primitiveCollider = platform.GetComponent<Collider>();
+        if (primitiveCollider != null)
+        {
+            primitiveCollider.enabled = false;
+        }
+
+        Renderer platformRenderer = platform.GetComponent<Renderer>();
+        if (platformRenderer != null)
+        {
+            platformRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+            platformRenderer.receiveShadows = true;
+            if (platformRenderer.sharedMaterial == null || platformRenderer.sharedMaterial.name.StartsWith("Default"))
+            {
+                platformRenderer.sharedMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            }
+
+            platformRenderer.sharedMaterial.color = new Color(0.48f, 0.72f, 0.46f, 1f);
+        }
+
+        GameObject walkSurface = new GameObject("WalkSurfaceCollider");
+        walkSurface.transform.SetParent(platform.transform, false);
+        walkSurface.transform.localPosition = new Vector3(0f, visualHeight * 0.55f, 0f);
+        walkSurface.transform.localRotation = Quaternion.identity;
+
+        BoxCollider box = walkSurface.AddComponent<BoxCollider>();
+        box.isTrigger = false;
+        box.size = new Vector3(
+            visibleWidth,
+            platformHeight,
+            visibleDepth);
+        box.center = Vector3.zero;
     }
 
     private static void BuildSimpleWalkSurface(GameObject bridgeRoot)

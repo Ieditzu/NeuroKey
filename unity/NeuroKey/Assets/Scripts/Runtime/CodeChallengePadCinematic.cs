@@ -72,7 +72,26 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
     private static readonly CodeChallenge[] MediumChallenges =
     {
-        new CodeChallenge("test", "", "", "")
+        new CodeChallenge(
+            "Debugging 1\n\nCodul trebuie sa dubleze valoarea primita si sa afiseze rezultatul.\n\nProblema:\n- functia intoarce doar valoarea initiala\n- lipseste inmultirea cu 2\n\nRepara codul din editorul din dreapta fara sa schimbi numele functiei.",
+            "#include <iostream>\nusing namespace std;\n\nint MultiplyByTwo(int value)\n{\n    int doubled = value;\n    return doubled;\n}\n\nint main()\n{\n    cout << MultiplyByTwo(6) << endl;\n    return 0;\n}",
+            "#include <iostream>\nusing namespace std;\n\nint MultiplyByTwo(int value)\n{\n    int doubled = value * 2;\n    return doubled;\n}\n\nint main()\n{\n    cout << MultiplyByTwo(6) << endl;\n    return 0;\n}",
+            "Hint:\n\nBugul este in functia `MultiplyByTwo`.\nVariabila `doubled` trebuie sa primeasca `value * 2`, nu doar `value`.\n\nPartea corecta este:\n`int doubled = value * 2;`"),
+        new CodeChallenge(
+            "Debugging 2\n\nCodul trebuie sa calculeze suma a doua numere.\n\nProblema:\n- functia foloseste operatorul gresit\n- in loc de suma face scadere\n\nSchimba doar linia gresita din functie.",
+            "#include <iostream>\nusing namespace std;\n\nint Sum(int a, int b)\n{\n    return a - b;\n}\n\nint main()\n{\n    int total = Sum(4, 6);\n    cout << total << endl;\n    return 0;\n}",
+            "#include <iostream>\nusing namespace std;\n\nint Sum(int a, int b)\n{\n    return a + b;\n}\n\nint main()\n{\n    int total = Sum(4, 6);\n    cout << total << endl;\n    return 0;\n}",
+            "Hint:\n\nProblema este in instructiunea `return`.\nPentru suma trebuie folosit operatorul `+`, nu `-`.\n\nLinia corecta este:\n`return a + b;`"),
+        new CodeChallenge(
+            "Debugging 3\n\nCodul trebuie sa verifice daca un numar este par.\n\nProblema:\n- expresia logica este inversata\n- functia intoarce `true` pentru numere impare\n\nCorecteaza doar comparatia.",
+            "#include <iostream>\nusing namespace std;\n\nbool IsEven(int number)\n{\n    return number % 2 != 0;\n}\n\nint main()\n{\n    cout << (IsEven(8) ? \"even\" : \"odd\") << endl;\n    return 0;\n}",
+            "#include <iostream>\nusing namespace std;\n\nbool IsEven(int number)\n{\n    return number % 2 == 0;\n}\n\nint main()\n{\n    cout << (IsEven(8) ? \"even\" : \"odd\") << endl;\n    return 0;\n}",
+            "Hint:\n\nUn numar par are restul `0` la impartirea la 2.\nComparatia corecta este `== 0`.\n\nLinia buna este:\n`return number % 2 == 0;`"),
+        new CodeChallenge(
+            "Debugging 4\n\nCodul trebuie sa incrementeze variabila originala cu 1.\n\nProblema:\n- functia primeste parametrul prin valoare\n- modificarea nu ajunge inapoi in `main`\n\nRepara semnatura functiei.",
+            "#include <iostream>\nusing namespace std;\n\nvoid Increment(int n)\n{\n    n++;\n}\n\nint main()\n{\n    int value = 5;\n    Increment(value);\n    cout << value << endl;\n    return 0;\n}",
+            "#include <iostream>\nusing namespace std;\n\nvoid Increment(int& n)\n{\n    n++;\n}\n\nint main()\n{\n    int value = 5;\n    Increment(value);\n    cout << value << endl;\n    return 0;\n}",
+            "Hint:\n\nDaca vrei sa modifici variabila originala, parametrul trebuie trimis prin referinta.\nAsta inseamna ca functia trebuie sa primeasca `int& n`.\n\nPartea corecta este:\n`void Increment(int& n)`")
     };
 
     private static readonly CodeChallenge[] HardChallenges =
@@ -1459,6 +1478,7 @@ public static class CodeChallengePadCinematicBootstrap
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void AttachIfNeeded()
     {
+        Attach("Question2Pad", 0);
     }
 
     private static void Attach(string padName, int mode)
@@ -1475,6 +1495,20 @@ public static class CodeChallengePadCinematicBootstrap
             component = pad.AddComponent<CodeChallengePadCinematic>();
         }
 
+        Collider collider = pad.GetComponent<Collider>();
+        if (collider != null)
+        {
+            collider.isTrigger = true;
+            collider.enabled = true;
+        }
+
+        CppQuestionPadCinematic cppPad = pad.GetComponent<CppQuestionPadCinematic>();
+        if (cppPad != null)
+        {
+            cppPad.enabled = false;
+        }
+
         component.ConfigureForPad(mode == 1);
+        component.enabled = true;
     }
 }

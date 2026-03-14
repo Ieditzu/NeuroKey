@@ -1679,6 +1679,13 @@ public static class CppQuestionPadCinematicBootstrap
             codeChallenge.enabled = false;
         }
 
+        Collider collider = pad.GetComponent<Collider>();
+        if (collider != null)
+        {
+            collider.isTrigger = true;
+            collider.enabled = true;
+        }
+
         if (pad.GetComponent<CppQuestionPadCinematic>() == null)
         {
             pad.AddComponent<CppQuestionPadCinematic>();
