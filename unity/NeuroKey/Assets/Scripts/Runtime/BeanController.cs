@@ -7,7 +7,9 @@ public class BeanController : MonoBehaviour
     [SerializeField] private float sprintMultiplier = 2f;
     [SerializeField] private float gravityMultiplier = 3f;
     [SerializeField] private float fallYThreshold = -6f;
-    [SerializeField] private float jumpForce = 10f;
+    [SerializeField] private float jumpVelocity = 14f;
+    [SerializeField] private float groundCheckDistance = 0.45f;
+    [SerializeField] private float coyoteTime = 0.12f;
     [SerializeField] private float mouseSensitivity = 2f;
     [Header("Bean Visual")]
     [SerializeField] private GameObject beanVisualPrefab;
@@ -22,6 +24,8 @@ public class BeanController : MonoBehaviour
     private bool hardFreeze;
     private bool isSprinting;
     private bool isGrounded;
+    private bool jumpQueued;
+    private float lastGroundedTime = -10f;
 
     private Transform camTransform;
     private float pitch;
@@ -111,9 +115,9 @@ public class BeanController : MonoBehaviour
 
         isSprinting = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded && !movementLocked && !hardFreeze && KeyboardInputEnabled)
+        if (Input.GetKeyDown(KeyCode.Space) && !movementLocked && !hardFreeze && KeyboardInputEnabled)
         {
-            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+            jumpQueued = true;
         }
 
         Vector2 mobileMove = MobileTouchInput.Move;
@@ -142,7 +146,11 @@ public class BeanController : MonoBehaviour
 
     private void FixedUpdate()
     {
-        isGrounded = Physics.Raycast(transform.position + Vector3.up * 0.1f, Vector3.down, 0.2f);
+        isGrounded = CheckGrounded();
+        if (isGrounded)
+        {
+            lastGroundedTime = Time.time;
+        }
 
         if (hardFreeze)
         {
@@ -162,6 +170,21 @@ public class BeanController : MonoBehaviour
         if (movementLocked)
         {
             return;
+        }
+
+        bool canJump = isGrounded || (Time.time - lastGroundedTime) <= coyoteTime;
+        if (jumpQueued && canJump)
+        {
+            rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+            rb.AddForce(Vector3.up * jumpVelocity, ForceMode.VelocityChange);
+            jumpQueued = false;
+            isGrounded = false;
+            lastGroundedTime = -10f;
+        }
+
+        if (jumpQueued && !canJump)
+        {
+            jumpQueued = false;
         }
 
         float currentSpeed = isSprinting ? moveSpeed * sprintMultiplier : moveSpeed;
@@ -190,11 +213,28 @@ public class BeanController : MonoBehaviour
 
     private void RespawnNow()
     {
+        jumpQueued = false;
         rb.velocity = Vector3.zero;
         rb.position = startPosition;
         rb.rotation = startRotation;
         transform.position = startPosition;
         transform.rotation = startRotation;
+    }
+
+    private bool CheckGrounded()
+    {
+        CapsuleCollider capsule = GetComponent<CapsuleCollider>();
+        if (capsule == null)
+        {
+            return Physics.Raycast(transform.position + Vector3.up * 0.2f, Vector3.down, groundCheckDistance);
+        }
+
+        float radius = Mathf.Max(0.05f, capsule.radius * 0.92f);
+        float halfHeight = Mathf.Max(radius, capsule.height * 0.5f - radius);
+        Vector3 center = transform.TransformPoint(capsule.center);
+        Vector3 bottom = center - transform.up * halfHeight;
+        Vector3 castStart = bottom + transform.up * 0.08f;
+        return Physics.SphereCast(castStart, radius, Vector3.down, out _, groundCheckDistance);
     }
 
     private void SpawnVisualBeanIfNeeded()

@@ -11,9 +11,10 @@ public class FirstPersonControllerSimple : MonoBehaviour
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 6f;
     [SerializeField] private float sprintMultiplier = 3.2f;
-    [SerializeField] private float temporaryBoostMultiplier = 3f;
+    [SerializeField] private float temporaryBoostMultiplier = 4f;
     [SerializeField] private float temporaryBoostDuration = 5f;
-    [SerializeField] private float jumpHeight = 1.35f;
+    [SerializeField] private float jumpVelocity = 14f;
+    [SerializeField] private float coyoteTime = 0.12f;
     [SerializeField] private float gravity = 9.81f;
     [Header("Physics Interaction")]
     [SerializeField] private float pushForce = 8f;
@@ -73,6 +74,7 @@ public class FirstPersonControllerSimple : MonoBehaviour
     private float lastForwardTapTime = -10f;
     private bool doubleTapSprintActive;
     private float jumpPower;
+    private float lastGroundedTime = -10f;
     private float speedBoostUntilTime = -1f;
     private Vector2 lastTouchPos;
     private bool touchLookActive;
@@ -268,13 +270,11 @@ public class FirstPersonControllerSimple : MonoBehaviour
         controller.Move(input * speed * Time.deltaTime);
 
         bool jumpRequested = GetKeyDownCompat(jumpKey) || MobileTouchInput.ConsumeJumpRequest();
-        if (grounded && jumpRequested)
+        bool canJump = grounded || (Time.time - lastGroundedTime) <= coyoteTime;
+        if (jumpRequested && canJump)
         {
-            float heightScale = controller != null && baseControllerHeight > 0.001f
-                ? controller.height / baseControllerHeight
-                : 1f;
-            float effectiveJump = Mathf.Max(0.05f, (jumpHeight + jumpPower) * heightScale);
-            velocity.y = Mathf.Sqrt(effectiveJump * 2f * gravity);
+            velocity.y = Mathf.Max(0.05f, jumpVelocity + jumpPower);
+            lastGroundedTime = -10f;
         }
 
         velocity.y -= gravity * Time.deltaTime;
@@ -577,6 +577,11 @@ public class FirstPersonControllerSimple : MonoBehaviour
         if (grounded && velocity.y < 0f)
         {
             velocity.y = -2f; // small stick force
+        }
+
+        if (grounded)
+        {
+            lastGroundedTime = Time.time;
         }
 
         return grounded;
