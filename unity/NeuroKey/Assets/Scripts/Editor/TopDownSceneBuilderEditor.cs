@@ -19,6 +19,7 @@ public static class TopDownSceneBuilderEditor
     private static readonly Color WoodDarkColor = new Color(0.31f, 0.2f, 0.1f, 1f);
     private const string TreePrefabPath = "Assets/PolygonStarter/Prefabs/SM_Generic_Tree_02.prefab";
     private const string RockPrefabPath = "Assets/PolygonStarter/Prefabs/SM_Generic_Small_Rocks_03.prefab";
+    private const bool PreserveExistingSceneLayout = true;
 
     [MenuItem("Bila/Build Scene Layout")]
     public static void BuildScene()
@@ -1356,6 +1357,10 @@ public static class TopDownSceneBuilderEditor
         {
             root = new GameObject("DifficultyPaths");
         }
+        else if (PreserveExistingSceneLayout && root.transform.childCount > 0)
+        {
+            return;
+        }
         root.transform.position = Vector3.zero;
         root.transform.rotation = Quaternion.identity;
         root.transform.localScale = Vector3.one;
@@ -1446,6 +1451,10 @@ public static class TopDownSceneBuilderEditor
         if (root == null)
         {
             root = new GameObject("TubeSystem");
+        }
+        else if (PreserveExistingSceneLayout && root.transform.childCount > 0)
+        {
+            return;
         }
 
         var pathGray = new Color(0.24f, 0.24f, 0.24f, 1f);

@@ -63,7 +63,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
     [SerializeField] private float portalCollapseDuration = 0.32f;
 
     [Header("Exit")]
-    [SerializeField] private float reenterCooldown = 2f;
+    [SerializeField] private float reenterCooldown = 0f;
     [SerializeField] private float exitHeightOffset = 0.2f;
     [SerializeField] private float exitBackOffset = 0.15f;
     [SerializeField] private float exitMoveDuration = 0.26f;
@@ -212,14 +212,16 @@ public class CppQuestionPadCinematic : MonoBehaviour
 
     private void Awake()
     {
-        triggerCollider = GetComponent<Collider>();
-        if (triggerCollider != null)
-        {
-            triggerCollider.isTrigger = true;
-        }
-
+        EnsureTriggerReady();
         EnsureOverlay();
         ResetOverlay();
+    }
+
+    private void OnEnable()
+    {
+        EnsureTriggerReady();
+        leaveRequested = false;
+        running = false;
     }
 
     private void OnTriggerEnter(Collider other)
@@ -269,6 +271,10 @@ public class CppQuestionPadCinematic : MonoBehaviour
         if (playerRoot == null || camTransform == null)
         {
             RestorePlayerState(sphere, fps);
+            if (triggerCollider != null)
+            {
+                triggerCollider.enabled = true;
+            }
             yield break;
         }
 
@@ -323,10 +329,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
         yield return CollapsePortal(activePortal);
 
         RestorePlayerState(sphere, fps);
-        if (triggerCollider != null)
-        {
-            StartCoroutine(ReenableTriggerAfterDelay());
-        }
+        StartCoroutine(ReenableTriggerAfterDelay());
     }
 
     private IEnumerator RunQuiz()
@@ -1654,6 +1657,16 @@ public class CppQuestionPadCinematic : MonoBehaviour
     {
         Cursor.visible = visible;
         Cursor.lockState = visible ? CursorLockMode.None : CursorLockMode.Locked;
+    }
+
+    private void EnsureTriggerReady()
+    {
+        triggerCollider = GetComponent<Collider>();
+        if (triggerCollider != null)
+        {
+            triggerCollider.isTrigger = true;
+            triggerCollider.enabled = true;
+        }
     }
 }
 

@@ -7,6 +7,12 @@ using UnityEngine.UI;
 [RequireComponent(typeof(Collider))]
 public class CodeChallengePadCinematic : MonoBehaviour
 {
+    private enum QuizLanguage
+    {
+        Romanian = 0,
+        English = 1
+    }
+
     private enum ChallengeMode
     {
         Medium = 0,
@@ -19,13 +25,15 @@ public class CodeChallengePadCinematic : MonoBehaviour
         public string InitialCode;
         public string ExpectedCode;
         public string Hint;
+        public string ValidationId;
 
-        public CodeChallenge(string prompt, string initialCode, string expectedCode, string hint)
+        public CodeChallenge(string prompt, string initialCode, string expectedCode, string hint, string validationId = "")
         {
             Prompt = prompt;
             InitialCode = initialCode;
             ExpectedCode = expectedCode;
             Hint = hint;
+            ValidationId = validationId;
         }
     }
 
@@ -42,7 +50,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
     [SerializeField] private float portalCollapseDuration = 0.28f;
 
     [Header("Exit")]
-    [SerializeField] private float reenterCooldown = 2f;
+    [SerializeField] private float reenterCooldown = 0f;
     [SerializeField] private float exitHeightOffset = 0.55f;
     [SerializeField] private float exitBackOffset = 0.15f;
     [SerializeField] private float exitMoveDuration = 0.24f;
@@ -76,51 +84,60 @@ public class CodeChallengePadCinematic : MonoBehaviour
             "Debugging 1\n\nCodul trebuie sa dubleze valoarea primita si sa afiseze rezultatul.\n\nProblema:\n- functia intoarce doar valoarea initiala\n- lipseste inmultirea cu 2\n\nRepara codul din editorul din dreapta fara sa schimbi numele functiei.",
             "#include <iostream>\nusing namespace std;\n\nint MultiplyByTwo(int value)\n{\n    int doubled = value;\n    return doubled;\n}\n\nint main()\n{\n    cout << MultiplyByTwo(6) << endl;\n    return 0;\n}",
             "#include <iostream>\nusing namespace std;\n\nint MultiplyByTwo(int value)\n{\n    int doubled = value * 2;\n    return doubled;\n}\n\nint main()\n{\n    cout << MultiplyByTwo(6) << endl;\n    return 0;\n}",
-            "Hint:\n\nBugul este in functia `MultiplyByTwo`.\nVariabila `doubled` trebuie sa primeasca `value * 2`, nu doar `value`.\n\nPartea corecta este:\n`int doubled = value * 2;`"),
+            "Hint:\n\nBugul este in functia `MultiplyByTwo`.\nVariabila `doubled` trebuie sa primeasca `value * 2`, nu doar `value`.\n\nPartea corecta este:\n`int doubled = value * 2;`",
+            "medium_multiply"),
         new CodeChallenge(
             "Debugging 2\n\nCodul trebuie sa calculeze suma a doua numere.\n\nProblema:\n- functia foloseste operatorul gresit\n- in loc de suma face scadere\n\nSchimba doar linia gresita din functie.",
             "#include <iostream>\nusing namespace std;\n\nint Sum(int a, int b)\n{\n    return a - b;\n}\n\nint main()\n{\n    int total = Sum(4, 6);\n    cout << total << endl;\n    return 0;\n}",
             "#include <iostream>\nusing namespace std;\n\nint Sum(int a, int b)\n{\n    return a + b;\n}\n\nint main()\n{\n    int total = Sum(4, 6);\n    cout << total << endl;\n    return 0;\n}",
-            "Hint:\n\nProblema este in instructiunea `return`.\nPentru suma trebuie folosit operatorul `+`, nu `-`.\n\nLinia corecta este:\n`return a + b;`"),
+            "Hint:\n\nProblema este in instructiunea `return`.\nPentru suma trebuie folosit operatorul `+`, nu `-`.\n\nLinia corecta este:\n`return a + b;`",
+            "medium_sum"),
         new CodeChallenge(
             "Debugging 3\n\nCodul trebuie sa verifice daca un numar este par.\n\nProblema:\n- expresia logica este inversata\n- functia intoarce `true` pentru numere impare\n\nCorecteaza doar comparatia.",
             "#include <iostream>\nusing namespace std;\n\nbool IsEven(int number)\n{\n    return number % 2 != 0;\n}\n\nint main()\n{\n    cout << (IsEven(8) ? \"even\" : \"odd\") << endl;\n    return 0;\n}",
             "#include <iostream>\nusing namespace std;\n\nbool IsEven(int number)\n{\n    return number % 2 == 0;\n}\n\nint main()\n{\n    cout << (IsEven(8) ? \"even\" : \"odd\") << endl;\n    return 0;\n}",
-            "Hint:\n\nUn numar par are restul `0` la impartirea la 2.\nComparatia corecta este `== 0`.\n\nLinia buna este:\n`return number % 2 == 0;`"),
+            "Hint:\n\nUn numar par are restul `0` la impartirea la 2.\nComparatia corecta este `== 0`.\n\nLinia buna este:\n`return number % 2 == 0;`",
+            "medium_even"),
         new CodeChallenge(
             "Debugging 4\n\nCodul trebuie sa incrementeze variabila originala cu 1.\n\nProblema:\n- functia primeste parametrul prin valoare\n- modificarea nu ajunge inapoi in `main`\n\nRepara semnatura functiei.",
             "#include <iostream>\nusing namespace std;\n\nvoid Increment(int n)\n{\n    n++;\n}\n\nint main()\n{\n    int value = 5;\n    Increment(value);\n    cout << value << endl;\n    return 0;\n}",
             "#include <iostream>\nusing namespace std;\n\nvoid Increment(int& n)\n{\n    n++;\n}\n\nint main()\n{\n    int value = 5;\n    Increment(value);\n    cout << value << endl;\n    return 0;\n}",
-            "Hint:\n\nDaca vrei sa modifici variabila originala, parametrul trebuie trimis prin referinta.\nAsta inseamna ca functia trebuie sa primeasca `int& n`.\n\nPartea corecta este:\n`void Increment(int& n)`")
+            "Hint:\n\nDaca vrei sa modifici variabila originala, parametrul trebuie trimis prin referinta.\nAsta inseamna ca functia trebuie sa primeasca `int& n`.\n\nPartea corecta este:\n`void Increment(int& n)`",
+            "medium_increment")
     };
 
     private static readonly CodeChallenge[] HardChallenges =
     {
         new CodeChallenge(
-            "Cerinta 1\n\nScrie functia `bool IsEven(int n)`.\n\nCe trebuie sa faca:\n- primeste un numar intreg\n- intoarce `true` daca numarul este par\n- intoarce `false` daca numarul este impar\n\nScrie doar corpul corect al functiei in editorul din dreapta.",
+            "Cerinta 1\n\nScrie functia `bool IsEven(int n)`.\n\nCe trebuie sa faca:\n- primeste un numar intreg\n- intoarce `true` daca numarul este par\n- intoarce `false` daca numarul este impar\n\nPoti rezolva in mai multe moduri, dar functia trebuie sa mearga corect.",
             "bool IsEven(int n)\n{\n    \n}",
             "bool IsEven(int n)\n{\n    return n % 2 == 0;\n}",
-            "Explicatie:\n\nUn numar par este un numar care se imparte exact la 2.\nAsta inseamna ca restul impartirii la 2 este 0.\n\nIn C++, restul impartirii se verifica cu operatorul `%`.\n\nDeci verificarea corecta este:\n`n % 2 == 0`\n\nDaca expresia este adevarata, functia intoarce `true`."),
+            "Explicatie:\n\nUn numar par are restul 0 la impartirea la 2.\nPoti scrie direct `return n % 2 == 0;` sau poti folosi un `if` care intoarce `true` si `false`.\nImportant este sa verifici corect paritatea.\n\nO rezolvare buna este:\n\nbool IsEven(int n)\n{\n    return n % 2 == 0;\n}",
+            "hard_is_even"),
         new CodeChallenge(
             "Cerinta 2\n\nScrie functia `int MaxOfTwo(int a, int b)`.\n\nCe trebuie sa faca:\n- compara cele doua valori primite\n- intoarce numarul mai mare\n\nRezolva direct in editorul din dreapta.",
             "int MaxOfTwo(int a, int b)\n{\n    \n}",
             "int MaxOfTwo(int a, int b)\n{\n    return a > b ? a : b;\n}",
-            "Explicatie:\n\nTrebuie sa compari valorile `a` si `b`.\nDaca `a` este mai mare, returnezi `a`.\nIn caz contrar, returnezi `b`.\n\nO forma scurta si corecta este cu operatorul ternar:\n`a > b ? a : b`\n\nAsta inseamna:\n- daca `a > b`, rezultatul este `a`\n- altfel, rezultatul este `b`"),
+            "Explicatie:\n\nPoti rezolva cu operatorul ternar sau cu `if/else`.\nImportant este ca functia sa intoarca valoarea mai mare dintre `a` si `b`.\n\nO rezolvare buna este:\n\nint MaxOfTwo(int a, int b)\n{\n    return a > b ? a : b;\n}",
+            "hard_max"),
         new CodeChallenge(
-            "Cerinta 3\n\nScrie functia `int Square(int x)`.\n\nCe trebuie sa faca:\n- primeste un numar `x`\n- intoarce patratul lui, adica valoarea inmultita cu ea insasi",
+            "Cerinta 3\n\nScrie functia `int Square(int x)`.\n\nCe trebuie sa faca:\n- primeste un numar `x`\n- intoarce patratul lui\n\nScrie functia complet.",
             "int Square(int x)\n{\n    \n}",
             "int Square(int x)\n{\n    return x * x;\n}",
-            "Explicatie:\n\nPatratul unui numar inseamna numarul inmultit cu el insusi.\n\nDaca ai `x`, atunci patratul lui este:\n`x * x`\n\nDe aceea instructiunea corecta de return este:\n`return x * x;`"),
+            "Explicatie:\n\nPatratul unui numar inseamna numarul inmultit cu el insusi.\nPoti scrie direct `return x * x;` sau poti folosi o variabila intermediara si apoi `return`.\n\nO rezolvare buna este:\n\nint Square(int x)\n{\n    return x * x;\n}",
+            "hard_square"),
         new CodeChallenge(
-            "Cerinta 4\n\nScrie functia `int Sum3(int a, int b, int c)`.\n\nCe trebuie sa faca:\n- primeste trei numere intregi\n- intoarce suma lor",
+            "Cerinta 4\n\nScrie functia `int Sum3(int a, int b, int c)`.\n\nCe trebuie sa faca:\n- primeste trei numere intregi\n- intoarce suma lor\n\nNu exista o singura forma corecta.",
             "int Sum3(int a, int b, int c)\n{\n    \n}",
             "int Sum3(int a, int b, int c)\n{\n    return a + b + c;\n}",
-            "Explicatie:\n\nFunctia primeste trei parametri: `a`, `b` si `c`.\nCa sa obtii suma totala, trebuie sa le aduni pe toate trei.\n\nForma corecta este:\n`return a + b + c;`\n\nNu trebuie altceva in aceasta cerinta."),
+            "Explicatie:\n\nPoti face suma direct in `return` sau printr-o variabila auxiliara.\nImportant este ca rezultatul final sa fie `a + b + c`.\n\nO rezolvare buna este:\n\nint Sum3(int a, int b, int c)\n{\n    return a + b + c;\n}",
+            "hard_sum3"),
         new CodeChallenge(
             "Cerinta 5\n\nScrie functia `int Factorial3()`.\n\nCe trebuie sa faca:\n- intoarce factorialul lui 3\n\nAmintire:\nfactorialul unui numar inseamna produsul numerelor de la acel numar pana la 1.",
             "int Factorial3()\n{\n    \n}",
             "int Factorial3()\n{\n    return 3 * 2 * 1;\n}",
-            "Explicatie:\n\nFactorialul lui 3 se calculeaza asa:\n`3 * 2 * 1`\n\nPentru aceasta cerinta nu ai nevoie de bucla sau variabile suplimentare.\nPoti intoarce direct rezultatul prin:\n`return 3 * 2 * 1;`")
+            "Explicatie:\n\nPoti intoarce direct `6`, poti scrie `3 * 2 * 1`, sau poti folosi o variabila si sa o inmultesti pe rand.\nImportant este ca functia sa intoarca rezultatul corect pentru factorialul lui 3.\n\nO rezolvare buna este:\n\nint Factorial3()\n{\n    return 3 * 2 * 1;\n}",
+            "hard_factorial3")
     };
 
     private static Canvas overlayCanvas;
@@ -130,6 +147,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
     private static Text counterText;
     private static Text promptText;
     private static Text feedbackText;
+    private static Text languagePromptText;
     private static InputField codeInput;
     private static Text codeInputText;
     private static Text codePlaceholder;
@@ -146,6 +164,10 @@ public class CodeChallengePadCinematic : MonoBehaviour
     private static Text continueButtonText;
     private static Button retryWrongButton;
     private static Text retryWrongButtonText;
+    private static Button languageRoButton;
+    private static Text languageRoButtonText;
+    private static Button languageEnButton;
+    private static Text languageEnButtonText;
     private static Button hintScreenBackButton;
     private static Text hintScreenBackButtonText;
 
@@ -158,9 +180,11 @@ public class CodeChallengePadCinematic : MonoBehaviour
     private bool continueRequested;
     private bool retryWrongRequested;
     private bool hintScreenBackRequested;
+    private bool languageChosen;
     private int score;
     private GameObject activePortal;
     private bool overlayInteractionActive;
+    private QuizLanguage selectedLanguage = QuizLanguage.Romanian;
 
     public void ConfigureForPad(bool useHardMode)
     {
@@ -178,6 +202,16 @@ public class CodeChallengePadCinematic : MonoBehaviour
     }
 
     private void OnTriggerEnter(Collider other)
+    {
+        TryStartSequence(other);
+    }
+
+    private void OnTriggerStay(Collider other)
+    {
+        TryStartSequence(other);
+    }
+
+    private void TryStartSequence(Collider other)
     {
         if (running)
         {
@@ -246,8 +280,12 @@ public class CodeChallengePadCinematic : MonoBehaviour
         yield return FadeImage(whiteImage, 0f, 1f, fadeToWhiteDuration, pageTint);
         whiteImage.color = new Color(pageTint.r, pageTint.g, pageTint.b, 1f);
         yield return null;
-        ShowMainUi(true);
         ShowLeaveButton(true);
+        yield return PromptForLanguageSelection();
+        if (!leaveRequested)
+        {
+            ShowMainUi(true);
+        }
         yield return RunChallenges();
         if (!leaveRequested)
         {
@@ -279,10 +317,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         yield return CollapsePortal(activePortal);
 
         RestorePlayerState(sphere, fps);
-        if (triggerCollider != null)
-        {
-            StartCoroutine(ReenableTriggerAfterDelay());
-        }
+        StartCoroutine(ReenableTriggerAfterDelay());
     }
 
     private IEnumerator RunChallenges()
@@ -295,7 +330,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         for (int i = 0; i < challenges.Length; i++)
         {
             answers[i] = challenges[i].InitialCode;
-            attemptsLeft[i] = 4;
+            attemptsLeft[i] = GetAttemptsAllowed();
         }
 
         int current = 0;
@@ -353,9 +388,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                 continue;
             }
 
-            string actual = NormalizeCode(codeInput.text);
-            string expected = NormalizeCode(challenge.ExpectedCode);
-            bool correct = actual == expected;
+            bool correct = IsChallengeCorrect(challenge, codeInput.text);
             answers[current] = codeInput.text;
 
             if (correct)
@@ -366,7 +399,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                     score++;
                 }
 
-                feedbackText.text = "Corect. Apasa pe Continuare.";
+                feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
                 feedbackText.color = correctColor;
                 ShowChallengeButtons(current > 0, true, false, true, false);
                 while (!continueRequested && !backRequested && !leaveRequested)
@@ -381,7 +414,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                         }
                         ShowMainUi(true);
                         ShowChallengeButtons(current > 0, true, false, true, false);
-                        feedbackText.text = "Corect. Apasa pe Continuare.";
+                        feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
                         feedbackText.color = correctColor;
                     }
 
@@ -406,12 +439,12 @@ public class CodeChallengePadCinematic : MonoBehaviour
             attemptsLeft[current] = Mathf.Max(0, attemptsLeft[current] - 1);
             if (attemptsLeft[current] > 0)
             {
-                feedbackText.text = "Incorect. Mai ai " + attemptsLeft[current] + " incercari.";
+                feedbackText.text = Localize("Incorect. Mai ai ", "Incorrect. You have ") + attemptsLeft[current] + Localize(" incercari.", " attempts left.");
                 feedbackText.color = wrongColor;
             }
             else
             {
-                feedbackText.text = "Ai ramas fara incercari. Trecem automat la urmatoarea intrebare.";
+                feedbackText.text = Localize("Ai ramas fara incercari. Trecem automat la urmatoarea intrebare.", "No attempts left. Moving to the next question.");
                 feedbackText.color = wrongColor;
                 yield return new WaitForSeconds(1f);
                 current++;
@@ -432,7 +465,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                     }
                     ShowMainUi(true);
                     ShowChallengeButtons(current > 0, true, true, false, false);
-                    feedbackText.text = "Incorect. Mai ai " + attemptsLeft[current] + " incercari.";
+                    feedbackText.text = Localize("Incorect. Mai ai ", "Incorrect. You have ") + attemptsLeft[current] + Localize(" incercari.", " attempts left.");
                     feedbackText.color = wrongColor;
                 }
 
@@ -446,10 +479,12 @@ public class CodeChallengePadCinematic : MonoBehaviour
             }
         }
 
-        titleText.text = mode == ChallengeMode.Medium ? "Medium complete" : "Hard complete";
-        counterText.text = "Rezultat";
-        promptText.text = "Ai rezolvat corect " + score + " din " + challenges.Length + " provocari.";
-        feedbackText.text = "Poti reface intrebarile gresite sau poti iesi.";
+        titleText.text = mode == ChallengeMode.Medium
+            ? Localize("Medium complet", "Medium complete")
+            : Localize("Hard complet", "Hard complete");
+        counterText.text = Localize("Rezultat", "Result");
+        promptText.text = Localize("Ai rezolvat corect ", "You solved ") + score + Localize(" din ", " out of ") + challenges.Length + Localize(" provocari.", " challenges correctly.");
+        feedbackText.text = Localize("Poti reface intrebarile gresite sau poti iesi.", "You can retry the wrong questions or leave.");
         feedbackText.color = correctColor;
         codeInput.gameObject.SetActive(false);
         ShowChallengeButtons(false, false, false, false, false);
@@ -499,7 +534,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                 retryChallenges[writeIndex] = challenges[i];
                 retryAnswers[writeIndex] = challenges[i].InitialCode;
                 retrySolved[writeIndex] = false;
-                retryAttempts[writeIndex] = 4;
+                retryAttempts[writeIndex] = GetAttemptsAllowed();
                 retrySourceIndex[writeIndex] = i;
                 writeIndex++;
             }
@@ -518,6 +553,71 @@ public class CodeChallengePadCinematic : MonoBehaviour
         }
 
         return string.Join("\n", lines);
+    }
+
+    private int GetAttemptsAllowed()
+    {
+        return mode == ChallengeMode.Hard ? 5 : 4;
+    }
+
+    private bool IsChallengeCorrect(CodeChallenge challenge, string submittedCode)
+    {
+        string actual = NormalizeCode(submittedCode);
+        string expected = NormalizeCode(challenge.ExpectedCode);
+
+        if (string.IsNullOrEmpty(challenge.ValidationId))
+        {
+            return actual == expected;
+        }
+
+        string compact = CompactCode(actual);
+        switch (challenge.ValidationId)
+        {
+            case "medium_multiply":
+                return compact.Contains("intmultiplybytwo(intvalue){intdoubled=value*2;returndoubled;}");
+            case "medium_sum":
+                return compact.Contains("intsum(inta,intb){returna+b;}");
+            case "medium_even":
+                return compact.Contains("booliseven(intnumber){returnnumber%2==0;}");
+            case "medium_increment":
+                return compact.Contains("voidincrement(int&n){n++;}") || compact.Contains("voidincrement(int&n){++n;}");
+            case "hard_is_even":
+                return compact.Contains("booliseven(intn){returnn%2==0;}")
+                    || compact.Contains("booliseven(intn){return!(n%2);}")
+                    || compact.Contains("booliseven(intn){if(n%2==0)returntrue;returnfalse;}")
+                    || compact.Contains("booliseven(intn){if(n%2==0){returntrue;}returnfalse;}");
+            case "hard_max":
+                return compact.Contains("intmaxoftwo(inta,intb){returna>b?a:b;}")
+                    || compact.Contains("intmaxoftwo(inta,intb){if(a>b)returna;returnb;}")
+                    || compact.Contains("intmaxoftwo(inta,intb){if(a>b){returna;}else{returnb;}}");
+            case "hard_square":
+                return compact.Contains("intsquare(intx){returnx*x;}")
+                    || compact.Contains("intsquare(intx){intresult=x*x;returnresult;}");
+            case "hard_sum3":
+                return compact.Contains("intsum3(inta,intb,intc){returna+b+c;}")
+                    || compact.Contains("intsum3(inta,intb,intc){inttotal=a+b+c;returntotal;}");
+            case "hard_factorial3":
+                return compact.Contains("intfactorial3(){return3*2*1;}")
+                    || compact.Contains("intfactorial3(){return6;}")
+                    || compact.Contains("intfactorial3(){intresult=3*2*1;returnresult;}");
+            default:
+                return actual == expected;
+        }
+    }
+
+    private string CompactCode(string value)
+    {
+        char[] chars = value.ToCharArray();
+        System.Text.StringBuilder builder = new System.Text.StringBuilder(chars.Length);
+        for (int i = 0; i < chars.Length; i++)
+        {
+            if (!char.IsWhiteSpace(chars[i]))
+            {
+                builder.Append(char.ToLowerInvariant(chars[i]));
+            }
+        }
+
+        return builder.ToString();
     }
 
     private IEnumerator ShowHintScreen(string hintText)
@@ -569,6 +669,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         codeInput.gameObject.SetActive(visible);
         if (visible)
         {
+            ApplyLocalizedStaticTexts();
             LayoutMainScreen();
             SetCursorVisible(true);
             if (codeInput != null)
@@ -603,11 +704,14 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
     private void ApplyChallengeContent(CodeChallenge challenge, int currentIndex, int total, string currentAnswer, int attemptsLeft)
     {
-        titleText.text = mode == ChallengeMode.Medium ? "Medium C++ Debugging" : "Hard C++ Coding";
-        counterText.text = "Challenge " + (currentIndex + 1) + " / " + total;
+        ApplyLocalizedStaticTexts();
+        titleText.text = mode == ChallengeMode.Medium
+            ? Localize("Medium C++ Debugging", "Medium C++ Debugging")
+            : Localize("Hard C++ Coding", "Hard C++ Coding");
+        counterText.text = Localize("Intrebarea ", "Question ") + (currentIndex + 1) + " / " + total;
         promptText.text = challenge.Prompt;
         codeInput.text = currentAnswer;
-        feedbackText.text = "Incercari ramase: " + attemptsLeft + " / 4";
+        feedbackText.text = Localize("Incercari ramase: ", "Attempts left: ") + attemptsLeft + " / " + GetAttemptsAllowed();
         feedbackText.color = textColor;
     }
 
@@ -622,11 +726,12 @@ public class CodeChallengePadCinematic : MonoBehaviour
             hintRequested = false;
             continueRequested = false;
 
-            titleText.text = "Refacere intrebari gresite";
-            counterText.text = "Retry " + (current + 1) + " / " + retryChallenges.Length;
+            ApplyLocalizedStaticTexts();
+            titleText.text = Localize("Refacere intrebari gresite", "Retry wrong questions");
+            counterText.text = Localize("Refacere ", "Retry ") + (current + 1) + " / " + retryChallenges.Length;
             promptText.text = challenge.Prompt;
             codeInput.text = retryAnswers[current];
-            feedbackText.text = "Incercari ramase: " + retryAttempts[current] + " / 4";
+            feedbackText.text = Localize("Incercari ramase: ", "Attempts left: ") + retryAttempts[current] + " / " + GetAttemptsAllowed();
             feedbackText.color = textColor;
 
             ShowMainUi(true);
@@ -661,14 +766,12 @@ public class CodeChallengePadCinematic : MonoBehaviour
                 continue;
             }
 
-            string actual = NormalizeCode(codeInput.text);
-            string expected = NormalizeCode(challenge.ExpectedCode);
             retryAnswers[current] = codeInput.text;
-            if (actual == expected)
+            if (IsChallengeCorrect(challenge, codeInput.text))
             {
                 retrySolved[current] = true;
                 solved[retrySourceIndex[current]] = true;
-                feedbackText.text = "Corect. Apasa pe Continuare.";
+                feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
                 feedbackText.color = correctColor;
                 ShowChallengeButtons(current > 0, true, false, true, false);
 
@@ -689,12 +792,12 @@ public class CodeChallengePadCinematic : MonoBehaviour
             retryAttempts[current] = Mathf.Max(0, retryAttempts[current] - 1);
             if (retryAttempts[current] > 0)
             {
-                feedbackText.text = "Incorect. Mai ai " + retryAttempts[current] + " incercari.";
+                feedbackText.text = Localize("Incorect. Mai ai ", "Incorrect. You have ") + retryAttempts[current] + Localize(" incercari.", " attempts left.");
                 feedbackText.color = wrongColor;
                 continue;
             }
 
-            feedbackText.text = "Ai ramas fara incercari. Trecem automat la urmatoarea intrebare.";
+            feedbackText.text = Localize("Ai ramas fara incercari. Trecem automat la urmatoarea intrebare.", "No attempts left. Moving to the next question.");
             feedbackText.color = wrongColor;
             yield return new WaitForSeconds(1f);
             current++;
@@ -1075,6 +1178,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         counterText = EnsureText(panelImage.transform, "CounterText", new Vector2(0.22f, 0.82f), new Vector2(460f, 40f), bodySize, FontStyle.Bold, secondaryAccentColor);
         promptText = EnsureText(panelImage.transform, "PromptText", new Vector2(0.22f, 0.60f), new Vector2(460f, 230f), questionSize, FontStyle.Bold, textColor);
         feedbackText = EnsureText(panelImage.transform, "FeedbackText", new Vector2(0.22f, 0.28f), new Vector2(460f, 120f), bodySize, FontStyle.Bold, textColor);
+        languagePromptText = EnsureText(root, "LanguagePromptText", new Vector2(0.5f, 0.60f), new Vector2(760f, 80f), questionSize, FontStyle.Bold, textColor);
         hintScreenText = EnsureText(root, "HintScreenText", new Vector2(0.5f, 0.58f), new Vector2(1020f, 360f), questionSize, FontStyle.Bold, textColor);
         codeInput = EnsureCodeInput(panelImage.transform);
         codeInputText = codeInput.textComponent;
@@ -1082,6 +1186,8 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
         leaveButton = EnsureButton(root, "LeaveButton", new Vector2(0.11f, 0.11f), new Vector2(180f, 56f), buttonColor, "Leave", buttonTextSize);
         hintScreenBackButton = EnsureButton(root, "HintScreenBackButton", new Vector2(0.27f, 0.11f), new Vector2(180f, 56f), buttonColor, "Back", buttonTextSize);
+        languageRoButton = EnsureButton(root, "LanguageRoButton", new Vector2(0.39f, 0.45f), new Vector2(220f, 64f), accentColor, "Romana", buttonTextSize);
+        languageEnButton = EnsureButton(root, "LanguageEnButton", new Vector2(0.61f, 0.45f), new Vector2(220f, 64f), secondaryAccentColor, "English", buttonTextSize);
         verifyButton = EnsureButton(panelImage.transform, "VerifyButton", new Vector2(0.80f, 0.17f), new Vector2(160f, 52f), accentColor, "Verificare", buttonTextSize);
         backButton = EnsureButton(panelImage.transform, "BackButton", new Vector2(0.58f, 0.17f), new Vector2(150f, 52f), buttonColor, "Back", buttonTextSize);
         hintButton = EnsureButton(panelImage.transform, "HintButton", new Vector2(0.69f, 0.17f), new Vector2(150f, 52f), secondaryAccentColor, "Hint", buttonTextSize);
@@ -1090,6 +1196,8 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
         leaveButtonText = leaveButton.GetComponentInChildren<Text>(true);
         hintScreenBackButtonText = hintScreenBackButton.GetComponentInChildren<Text>(true);
+        languageRoButtonText = languageRoButton.GetComponentInChildren<Text>(true);
+        languageEnButtonText = languageEnButton.GetComponentInChildren<Text>(true);
         verifyButtonText = verifyButton.GetComponentInChildren<Text>(true);
         backButtonText = backButton.GetComponentInChildren<Text>(true);
         hintButtonText = hintButton.GetComponentInChildren<Text>(true);
@@ -1353,6 +1461,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         counterText.gameObject.SetActive(false);
         promptText.gameObject.SetActive(false);
         feedbackText.gameObject.SetActive(false);
+        languagePromptText.gameObject.SetActive(false);
         codeInput.gameObject.SetActive(false);
         hintScreenText.gameObject.SetActive(false);
         leaveButton.gameObject.SetActive(false);
@@ -1362,6 +1471,8 @@ public class CodeChallengePadCinematic : MonoBehaviour
         hintButton.gameObject.SetActive(false);
         continueButton.gameObject.SetActive(false);
         retryWrongButton.gameObject.SetActive(false);
+        languageRoButton.gameObject.SetActive(false);
+        languageEnButton.gameObject.SetActive(false);
         SetOverlayVisible(false);
     }
 
@@ -1410,6 +1521,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         counterText = null;
         promptText = null;
         feedbackText = null;
+        languagePromptText = null;
         codeInput = null;
         codeInputText = null;
         codePlaceholder = null;
@@ -1426,6 +1538,10 @@ public class CodeChallengePadCinematic : MonoBehaviour
         continueButtonText = null;
         retryWrongButton = null;
         retryWrongButtonText = null;
+        languageRoButton = null;
+        languageRoButtonText = null;
+        languageEnButton = null;
+        languageEnButtonText = null;
         hintScreenBackButton = null;
         hintScreenBackButtonText = null;
     }
@@ -1471,6 +1587,56 @@ public class CodeChallengePadCinematic : MonoBehaviour
         Cursor.visible = visible;
         Cursor.lockState = visible ? CursorLockMode.None : CursorLockMode.Locked;
     }
+
+    private IEnumerator PromptForLanguageSelection()
+    {
+        languageChosen = false;
+        ShowMainUi(false);
+        ShowChallengeButtons(false, false, false, false, false);
+        languagePromptText.text = "Alege limba / Choose language";
+        languagePromptText.gameObject.SetActive(true);
+        languageRoButton.gameObject.SetActive(true);
+        languageEnButton.gameObject.SetActive(true);
+        languageRoButton.onClick.RemoveAllListeners();
+        languageEnButton.onClick.RemoveAllListeners();
+        languageRoButton.onClick.AddListener(() => SelectLanguage(QuizLanguage.Romanian));
+        languageEnButton.onClick.AddListener(() => SelectLanguage(QuizLanguage.English));
+        SetCursorVisible(true);
+
+        while (!languageChosen && !leaveRequested)
+        {
+            yield return null;
+        }
+
+        languagePromptText.gameObject.SetActive(false);
+        languageRoButton.gameObject.SetActive(false);
+        languageEnButton.gameObject.SetActive(false);
+    }
+
+    private void SelectLanguage(QuizLanguage language)
+    {
+        selectedLanguage = language;
+        languageChosen = true;
+        ApplyLocalizedStaticTexts();
+    }
+
+    private void ApplyLocalizedStaticTexts()
+    {
+        if (leaveButtonText != null) leaveButtonText.text = "Leave";
+        if (hintScreenBackButtonText != null) hintScreenBackButtonText.text = Localize("Inapoi", "Back");
+        if (verifyButtonText != null) verifyButtonText.text = Localize("Verificare", "Verify");
+        if (backButtonText != null) backButtonText.text = Localize("Inapoi", "Back");
+        if (hintButtonText != null) hintButtonText.text = "Hint";
+        if (continueButtonText != null) continueButtonText.text = Localize("Urmatoarea", "Next");
+        if (retryWrongButtonText != null) retryWrongButtonText.text = Localize("Refa gresite", "Retry wrong");
+        if (languageRoButtonText != null) languageRoButtonText.text = "Romana";
+        if (languageEnButtonText != null) languageEnButtonText.text = "English";
+    }
+
+    private string Localize(string romanian, string english)
+    {
+        return selectedLanguage == QuizLanguage.Romanian ? romanian : english;
+    }
 }
 
 public static class CodeChallengePadCinematicBootstrap
@@ -1479,6 +1645,8 @@ public static class CodeChallengePadCinematicBootstrap
     private static void AttachIfNeeded()
     {
         Attach("Question2Pad", 0);
+        Attach("HardQuestionPad", 1);
+        Attach("questionhard", 1);
     }
 
     private static void Attach(string padName, int mode)
