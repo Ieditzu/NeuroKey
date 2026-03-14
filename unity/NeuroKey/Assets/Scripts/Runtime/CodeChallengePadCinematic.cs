@@ -163,7 +163,6 @@ public class CodeChallengePadCinematic : MonoBehaviour
     private static InputField codeInput;
     private static Text codeInputText;
     private static Text codePlaceholder;
-    private static Text codeHighlightText;
     private static Text hintScreenText;
     private static Button leaveButton;
     private static Text leaveButtonText;
@@ -216,7 +215,6 @@ public class CodeChallengePadCinematic : MonoBehaviour
     private GameObject activePortal;
     private bool overlayInteractionActive;
     private QuizLanguage selectedLanguage = QuizLanguage.Romanian;
-    [SerializeField] private bool enableSyntaxHighlight = true;
     private CodeChallenge activeChallenge;
     private bool awaitingExecution;
     private bool awaitingAiResponse;
@@ -1050,137 +1048,6 @@ public class CodeChallengePadCinematic : MonoBehaviour
         return builder.ToString();
     }
 
-    private static readonly HashSet<string> CppKeywords = new HashSet<string>
-    {
-        "int","bool","void","double","float","char","long","short","signed","unsigned","const","static","return",
-        "if","else","for","while","do","switch","case","break","continue","default","true","false","using","namespace",
-        "include","std","string","class","struct","public","private","protected","virtual","override","template","typename",
-        "new","delete","this","nullptr","auto","sizeof"
-    };
-
-    private void UpdateSyntaxHighlight(string rawText)
-    {
-        if (!enableSyntaxHighlight || codeHighlightText == null)
-        {
-            return;
-        }
-
-        if (string.IsNullOrEmpty(rawText))
-        {
-            codeHighlightText.text = string.Empty;
-            return;
-        }
-
-        codeHighlightText.text = HighlightCpp(rawText);
-    }
-
-    private string HighlightCpp(string text)
-    {
-        const string kwColor = "#4EA1FF";
-        const string numColor = "#D19A66";
-        const string strColor = "#98C379";
-        const string comColor = "#5C6370";
-
-        StringBuilder output = new StringBuilder(text.Length * 2);
-        int i = 0;
-        while (i < text.Length)
-        {
-            char c = text[i];
-
-            if (c == '/' && i + 1 < text.Length && text[i + 1] == '/')
-            {
-                int start = i;
-                i += 2;
-                while (i < text.Length && text[i] != '\n') i++;
-                AppendColored(output, EscapeRich(text.Substring(start, i - start)), comColor);
-                continue;
-            }
-
-            if (c == '/' && i + 1 < text.Length && text[i + 1] == '*')
-            {
-                int start = i;
-                i += 2;
-                while (i + 1 < text.Length && !(text[i] == '*' && text[i + 1] == '/')) i++;
-                i = Mathf.Min(text.Length, i + 2);
-                AppendColored(output, EscapeRich(text.Substring(start, i - start)), comColor);
-                continue;
-            }
-
-            if (c == '"' || c == '\'')
-            {
-                char quote = c;
-                int start = i;
-                i++;
-                while (i < text.Length)
-                {
-                    if (text[i] == '\\' && i + 1 < text.Length)
-                    {
-                        i += 2;
-                        continue;
-                    }
-                    if (text[i] == quote)
-                    {
-                        i++;
-                        break;
-                    }
-                    i++;
-                }
-                AppendColored(output, EscapeRich(text.Substring(start, i - start)), strColor);
-                continue;
-            }
-
-            if (char.IsLetter(c) || c == '_')
-            {
-                int start = i;
-                i++;
-                while (i < text.Length && (char.IsLetterOrDigit(text[i]) || text[i] == '_')) i++;
-                string word = text.Substring(start, i - start);
-                if (CppKeywords.Contains(word))
-                {
-                    AppendColored(output, EscapeRich(word), kwColor);
-                }
-                else
-                {
-                    output.Append(EscapeRich(word));
-                }
-                continue;
-            }
-
-            if (char.IsDigit(c))
-            {
-                int start = i;
-                i++;
-                while (i < text.Length && (char.IsDigit(text[i]) || text[i] == '.')) i++;
-                AppendColored(output, EscapeRich(text.Substring(start, i - start)), numColor);
-                continue;
-            }
-
-            output.Append(EscapeRich(c.ToString()));
-            i++;
-        }
-
-        return output.ToString();
-    }
-
-    private static void AppendColored(StringBuilder builder, string text, string color)
-    {
-        builder.Append("<color=");
-        builder.Append(color);
-        builder.Append('>');
-        builder.Append(text);
-        builder.Append("</color>");
-    }
-
-    private static string EscapeRich(string text)
-    {
-        if (string.IsNullOrEmpty(text))
-        {
-            return string.Empty;
-        }
-
-        return text.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
-    }
-
     private IEnumerator ShowHintScreen(string hintText)
     {
         hintScreenBackRequested = false;
@@ -1445,7 +1312,6 @@ public class CodeChallengePadCinematic : MonoBehaviour
         counterText.text = Localize("Intrebarea ", "Question ") + (currentIndex + 1) + " / " + total;
         promptText.text = challenge.Prompt;
         codeInput.text = currentAnswer;
-        UpdateSyntaxHighlight(codeInput.text);
         feedbackText.text = Localize("Incercari ramase: ", "Attempts left: ") + attemptsLeft + " / " + GetAttemptsAllowed();
         feedbackText.color = textColor;
         if (outputText != null && mode == ChallengeMode.Medium)
@@ -1474,7 +1340,6 @@ public class CodeChallengePadCinematic : MonoBehaviour
             counterText.text = Localize("Refacere ", "Retry ") + (current + 1) + " / " + retryChallenges.Length;
             promptText.text = challenge.Prompt;
             codeInput.text = retryAnswers[current];
-            UpdateSyntaxHighlight(codeInput.text);
             feedbackText.text = Localize("Incercari ramase: ", "Attempts left: ") + retryAttempts[current] + " / " + GetAttemptsAllowed();
             feedbackText.color = textColor;
             if (outputText != null && mode == ChallengeMode.Medium)
@@ -1984,8 +1849,6 @@ public class CodeChallengePadCinematic : MonoBehaviour
         codeInput = EnsureCodeInput(panelImage.transform);
         codeInputText = codeInput.textComponent;
         codePlaceholder = codeInput.placeholder as Text;
-        codeInput.onValueChanged.RemoveAllListeners();
-        codeInput.onValueChanged.AddListener(UpdateSyntaxHighlight);
 
         leaveButton = EnsureButton(root, "LeaveButton", new Vector2(0.11f, 0.11f), new Vector2(180f, 56f), buttonColor, "Leave", buttonTextSize);
         hintScreenBackButton = EnsureButton(root, "HintScreenBackButton", new Vector2(0.27f, 0.11f), new Vector2(180f, 56f), buttonColor, "Back", buttonTextSize);
@@ -2065,7 +1928,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         text.fontStyle = fontStyle;
         text.alignment = TextAnchor.MiddleCenter;
         text.horizontalOverflow = HorizontalWrapMode.Wrap;
-        text.verticalOverflow = VerticalWrapMode.Overflow;
+        text.verticalOverflow = VerticalWrapMode.Truncate;
         text.color = color;
         text.raycastTarget = false;
         return text;
@@ -2110,29 +1973,11 @@ public class CodeChallengePadCinematic : MonoBehaviour
         text.fontSize = codeTextSize - 1;
         text.alignment = TextAnchor.UpperLeft;
         text.horizontalOverflow = HorizontalWrapMode.Wrap;
-        text.verticalOverflow = VerticalWrapMode.Truncate;
-        text.color = new Color(editorTextColor.r, editorTextColor.g, editorTextColor.b, 0f);
+        text.verticalOverflow = VerticalWrapMode.Overflow;
+        text.color = editorTextColor;
         text.supportRichText = false;
         text.resizeTextForBestFit = false;
         input.textComponent = text;
-
-        GameObject highlightObj = GetOrCreateUiObject(root.transform, "HighlightText");
-        RectTransform highlightRect = highlightObj.GetComponent<RectTransform>();
-        highlightRect.anchorMin = new Vector2(0f, 0f);
-        highlightRect.anchorMax = new Vector2(1f, 1f);
-        highlightRect.offsetMin = new Vector2(16f, 16f);
-        highlightRect.offsetMax = new Vector2(-16f, -16f);
-        highlightRect.localScale = Vector3.one;
-        Text highlight = highlightObj.GetComponent<Text>() ?? highlightObj.AddComponent<Text>();
-        highlight.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        highlight.fontSize = codeTextSize - 1;
-        highlight.alignment = TextAnchor.UpperLeft;
-        highlight.horizontalOverflow = HorizontalWrapMode.Wrap;
-        highlight.verticalOverflow = VerticalWrapMode.Truncate;
-        highlight.color = editorTextColor;
-        highlight.supportRichText = true;
-        highlight.raycastTarget = false;
-        codeHighlightText = highlight;
 
         GameObject placeholderObj = GetOrCreateUiObject(root.transform, "Placeholder");
         RectTransform placeRect = placeholderObj.GetComponent<RectTransform>();
@@ -2461,7 +2306,6 @@ public class CodeChallengePadCinematic : MonoBehaviour
         codeInput = null;
         codeInputText = null;
         codePlaceholder = null;
-        codeHighlightText = null;
         hintScreenText = null;
         leaveButton = null;
         leaveButtonText = null;
