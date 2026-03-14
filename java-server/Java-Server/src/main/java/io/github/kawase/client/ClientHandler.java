@@ -179,7 +179,14 @@ public class ClientHandler {
                     final var goals = Server.getInstance().getChildService().getGoals(fetchGoalsPacket.getChildId());
                     final var dtos = new java.util.ArrayList<FetchGoalsResponsePacket.GoalDto>();
                     for (final var goal : goals) {
-                        dtos.add(new FetchGoalsResponsePacket.GoalDto(goal.getId(), goal.getTitle(), goal.getReward(), goal.getIsCompleted()));
+                        dtos.add(new FetchGoalsResponsePacket.GoalDto(
+                                goal.getId(),
+                                goal.getTitle(),
+                                goal.getReward(),
+                                goal.getIsCompleted(),
+                                goal.getRequiredPoints() != null ? goal.getRequiredPoints() : 0,
+                                goal.getRequiredTask() != null ? goal.getRequiredTask().getId() : -1L
+                        ));
                     }
                     connection.send(new FetchGoalsResponsePacket(dtos).encode());
                 }
