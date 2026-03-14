@@ -6,8 +6,8 @@ using UnityEngine.UI;
 public class SphereRiftPortalSequence : MonoBehaviour
 {
     [SerializeField] private float portalHeightOffset = 0.48f;
-    [SerializeField] private float triggerRadius = 0.75f;
-    [SerializeField] private float pullRadius = 1.05f;
+    [SerializeField] private float triggerRadius = 1.35f;
+    [SerializeField] private float pullRadius = 1.55f;
     [SerializeField] private float pullDuration = 0.38f;
     [SerializeField] private float spinSpeed = 82f;
     [SerializeField] private float pulseSpeed = 3.6f;
@@ -26,10 +26,17 @@ public class SphereRiftPortalSequence : MonoBehaviour
     private Transform arrowRoot;
     private Transform arrowBody;
     private Transform arrowHead;
-    private Transform outerRing;
-    private Transform innerRing;
-    private Transform core;
-    private Light portalLight;
+    private Transform[] portalVisualRoots;
+    private Transform[] outerRings;
+    private Transform[] innerRings;
+    private Transform[] cores;
+    private Light[] portalLights;
+    private static readonly Vector3[] PortalOffsets =
+    {
+        new Vector3(-0.42f, 0.02f, 0f),
+        new Vector3(0f, 0.34f, 0f),
+        new Vector3(0.45f, 0.08f, 0f)
+    };
     private bool running;
 
     private void Awake()
@@ -54,7 +61,7 @@ public class SphereRiftPortalSequence : MonoBehaviour
             return;
         }
 
-        Vector3 portalPosition = GetPortalCenter();
+        Vector3 portalPosition = GetClosestPortalCenter(playerRoot.position);
         float distance = Vector3.Distance(playerRoot.position, portalPosition);
         if (distance <= pullRadius)
         {
@@ -132,18 +139,7 @@ public class SphereRiftPortalSequence : MonoBehaviour
         Transform existing = transform.Find("RiftPortalVisual");
         if (existing != null)
         {
-            portalRoot = existing;
-            arrowRoot = existing.Find("GuideArrow");
-            if (arrowRoot != null)
-            {
-                arrowBody = arrowRoot.Find("Body");
-                arrowHead = arrowRoot.Find("Head");
-            }
-            outerRing = existing.Find("OuterRing");
-            innerRing = existing.Find("InnerRing");
-            core = existing.Find("Core");
-            portalLight = existing.GetComponentInChildren<Light>(true);
-            return;
+            Destroy(existing.gameObject);
         }
 
         portalRoot = new GameObject("RiftPortalVisual").transform;
@@ -151,40 +147,59 @@ public class SphereRiftPortalSequence : MonoBehaviour
         portalRoot.localPosition = new Vector3(0f, portalHeightOffset, 0f);
         portalRoot.localRotation = Quaternion.identity;
 
-        core = GameObject.CreatePrimitive(PrimitiveType.Sphere).transform;
-        core.name = "Core";
-        core.SetParent(portalRoot, false);
-        core.localScale = new Vector3(0.28f, 0.46f, 0.1f);
-        Destroy(core.GetComponent<Collider>());
-        ApplyEmissionMaterial(core.gameObject, riftCoreColor, 6.2f);
+        portalVisualRoots = new Transform[PortalOffsets.Length];
+        outerRings = new Transform[PortalOffsets.Length];
+        innerRings = new Transform[PortalOffsets.Length];
+        cores = new Transform[PortalOffsets.Length];
+        portalLights = new Light[PortalOffsets.Length];
 
-        outerRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder).transform;
-        outerRing.name = "OuterRing";
-        outerRing.SetParent(portalRoot, false);
-        outerRing.localRotation = Quaternion.Euler(90f, 0f, 0f);
-        outerRing.localScale = new Vector3(0.36f, 0.022f, 0.36f);
-        Destroy(outerRing.GetComponent<Collider>());
-        ApplyEmissionMaterial(outerRing.gameObject, riftRingColor, 8.8f);
+        for (int i = 0; i < PortalOffsets.Length; i++)
+        {
+            Transform singleRoot = new GameObject("Portal" + i).transform;
+            singleRoot.SetParent(portalRoot, false);
+            singleRoot.localPosition = PortalOffsets[i];
+            singleRoot.localRotation = Quaternion.identity;
+            portalVisualRoots[i] = singleRoot;
 
-        innerRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder).transform;
-        innerRing.name = "InnerRing";
-        innerRing.SetParent(portalRoot, false);
-        innerRing.localRotation = Quaternion.Euler(90f, 0f, 0f);
-        innerRing.localScale = new Vector3(0.26f, 0.015f, 0.26f);
-        Destroy(innerRing.GetComponent<Collider>());
-        ApplyEmissionMaterial(innerRing.gameObject, riftGlowColor, 7.6f);
+            Transform core = GameObject.CreatePrimitive(PrimitiveType.Sphere).transform;
+            core.name = "Core";
+            core.SetParent(singleRoot, false);
+            core.localScale = new Vector3(0.17f, 0.28f, 0.07f);
+            Destroy(core.GetComponent<Collider>());
+            ApplyEmissionMaterial(core.gameObject, riftCoreColor, 6.2f);
+            cores[i] = core;
 
-        GameObject lightRoot = new GameObject("RiftLight");
-        lightRoot.transform.SetParent(portalRoot, false);
-        portalLight = lightRoot.AddComponent<Light>();
-        portalLight.type = LightType.Point;
-        portalLight.range = 26f;
-        portalLight.intensity = 15f;
-        portalLight.color = riftGlowColor;
+            Transform outerRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder).transform;
+            outerRing.name = "OuterRing";
+            outerRing.SetParent(singleRoot, false);
+            outerRing.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            outerRing.localScale = new Vector3(0.22f, 0.016f, 0.22f);
+            Destroy(outerRing.GetComponent<Collider>());
+            ApplyEmissionMaterial(outerRing.gameObject, riftRingColor, 8.8f);
+            outerRings[i] = outerRing;
+
+            Transform innerRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder).transform;
+            innerRing.name = "InnerRing";
+            innerRing.SetParent(singleRoot, false);
+            innerRing.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            innerRing.localScale = new Vector3(0.15f, 0.011f, 0.15f);
+            Destroy(innerRing.GetComponent<Collider>());
+            ApplyEmissionMaterial(innerRing.gameObject, riftGlowColor, 7.6f);
+            innerRings[i] = innerRing;
+
+            GameObject lightRoot = new GameObject("RiftLight");
+            lightRoot.transform.SetParent(singleRoot, false);
+            Light portalLight = lightRoot.AddComponent<Light>();
+            portalLight.type = LightType.Point;
+            portalLight.range = 18f;
+            portalLight.intensity = 9.5f;
+            portalLight.color = riftGlowColor;
+            portalLights[i] = portalLight;
+        }
 
         arrowRoot = new GameObject("GuideMarker").transform;
         arrowRoot.SetParent(portalRoot, false);
-        arrowRoot.localPosition = new Vector3(0f, 0.62f, 0f);
+        arrowRoot.localPosition = new Vector3(0f, 0.8f, 0f);
         arrowRoot.localRotation = Quaternion.identity;
 
         arrowBody = GameObject.CreatePrimitive(PrimitiveType.Cube).transform;
@@ -214,42 +229,80 @@ public class SphereRiftPortalSequence : MonoBehaviour
         }
 
         float time = Time.time;
-        portalRoot.localPosition = new Vector3(0f, portalHeightOffset + Mathf.Sin(time * 1.45f) * 0.08f, 0f);
+        portalRoot.localPosition = new Vector3(0f, portalHeightOffset, 0f);
 
         if (arrowRoot != null)
         {
             float arrowBob = Mathf.Sin(time * 2.2f) * 0.06f;
             float arrowPulse = 1f + Mathf.Sin(time * 3.5f) * 0.08f;
-            arrowRoot.localPosition = new Vector3(0f, 0.62f + arrowBob, 0f);
+            arrowRoot.localPosition = new Vector3(0f, 0.8f + arrowBob, 0f);
             arrowRoot.localScale = Vector3.one * arrowPulse;
         }
 
-        if (outerRing != null)
+        if (portalVisualRoots == null)
         {
-            outerRing.Rotate(Vector3.forward, spinSpeed * Time.deltaTime, Space.Self);
+            return;
         }
 
-        if (innerRing != null)
+        for (int i = 0; i < portalVisualRoots.Length; i++)
         {
-            innerRing.Rotate(Vector3.forward, -spinSpeed * 1.55f * Time.deltaTime, Space.Self);
-        }
+            if (portalVisualRoots[i] == null)
+            {
+                continue;
+            }
 
-        if (core != null)
-        {
-            float pulse = 1f + Mathf.Sin(time * pulseSpeed) * 0.08f;
-            core.localScale = new Vector3(0.28f, 0.46f, 0.1f) * pulse;
-        }
+            float phase = time + (i * 0.5f);
+            portalVisualRoots[i].localPosition = PortalOffsets[i] + new Vector3(0f, Mathf.Sin(phase * 1.45f) * 0.04f, 0f);
 
-        if (portalLight != null)
-        {
-            portalLight.intensity = 15f + Mathf.Sin(time * 4f) * 2.2f;
-            portalLight.range = 26f + Mathf.Sin(time * 2.5f) * 1.8f;
+            if (outerRings[i] != null)
+            {
+                outerRings[i].Rotate(Vector3.forward, spinSpeed * Time.deltaTime, Space.Self);
+            }
+
+            if (innerRings[i] != null)
+            {
+                innerRings[i].Rotate(Vector3.forward, -spinSpeed * 1.55f * Time.deltaTime, Space.Self);
+            }
+
+            if (cores[i] != null)
+            {
+                float pulse = 1f + Mathf.Sin(phase * pulseSpeed) * 0.08f;
+                cores[i].localScale = new Vector3(0.17f, 0.28f, 0.07f) * pulse;
+            }
+
+            if (portalLights[i] != null)
+            {
+                portalLights[i].intensity = 9.5f + Mathf.Sin(phase * 4f) * 1.4f;
+                portalLights[i].range = 18f + Mathf.Sin(phase * 2.5f) * 1.1f;
+            }
         }
     }
 
-    private Vector3 GetPortalCenter()
+    private Vector3 GetClosestPortalCenter(Vector3 playerPosition)
     {
-        return portalRoot != null ? portalRoot.position : transform.position + Vector3.up * portalHeightOffset;
+        if (portalRoot == null || portalVisualRoots == null || portalVisualRoots.Length == 0)
+        {
+            return transform.position + Vector3.up * portalHeightOffset;
+        }
+
+        Vector3 best = portalRoot.position;
+        float bestDistance = float.MaxValue;
+        for (int i = 0; i < portalVisualRoots.Length; i++)
+        {
+            if (portalVisualRoots[i] == null)
+            {
+                continue;
+            }
+
+            float distance = Vector3.SqrMagnitude(playerPosition - portalVisualRoots[i].position);
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                best = portalVisualRoots[i].position;
+            }
+        }
+
+        return best;
     }
 
     private void EnsurePortalTrigger()
@@ -263,7 +316,7 @@ public class SphereRiftPortalSequence : MonoBehaviour
         portalTrigger.isTrigger = true;
         portalTrigger.enabled = true;
         portalTrigger.radius = triggerRadius;
-        portalTrigger.center = new Vector3(0f, portalHeightOffset, 0f);
+        portalTrigger.center = new Vector3(0f, portalHeightOffset + 0.16f, 0f);
     }
 
     private static bool TryGetPlayer(out BeanController sphere, out FirstPersonControllerSimple fps, out Transform playerRoot)
