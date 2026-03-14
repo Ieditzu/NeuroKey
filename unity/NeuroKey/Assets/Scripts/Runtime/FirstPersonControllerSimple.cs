@@ -14,7 +14,9 @@ public class FirstPersonControllerSimple : MonoBehaviour
     [SerializeField] private float temporaryBoostMultiplier = 3f;
     [SerializeField] private float temporaryBoostDuration = 5f;
     [SerializeField] private float jumpHeight = 1.35f;
-    [SerializeField] private float gravity = 18f;
+    [SerializeField] private float gravity = 9.81f;
+    [Header("Physics Interaction")]
+    [SerializeField] private float pushForce = 8f;
 
     [Header("Look")]
     [SerializeField] private float mouseSensitivity = 60f;
@@ -206,6 +208,15 @@ public class FirstPersonControllerSimple : MonoBehaviour
         transform.Rotate(Vector3.up * mouseX);
     }
 
+    private void OnControllerColliderHit(ControllerColliderHit hit)
+    {
+        Rigidbody rb = hit.rigidbody;
+        if (rb == null || rb.isKinematic) return;
+        Vector3 pushDir = new Vector3(hit.moveDirection.x, 0f, hit.moveDirection.z);
+        if (pushDir.sqrMagnitude < 0.0001f) return;
+        rb.AddForce(pushDir.normalized * pushForce, ForceMode.Impulse);
+    }
+
     private void Move()
     {
         bool grounded = ApplyGroundStick();
@@ -247,7 +258,10 @@ public class FirstPersonControllerSimple : MonoBehaviour
         bool jumpRequested = GetKeyDownCompat(jumpKey) || MobileTouchInput.ConsumeJumpRequest();
         if (grounded && jumpRequested)
         {
-            float effectiveJump = Mathf.Max(0.05f, jumpHeight + jumpPower);
+            float heightScale = controller != null && baseControllerHeight > 0.001f
+                ? controller.height / baseControllerHeight
+                : 1f;
+            float effectiveJump = Mathf.Max(0.05f, (jumpHeight + jumpPower) * heightScale);
             velocity.y = Mathf.Sqrt(effectiveJump * 2f * gravity);
         }
 
