@@ -31,7 +31,7 @@ import android.content.SharedPreferences
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.AndroidViewModel
 
-data class Child(val id: Long, val name: String, val points: Int)
+data class Child(val id: Long, val name: String, val points: Int, val isOnline: Boolean)
 data class Task(val id: Long, val name: String, val points: Int)
 data class Goal(val id: Long, val title: String, val reward: String, val completed: Boolean, val requiredPoints: Int)
 data class CompletedTask(val id: Long, val taskTitle: String, val pointValue: Int, val completedAt: String)
@@ -265,7 +265,7 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
             is FetchChildrenResponsePacket -> {
                 _children.clear()
                 packet.children.forEach { child ->
-                    _children.add(Child(child.id, child.name, child.totalPoints))
+                    _children.add(Child(child.id, child.name, child.totalPoints, child.isOnline))
                 }
             }
             is FetchTasksResponsePacket -> {

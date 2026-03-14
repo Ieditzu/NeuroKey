@@ -23,6 +23,9 @@ public class Child {
     @Column(nullable = false)
     private String name;
 
+    @Column(columnDefinition = "TEXT")
+    private String profilePicture;
+
     @Type(JsonType.class)
     @Column(name = "game_stats", columnDefinition = "jsonb")
     private Map<String, Object> gameStats = new HashMap<>();

@@ -9,16 +9,18 @@ public class AuthResponsePacket extends Packet {
     private boolean success;
     private long parentId;
     private String message;
+    private String parentPfp;
 
-    public AuthResponsePacket(final boolean success, final long parentId, final String message) {
-        super(0x0A);
+    public AuthResponsePacket(final boolean success, final long parentId, final String message, final String parentPfp) {
+        super(0x02);
         this.success = success;
         this.parentId = parentId;
         this.message = message;
+        this.parentPfp = parentPfp;
     }
 
     public AuthResponsePacket() {
-        super(0x0A);
+        super(0x02);
     }
 
     @Override
@@ -26,6 +28,7 @@ public class AuthResponsePacket extends Packet {
         buffer.put((byte) (success ? 1 : 0));
         buffer.putLong(parentId);
         putString(message == null ? "" : message, buffer);
+        putString(parentPfp == null ? "" : parentPfp, buffer);
     }
 
     @Override
@@ -33,5 +36,6 @@ public class AuthResponsePacket extends Packet {
         this.success = buffer.get() == 1;
         this.parentId = buffer.getLong();
         this.message = readString(buffer);
+        this.parentPfp = readString(buffer);
     }
 }

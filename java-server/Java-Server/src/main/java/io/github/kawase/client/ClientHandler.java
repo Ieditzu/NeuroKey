@@ -161,8 +161,18 @@ public class ClientHandler {
                     System.out.println("Fetch Children for Parent: " + client.getParentId());
                     final var children = Server.getInstance().getParentService().getChildren(client.getParentId());
                     final var dtos = new java.util.ArrayList<FetchChildrenResponsePacket.ChildDto>();
+                    
+                    // Get all active child IDs from current connections
+                    java.util.Set<Long> onlineChildIds = new java.util.HashSet<>();
+                    for (var entry : Server.getInstance().getActiveConnections().keySet()) {
+                        if (entry.getChildId() != null) {
+                            onlineChildIds.add(entry.getChildId());
+                        }
+                    }
+
                     for (final var child : children) {
-                        dtos.add(new FetchChildrenResponsePacket.ChildDto(child.getId(), child.getName(), child.getTotalPoints()));
+                        boolean isOnline = onlineChildIds.contains(child.getId());
+                        dtos.add(new FetchChildrenResponsePacket.ChildDto(child.getId(), child.name(), child.getTotalPoints(), isOnline));
                     }
                     connection.send(new FetchChildrenResponsePacket(dtos).encode());
                 }

@@ -28,6 +28,8 @@ import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -45,8 +47,6 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardActions
-import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,8 +61,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
-import com.google.mlkit.vision.barcode.common.BarcodeScannerOptions
 import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.Executors
 
@@ -461,12 +461,23 @@ fun HomeScreen(viewModel: SocketViewModel, children: List<Child>, onChildSelecte
                             Spacer(modifier = Modifier.width(20.dp))
                             
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    child.name,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        child.name,
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    if (child.isOnline) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .background(Color(0xFF10B981), CircleShape)
+                                                .shadow(4.dp, CircleShape)
+                                        )
+                                    }
+                                }
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(16.dp), tint = viewModel.primaryColor.value)
@@ -479,16 +490,30 @@ fun HomeScreen(viewModel: SocketViewModel, children: List<Child>, onChildSelecte
                                 }
                             }
 
-                            IconButton(
-                                onClick = { onLogIntoGame(child) },
-                                modifier = Modifier.size(44.dp).background(viewModel.primaryColor.value.copy(alpha = 0.1f), CircleShape)
-                            ) {
-                                Icon(
-                                    Icons.Default.QrCodeScanner,
-                                    contentDescription = "Log into Game",
-                                    tint = viewModel.primaryColor.value,
-                                    modifier = Modifier.size(24.dp)
-                                )
+                            if (!child.isOnline) {
+                                IconButton(
+                                    onClick = { onLogIntoGame(child) },
+                                    modifier = Modifier.size(44.dp).background(viewModel.primaryColor.value.copy(alpha = 0.1f), CircleShape)
+                                ) {
+                                    Icon(
+                                        Icons.Default.QrCodeScanner,
+                                        contentDescription = "Log into Game",
+                                        tint = viewModel.primaryColor.value,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            } else {
+                                IconButton(
+                                    onClick = { onLogIntoGame(child) },
+                                    modifier = Modifier.size(44.dp).background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f), CircleShape)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Devices,
+                                        contentDescription = "Force New Login",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
                             }
                             
                             Spacer(modifier = Modifier.width(8.dp))
@@ -501,9 +526,10 @@ fun HomeScreen(viewModel: SocketViewModel, children: List<Child>, onChildSelecte
                         }
                     }
                 }
+                // Add extra padding at the end of the list to ensure the last item is above the nav bar
+                item { Spacer(modifier = Modifier.height(120.dp)) }
             }
         }
-        Spacer(modifier = Modifier.height(100.dp))
     }
 }
 
