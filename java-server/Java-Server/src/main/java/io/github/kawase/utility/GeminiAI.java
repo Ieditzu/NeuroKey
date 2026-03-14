@@ -12,7 +12,7 @@ public class GeminiAI {
 
     public String ask(String question, String context) {
         try {
-            String prompt = "You are an educational AI mentor for a student learning C++ in a game called NeuroKey. " +
+            final String prompt = "You are an educational AI mentor for a student learning C++ in a game called NeuroKey. " +
                     "Context: " + context + "\n" +
                     "Student's Question: " + question + "\n" +
                     "Please provide a helpful, encouraging, and easy-to-understand response for a student. " +
@@ -31,7 +31,6 @@ public class GeminiAI {
 
             HttpClient client = HttpClient.newHttpClient();
 
-            // Updated the URI to use gemini-2.5-flash
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey))
                     .header("Content-Type", "application/json")
