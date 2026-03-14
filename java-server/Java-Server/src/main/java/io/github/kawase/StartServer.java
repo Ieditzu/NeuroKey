@@ -9,6 +9,6 @@ public class StartServer {
     public static void main(String[] args) {
         final ApplicationContext context = SpringApplication.run(StartServer.class, args);
 
-        Server.getInstance().init(8887, context);
+        Server.getInstance().init(49154, context);
     }
 }
