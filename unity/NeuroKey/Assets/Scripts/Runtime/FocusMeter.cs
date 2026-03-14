@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using static UnityEngine.Mathf;
 using Gtec.UnityInterface; // EEGDataPipeline
 
@@ -52,24 +53,36 @@ public class FocusMeter : MonoBehaviour
         if (focusText != null)
             return;
 
-        var canvas = FindObjectOfType<Canvas>();
-        if (canvas == null)
-            return;
+        // Create a dedicated overlay canvas so the label is always visible.
+        var canvasGO = new GameObject("FocusCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        var c = canvasGO.GetComponent<Canvas>();
+        c.renderMode = RenderMode.ScreenSpaceOverlay;
+        c.overrideSorting = true;
+        c.sortingOrder = 999; // above other UI
+        canvasGO.GetComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        canvasGO.GetComponent<CanvasScaler>().referenceResolution = new Vector2(1920, 1080);
+        var targetCanvas = c;
 
         var go = new GameObject("FocusLabel", typeof(RectTransform), typeof(TextMeshProUGUI));
-        go.transform.SetParent(canvas.transform, false);
+        go.transform.SetParent(targetCanvas.transform, false);
         var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(0.02f, 0.84f);
-        rt.anchorMax = new Vector2(0.35f, 0.92f);
-        rt.offsetMin = Vector2.zero;
-        rt.offsetMax = Vector2.zero;
+        rt.anchorMin = new Vector2(0.70f, 0.88f);
+        rt.anchorMax = new Vector2(0.98f, 0.96f);
+        rt.offsetMin = new Vector2(-12f, -8f);
+        rt.offsetMax = new Vector2(-12f, -8f);
 
         var tmp = go.GetComponent<TextMeshProUGUI>();
-        tmp.fontSize = 24;
-        tmp.alignment = TextAlignmentOptions.Left;
-        tmp.color = new Color(0.2f, 0.95f, 1f);
+        tmp.raycastTarget = false;
+        tmp.fontSize = 26;
+        tmp.alignment = TextAlignmentOptions.Right;
+        tmp.color = new Color(0.18f, 0.95f, 1f);
         tmp.text = "Focus: --";
+        var outline = go.AddComponent<Outline>();
+        outline.effectColor = new Color(0f, 0f, 0f, 0.55f);
+        outline.effectDistance = new Vector2(1.2f, -1.2f);
         focusText = tmp;
+
+        Debug.Log("[FocusMeter] Created overlay label on canvas: " + targetCanvas.name);
     }
 
     private void OnDataAvailable(float[,] samples)
