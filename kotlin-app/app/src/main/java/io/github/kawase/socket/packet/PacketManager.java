@@ -21,12 +21,12 @@ public class PacketManager {
             case 14: return new FetchGoalsResponsePacket();
             case 15: return new FetchChildrenPacket();
             case 16: return new FetchChildrenResponsePacket();
-            case 17 -> new FetchCompletedTasksPacket();
-            case 18 -> new FetchCompletedTasksResponsePacket();
-            case 21 -> new ClaimQRLoginPacket();
-
-            default -> throw new PacketException("Unknown packet ID: " + id);
+            case 17: return new FetchCompletedTasksPacket();
+            case 18: return new FetchCompletedTasksResponsePacket();
+            case 21: return new ClaimQRLoginPacket();
         }
+        
+        return null;
     }
 }
 
