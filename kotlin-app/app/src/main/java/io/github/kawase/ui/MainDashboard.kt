@@ -42,7 +42,12 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardActions
+import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -56,6 +61,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.barcode.common.BarcodeScannerOptions
 import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.Executors
 
@@ -289,12 +296,24 @@ fun QRScannerSimulatorDialog(
                 }
 
                 var manualToken by remember { mutableStateOf("") }
+                val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+
                 OutlinedTextField(
                     value = manualToken,
-                    onValueChange = { manualToken = it },
+                    onValueChange = { if (!it.contains("\n")) manualToken = it },
                     label = { Text("Or enter token manually") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            keyboardController?.hide()
+                            if (manualToken.isNotBlank()) onConfirm(manualToken)
+                        }
+                    ),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = primaryColor,
                         focusedLabelColor = primaryColor,
@@ -306,7 +325,10 @@ fun QRScannerSimulatorDialog(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text("Cancel") }
                     Button(
-                        onClick = { onConfirm(manualToken) },
+                        onClick = { 
+                            keyboardController?.hide()
+                            onConfirm(manualToken) 
+                        },
                         enabled = manualToken.isNotBlank(),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
@@ -337,7 +359,12 @@ fun QRScannerView(onCodeScanned: (String) -> Unit) {
                     it.setSurfaceProvider(previewView.surfaceProvider)
                 }
 
-                val scanner = BarcodeScanning.getClient()
+                val scanner = BarcodeScanning.getClient(
+                    BarcodeScannerOptions.Builder()
+                        .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+                        .build()
+                )
+                
                 val imageAnalysis = ImageAnalysis.Builder()
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
@@ -350,8 +377,10 @@ fun QRScannerView(onCodeScanned: (String) -> Unit) {
                             .addOnSuccessListener { barcodes ->
                                 for (barcode in barcodes) {
                                     barcode.rawValue?.let { code ->
-                                        scanned = true
-                                        onCodeScanned(code)
+                                        if (!scanned) {
+                                            scanned = true
+                                            onCodeScanned(code)
+                                        }
                                     }
                                 }
                             }
@@ -572,12 +601,16 @@ fun SettingsScreen(viewModel: SocketViewModel) {
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
+                val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
                 OutlinedTextField(
                     value = childName,
-                    onValueChange = { childName = it },
+                    onValueChange = { if (!it.contains("\n")) childName = it },
                     label = { Text("Kid's Name") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = viewModel.primaryColor.value,
                         focusedLabelColor = viewModel.primaryColor.value,
@@ -590,6 +623,7 @@ fun SettingsScreen(viewModel: SocketViewModel) {
                 Button(
                     onClick = { 
                         if (childName.isNotBlank()) {
+                            keyboardController?.hide()
                             viewModel.addChild(childName)
                             childName = ""
                         }
@@ -813,6 +847,7 @@ fun AddGoalDialog(
     var points by remember { mutableStateOf("50") }
     var selectedTaskId by remember { mutableStateOf(-1L) }
     var usePoints by remember { mutableStateOf(true) }
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -838,10 +873,12 @@ fun AddGoalDialog(
 
                 OutlinedTextField(
                     value = title,
-                    onValueChange = { title = it },
+                    onValueChange = { if (!it.contains("\n")) title = it },
                     label = { Text("Goal Name") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = primaryColor,
                         focusedLabelColor = primaryColor,
@@ -853,10 +890,17 @@ fun AddGoalDialog(
                 )
                 OutlinedTextField(
                     value = reward,
-                    onValueChange = { reward = it },
+                    onValueChange = { if (!it.contains("\n")) reward = it },
                     label = { Text("Reward") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = if (usePoints) ImeAction.Next else ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = { keyboardController?.hide() }
+                    ),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = primaryColor,
                         focusedLabelColor = primaryColor,
@@ -890,11 +934,18 @@ fun AddGoalDialog(
                 if (usePoints) {
                     OutlinedTextField(
                         value = points,
-                        onValueChange = { points = it },
+                        onValueChange = { if (!it.contains("\n")) points = it },
                         label = { Text("Points Required") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            imeAction = ImeAction.Done,
+                            keyboardType = KeyboardType.Number
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = { keyboardController?.hide() }
+                        ),                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = primaryColor,
                             focusedLabelColor = primaryColor,
                             unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
@@ -934,7 +985,10 @@ fun AddGoalDialog(
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
-                        onClick = { onConfirm(title, reward, points.toIntOrNull() ?: 0, if (usePoints) -1L else selectedTaskId) },
+                        onClick = { 
+                            keyboardController?.hide()
+                            onConfirm(title, reward, points.toIntOrNull() ?: 0, if (usePoints) -1L else selectedTaskId) 
+                        },
                         enabled = title.isNotBlank() && reward.isNotBlank(),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)

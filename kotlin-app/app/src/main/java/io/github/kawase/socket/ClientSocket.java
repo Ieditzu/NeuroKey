@@ -93,7 +93,7 @@ public class ClientSocket extends WebSocketClient {
     public static void main(String[] args) {
         try {
             String dynamicEmail = "parent" + System.currentTimeMillis() + "@email.com";
-            final ClientSocket client = new ClientSocket(new URI("ws://127.0.0.1:8887"), dynamicEmail);
+            final ClientSocket client = new ClientSocket(new URI("wss://neuro.serenityutils.club"), dynamicEmail);
             client.connect();
 
             client.awaitConnection();

@@ -104,7 +104,7 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
     private val _successFlow = MutableSharedFlow<String>()
     val successFlow: SharedFlow<String> = _successFlow.asSharedFlow()
 
-    fun connect(url: String = "ws://10.0.2.2:8887") {
+    fun connect(url: String = "wss://neuro.serenityutils.club") {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 if (client?.isOpen == true) return@launch
@@ -191,6 +191,18 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private inner class AndroidClientSocket(uri: URI) : WebSocketClient(uri) {
+        init {
+            if (uri.scheme == "wss") {
+                try {
+                    val sslContext = javax.net.ssl.SSLContext.getInstance("TLS")
+                    sslContext.init(null, null, null)
+                    setSocketFactory(sslContext.socketFactory)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+
         override fun onOpen(handshakedata: ServerHandshake?) {
             _isConnected.value = true
             send(HandShakePacket("android_client").encode())
@@ -219,7 +231,9 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         override fun onError(ex: Exception?) {
-            viewModelScope.launch { _errorFlow.emit("Socket error: ${ex?.message}") }
+            ex?.printStackTrace()
+            val errorMessage = ex?.message ?: "Unknown socket error"
+            viewModelScope.launch { _errorFlow.emit("Socket error: $errorMessage") }
         }
     }
 
