@@ -24,6 +24,11 @@ public class CoinRotator : MonoBehaviour
     {
         if (other.GetComponent<BeanController>() != null || other.GetComponent<CharacterController>() != null)
         {
+            var ui = PickupUIController.Instance ?? FindObjectOfType<PickupUIController>();
+            if (ui != null)
+            {
+                ui.Show();
+            }
             gameObject.SetActive(false);
         }
     }
