@@ -1,8 +1,12 @@
 using System.Collections;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
+using NeuroKey.Network;
 
 [RequireComponent(typeof(Collider))]
 public class CppQuestionPadCinematic : MonoBehaviour
@@ -187,12 +191,24 @@ public class CppQuestionPadCinematic : MonoBehaviour
     private static Text backButtonText;
     private static Button hintButton;
     private static Text hintButtonText;
+    private static Button aiButton;
+    private static Text aiButtonText;
     private static Button retryWrongButton;
     private static Text retryWrongButtonText;
     private static Button languageRoButton;
     private static Button languageEnButton;
     private static Button[] optionButtons;
     private static Text[] optionButtonTexts;
+    private static Image aiChatPanel;
+    private static Text aiChatTitleText;
+    private static Text aiChatHistoryText;
+    private static InputField aiChatInput;
+    private static Text aiChatInputText;
+    private static Text aiChatPlaceholderText;
+    private static Button aiChatSendButton;
+    private static Text aiChatSendButtonText;
+    private static Button aiChatBackButton;
+    private static Text aiChatBackButtonText;
 
     private Collider triggerCollider;
     private bool running;
@@ -203,12 +219,20 @@ public class CppQuestionPadCinematic : MonoBehaviour
     private bool nextRequested;
     private bool backRequested;
     private bool hintRequested;
+    private bool aiChatRequested;
     private bool retryWrongRequested;
     private bool hintScreenBackRequested;
+    private bool aiChatBackRequested;
+    private bool aiChatSendRequested;
     private bool languageChosen;
     private QuizLanguage selectedLanguage = QuizLanguage.Romanian;
     private GameObject activePortal;
     private bool[] answeredCorrectly;
+    private int activeQuestionIndex = -1;
+    private bool awaitingAiResponse;
+    private bool networkSubscribed;
+    private readonly List<string> aiChatLines = new List<string>();
+    private const int MaxChatLines = 14;
 
     private void Awake()
     {
@@ -222,6 +246,13 @@ public class CppQuestionPadCinematic : MonoBehaviour
         EnsureTriggerReady();
         leaveRequested = false;
         running = false;
+        EnsureDispatcher();
+        RegisterNetworkHandlers();
+    }
+
+    private void OnDisable()
+    {
+        UnregisterNetworkHandlers();
     }
 
     private void OnTriggerEnter(Collider other)
@@ -249,10 +280,93 @@ public class CppQuestionPadCinematic : MonoBehaviour
         StartCoroutine(PlaySequence(sphere, fps));
     }
 
+    private void EnsureDispatcher()
+    {
+        if (!UnityMainThreadDispatcher.IsInitialized)
+        {
+            UnityMainThreadDispatcher.Initialize();
+        }
+    }
+
+    private void RegisterNetworkHandlers()
+    {
+        if (networkSubscribed || GameClient.Instance == null)
+        {
+            return;
+        }
+
+        GameClient.Instance.OnPacketReceived += OnPacketReceived;
+        networkSubscribed = true;
+    }
+
+    private void UnregisterNetworkHandlers()
+    {
+        if (!networkSubscribed || GameClient.Instance == null)
+        {
+            return;
+        }
+
+        GameClient.Instance.OnPacketReceived -= OnPacketReceived;
+        networkSubscribed = false;
+    }
+
+    private void OnPacketReceived(Packet packet)
+    {
+        if (packet is AiResponsePacket aiResponse)
+        {
+            UnityMainThreadDispatcher.Instance().Enqueue(() => HandleAiResponse(aiResponse));
+        }
+    }
+
+    private void HandleAiResponse(AiResponsePacket response)
+    {
+        if (!awaitingAiResponse)
+        {
+            return;
+        }
+
+        awaitingAiResponse = false;
+        AppendChatLine((selectedLanguage == QuizLanguage.Romanian ? "AI: " : "AI: ") + (response.Response ?? string.Empty));
+    }
+
+    private async Task<bool> SendPacketWithConnectAsync(Packet packet)
+    {
+        if (GameClient.Instance == null)
+        {
+            return false;
+        }
+
+        if (!GameClient.Instance.IsConnected)
+        {
+            await GameClient.Instance.Connect();
+        }
+
+        if (!GameClient.Instance.IsConnected)
+        {
+            return false;
+        }
+
+        await GameClient.Instance.SendPacket(packet);
+        return true;
+    }
+
+    private IEnumerator SendPacketWithConnect(Packet packet, System.Action<bool> onDone)
+    {
+        Task<bool> task = SendPacketWithConnectAsync(packet);
+        while (!task.IsCompleted)
+        {
+            yield return null;
+        }
+
+        onDone?.Invoke(task.Result);
+    }
+
     private IEnumerator PlaySequence(BeanController sphere, FirstPersonControllerSimple fps)
     {
         running = true;
         leaveRequested = false;
+        EnsureDispatcher();
+        RegisterNetworkHandlers();
 
         if (triggerCollider != null)
         {
@@ -341,6 +455,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
         nextButtonText.text = selectedLanguage == QuizLanguage.Romanian ? "Inainte" : "Next";
         backButtonText.text = selectedLanguage == QuizLanguage.Romanian ? "Inapoi" : "Back";
         hintButtonText.text = selectedLanguage == QuizLanguage.Romanian ? "Hint" : "Hint";
+        aiButtonText.text = "AI";
         retryWrongButtonText.text = selectedLanguage == QuizLanguage.Romanian ? "Refa intrebarile gresite" : "Retry wrong questions";
         nextButton.gameObject.SetActive(false);
         retryWrongButton.gameObject.SetActive(false);
@@ -420,6 +535,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
         nextButton.gameObject.SetActive(false);
         backButton.gameObject.SetActive(false);
         hintButton.gameObject.SetActive(false);
+        aiButton.gameObject.SetActive(false);
         retryWrongButton.onClick.RemoveAllListeners();
         retryWrongButton.gameObject.SetActive(wrongCount > 0);
         if (wrongCount > 0)
@@ -467,6 +583,8 @@ public class CppQuestionPadCinematic : MonoBehaviour
         nextRequested = false;
         backRequested = false;
         hintRequested = false;
+        aiChatRequested = false;
+        activeQuestionIndex = index;
 
         counterText.text = selectedLanguage == QuizLanguage.Romanian
             ? (retryMode ? "Refacere " + (sessionPosition + 1) + " / " + indices.Length : "Intrebarea " + (sessionPosition + 1) + " / " + indices.Length)
@@ -478,10 +596,13 @@ public class CppQuestionPadCinematic : MonoBehaviour
         retryWrongButton.gameObject.SetActive(false);
         backButton.gameObject.SetActive(sessionPosition > 0);
         hintButton.gameObject.SetActive(true);
+        aiButton.gameObject.SetActive(true);
         backButton.onClick.RemoveAllListeners();
         backButton.onClick.AddListener(OnBackClicked);
         hintButton.onClick.RemoveAllListeners();
         hintButton.onClick.AddListener(OnHintClicked);
+        aiButton.onClick.RemoveAllListeners();
+        aiButton.onClick.AddListener(OnAiChatClicked);
 
         for (int i = 0; i < optionButtons.Length; i++)
         {
@@ -520,6 +641,16 @@ public class CppQuestionPadCinematic : MonoBehaviour
                 }
                 RestoreQuestionUi(question, sessionPosition);
                 hintRequested = false;
+            }
+            else if (aiChatRequested)
+            {
+                aiChatRequested = false;
+                yield return ShowAiChatScreen();
+                if (leaveRequested)
+                {
+                    yield break;
+                }
+                RestoreQuestionUi(question, sessionPosition);
             }
             yield return null;
         }
@@ -567,6 +698,16 @@ public class CppQuestionPadCinematic : MonoBehaviour
                 }
                 RestoreQuestionUi(question, sessionPosition);
                 hintRequested = false;
+            }
+            else if (aiChatRequested)
+            {
+                aiChatRequested = false;
+                yield return ShowAiChatScreen();
+                if (leaveRequested)
+                {
+                    yield break;
+                }
+                RestoreQuestionUi(question, sessionPosition);
             }
             yield return null;
         }
@@ -626,6 +767,21 @@ public class CppQuestionPadCinematic : MonoBehaviour
         hintRequested = true;
     }
 
+    private void OnAiChatClicked()
+    {
+        aiChatRequested = true;
+    }
+
+    private void OnAiChatSendClicked()
+    {
+        aiChatSendRequested = true;
+    }
+
+    private void OnAiChatBackClicked()
+    {
+        aiChatBackRequested = true;
+    }
+
     private void OnRetryWrongClicked()
     {
         retryWrongRequested = true;
@@ -657,7 +813,10 @@ public class CppQuestionPadCinematic : MonoBehaviour
         retryWrongButton.gameObject.SetActive(false);
         backButton.gameObject.SetActive(sessionPosition > 0);
         hintButton.gameObject.SetActive(true);
+        aiButton.gameObject.SetActive(true);
         nextButton.gameObject.SetActive(answerChosen && !answerWasCorrect);
+        aiButton.onClick.RemoveAllListeners();
+        aiButton.onClick.AddListener(OnAiChatClicked);
 
         for (int i = 0; i < optionButtons.Length; i++)
         {
@@ -803,6 +962,181 @@ public class CppQuestionPadCinematic : MonoBehaviour
         feedbackText.gameObject.SetActive(true);
     }
 
+    private IEnumerator ShowAiChatScreen()
+    {
+        aiChatBackRequested = false;
+        aiChatSendRequested = false;
+
+        HideOverlayImmediate();
+        ShowAiChatUi(true);
+
+        aiChatTitleText.text = selectedLanguage == QuizLanguage.Romanian ? "Asistent AI" : "AI Assistant";
+        aiChatSendButtonText.text = selectedLanguage == QuizLanguage.Romanian ? "Trimite" : "Send";
+        aiChatBackButtonText.text = selectedLanguage == QuizLanguage.Romanian ? "Inapoi" : "Back";
+        if (aiChatPlaceholderText != null)
+        {
+            aiChatPlaceholderText.text = selectedLanguage == QuizLanguage.Romanian ? "Intreaba AI..." : "Ask the AI...";
+        }
+
+        aiChatSendButton.onClick.RemoveAllListeners();
+        aiChatSendButton.onClick.AddListener(OnAiChatSendClicked);
+        aiChatBackButton.onClick.RemoveAllListeners();
+        aiChatBackButton.onClick.AddListener(OnAiChatBackClicked);
+
+        if (aiChatLines.Count == 0)
+        {
+            AppendChatLine(selectedLanguage == QuizLanguage.Romanian
+                ? "AI este gata. Pune o intrebare!"
+                : "AI is ready. Ask a question!");
+        }
+
+        aiChatInput.text = string.Empty;
+        aiChatInput.ActivateInputField();
+        if (EventSystem.current != null)
+        {
+            EventSystem.current.SetSelectedGameObject(aiChatInput.gameObject);
+        }
+        SetCursorVisible(true);
+
+        while (!aiChatBackRequested && !leaveRequested)
+        {
+            if (aiChatSendRequested)
+            {
+                aiChatSendRequested = false;
+                string message = aiChatInput.text;
+                if (!string.IsNullOrWhiteSpace(message))
+                {
+                    aiChatInput.text = string.Empty;
+                    yield return SendAiChatMessage(message);
+                }
+            }
+
+            yield return null;
+        }
+
+        ShowAiChatUi(false);
+        if (leaveRequested)
+        {
+            yield break;
+        }
+
+        menuCard.gameObject.SetActive(true);
+        titleText.gameObject.SetActive(true);
+        counterText.gameObject.SetActive(true);
+        questionText.gameObject.SetActive(true);
+        feedbackText.gameObject.SetActive(true);
+    }
+
+    private void ShowAiChatUi(bool visible)
+    {
+        if (aiChatPanel == null)
+        {
+            return;
+        }
+
+        aiChatPanel.gameObject.SetActive(visible);
+        aiChatTitleText.gameObject.SetActive(visible);
+        aiChatHistoryText.gameObject.SetActive(visible);
+        aiChatInput.gameObject.SetActive(visible);
+        aiChatSendButton.gameObject.SetActive(visible);
+        aiChatBackButton.gameObject.SetActive(visible);
+    }
+
+    private IEnumerator SendAiChatMessage(string message)
+    {
+        if (awaitingAiResponse)
+        {
+            AppendChatLine(selectedLanguage == QuizLanguage.Romanian
+                ? "AI lucreaza deja. Asteapta un raspuns."
+                : "AI is already working. Please wait.");
+            yield break;
+        }
+
+        AppendChatLine((selectedLanguage == QuizLanguage.Romanian ? "Tu: " : "You: ") + message);
+        awaitingAiResponse = true;
+        aiChatSendButton.interactable = false;
+
+        string question = BuildAiChatQuestion(message);
+        bool sendOk = false;
+        yield return SendPacketWithConnect(new AskAiPacket(question, "cpp_quiz_hint"), success => sendOk = success);
+        if (!sendOk)
+        {
+            awaitingAiResponse = false;
+            aiChatSendButton.interactable = true;
+            AppendChatLine(selectedLanguage == QuizLanguage.Romanian
+                ? "Nu pot contacta serverul AI acum."
+                : "Can't reach the AI server right now.");
+            yield break;
+        }
+
+        float elapsed = 0f;
+        while (awaitingAiResponse && elapsed < 12f && !leaveRequested)
+        {
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        aiChatSendButton.interactable = true;
+        if (awaitingAiResponse)
+        {
+            awaitingAiResponse = false;
+            AppendChatLine(selectedLanguage == QuizLanguage.Romanian
+                ? "AI nu a raspuns la timp."
+                : "AI did not respond in time.");
+        }
+    }
+
+    private void AppendChatLine(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            return;
+        }
+
+        aiChatLines.Add(line.Trim());
+        if (aiChatLines.Count > MaxChatLines)
+        {
+            aiChatLines.RemoveAt(0);
+        }
+
+        RefreshChatText();
+    }
+
+    private void RefreshChatText()
+    {
+        if (aiChatHistoryText == null)
+        {
+            return;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < aiChatLines.Count; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append('\n');
+            }
+            builder.Append(aiChatLines[i]);
+        }
+
+        aiChatHistoryText.text = builder.ToString();
+        aiChatHistoryText.alignment = TextAnchor.UpperLeft;
+    }
+
+    private string BuildAiChatQuestion(string userMessage)
+    {
+        if (activeQuestionIndex < 0 || activeQuestionIndex >= Questions.Length)
+        {
+            return userMessage;
+        }
+
+        QuizQuestion question = Questions[activeQuestionIndex];
+        string prompt = selectedLanguage == QuizLanguage.Romanian ? question.PromptRo : question.PromptEn;
+        string[] options = selectedLanguage == QuizLanguage.Romanian ? question.OptionsRo : question.OptionsEn;
+        return "Question:\\n" + prompt + "\\n\\nOptions:\\n" + options[0] + "\\n" + options[1] + "\\n" + options[2]
+            + "\\n\\nStudent question:\\n" + userMessage + "\\n\\nGive a helpful hint without revealing the answer.";
+    }
+
     private void SetMenuAlpha(float alpha)
     {
         menuCard.color = new Color(cardColor.r, cardColor.g, cardColor.b, alpha * cardColor.a);
@@ -831,6 +1165,13 @@ public class CppQuestionPadCinematic : MonoBehaviour
         }
         Color hintBase = hintButtonText.color;
         hintButtonText.color = new Color(hintBase.r, hintBase.g, hintBase.b, alpha);
+        Image aiImage = aiButton.GetComponent<Image>();
+        if (aiImage != null)
+        {
+            aiImage.color = new Color(buttonColor.r, buttonColor.g, buttonColor.b, alpha);
+        }
+        Color aiBase = aiButtonText.color;
+        aiButtonText.color = new Color(aiBase.r, aiBase.g, aiBase.b, alpha);
         Image nextImage = nextButton.GetComponent<Image>();
         if (nextImage != null)
         {
@@ -875,6 +1216,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
     {
         HideOptions();
         nextButton.gameObject.SetActive(false);
+        aiButton.gameObject.SetActive(false);
         languageChosen = false;
         titleText.text = "C++ Starter Quiz";
         counterText.text = string.Empty;
@@ -1334,7 +1676,8 @@ public class CppQuestionPadCinematic : MonoBehaviour
         hintScreenBackButton = EnsureButton(root, "HintScreenBackButton", new Vector2(0.27f, 0.11f), new Vector2(180f, 56f), buttonColor, "Back", buttonTextSize);
         nextButton = EnsureButton(menuCard.transform, "NextButton", new Vector2(0.82f, 0.13f), new Vector2(170f, 52f), accentColor, "Next", buttonTextSize);
         backButton = EnsureButton(menuCard.transform, "BackButton", new Vector2(0.18f, 0.13f), new Vector2(170f, 52f), buttonColor, "Back", buttonTextSize);
-        hintButton = EnsureButton(menuCard.transform, "HintButton", new Vector2(0.5f, 0.13f), new Vector2(170f, 52f), secondaryAccentColor, "Hint", buttonTextSize);
+        hintButton = EnsureButton(menuCard.transform, "HintButton", new Vector2(0.44f, 0.13f), new Vector2(140f, 52f), secondaryAccentColor, "Hint", buttonTextSize);
+        aiButton = EnsureButton(menuCard.transform, "AiButton", new Vector2(0.56f, 0.13f), new Vector2(140f, 52f), buttonColor, "AI", buttonTextSize);
         retryWrongButton = EnsureButton(menuCard.transform, "RetryWrongButton", new Vector2(0.5f, 0.13f), new Vector2(300f, 56f), secondaryAccentColor, "Retry Wrong Questions", buttonTextSize);
         languageRoButton = EnsureButton(menuCard.transform, "LanguageRoButton", new Vector2(0.38f, 0.44f), new Vector2(220f, 64f), accentColor, "Romana", buttonTextSize);
         languageEnButton = EnsureButton(menuCard.transform, "LanguageEnButton", new Vector2(0.62f, 0.44f), new Vector2(220f, 64f), secondaryAccentColor, "English", buttonTextSize);
@@ -1343,6 +1686,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
         nextButtonText = nextButton.GetComponentInChildren<Text>(true);
         backButtonText = backButton.GetComponentInChildren<Text>(true);
         hintButtonText = hintButton.GetComponentInChildren<Text>(true);
+        aiButtonText = aiButton.GetComponentInChildren<Text>(true);
         retryWrongButtonText = retryWrongButton.GetComponentInChildren<Text>(true);
 
         optionButtons = new Button[3];
@@ -1354,6 +1698,18 @@ public class CppQuestionPadCinematic : MonoBehaviour
             optionButtonTexts[i] = optionButtons[i].GetComponentInChildren<Text>(true);
             optionButtonTexts[i].color = textColor;
         }
+
+        aiChatPanel = EnsurePanel(root, "AiChatPanel");
+        aiChatPanel.color = cardColor;
+        aiChatTitleText = EnsureText(aiChatPanel.transform, "AiChatTitleText", new Vector2(0.5f, 0.86f), new Vector2(780f, 60f), titleSize - 4, FontStyle.Bold, textColor);
+        aiChatHistoryText = EnsureText(aiChatPanel.transform, "AiChatHistoryText", new Vector2(0.5f, 0.58f), new Vector2(860f, 320f), bodySize, FontStyle.Normal, textColor);
+        aiChatInput = EnsureChatInput(aiChatPanel.transform);
+        aiChatSendButton = EnsureButton(aiChatPanel.transform, "AiChatSendButton", new Vector2(0.76f, 0.12f), new Vector2(170f, 52f), accentColor, "Send", buttonTextSize);
+        aiChatBackButton = EnsureButton(aiChatPanel.transform, "AiChatBackButton", new Vector2(0.24f, 0.12f), new Vector2(170f, 52f), buttonColor, "Back", buttonTextSize);
+        aiChatSendButtonText = aiChatSendButton.GetComponentInChildren<Text>(true);
+        aiChatBackButtonText = aiChatBackButton.GetComponentInChildren<Text>(true);
+        aiChatInputText = aiChatInput.textComponent;
+        aiChatPlaceholderText = aiChatInput.placeholder as Text;
 
         EnsureEventSystem();
     }
@@ -1502,6 +1858,109 @@ public class CppQuestionPadCinematic : MonoBehaviour
         return button;
     }
 
+    private InputField EnsureChatInput(Transform parent)
+    {
+        Transform existing = parent.Find("AiChatInput");
+        GameObject root = existing != null ? existing.gameObject : new GameObject("AiChatInput");
+        root.transform.SetParent(parent, false);
+
+        RectTransform rect = root.GetComponent<RectTransform>();
+        if (rect == null)
+        {
+            rect = root.AddComponent<RectTransform>();
+        }
+        rect.anchorMin = new Vector2(0.5f, 0.22f);
+        rect.anchorMax = new Vector2(0.5f, 0.22f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(760f, 64f);
+        rect.localScale = Vector3.one;
+
+        Image image = root.GetComponent<Image>();
+        if (image == null)
+        {
+            image = root.AddComponent<Image>();
+        }
+        image.color = Color.white * 0.98f;
+        image.raycastTarget = true;
+        Outline outline = root.GetComponent<Outline>();
+        if (outline == null)
+        {
+            outline = root.AddComponent<Outline>();
+        }
+        outline.effectColor = new Color(accentColor.r, accentColor.g, accentColor.b, 0.32f);
+        outline.effectDistance = new Vector2(2f, -2f);
+        RectMask2D mask = root.GetComponent<RectMask2D>();
+        if (mask == null)
+        {
+            mask = root.AddComponent<RectMask2D>();
+        }
+        mask.padding = Vector4.zero;
+
+        InputField input = root.GetComponent<InputField>();
+        if (input == null)
+        {
+            input = root.AddComponent<InputField>();
+        }
+        input.lineType = InputField.LineType.SingleLine;
+        input.transition = Selectable.Transition.None;
+        input.selectionColor = new Color(accentColor.r, accentColor.g, accentColor.b, 0.22f);
+        input.caretColor = accentColor;
+        input.customCaretColor = true;
+
+        GameObject textObj = existing != null ? existing.Find("Text")?.gameObject : null;
+        if (textObj == null)
+        {
+            textObj = new GameObject("Text");
+            textObj.transform.SetParent(root.transform, false);
+        }
+        RectTransform textRect = textObj.GetComponent<RectTransform>();
+        if (textRect == null)
+        {
+            textRect = textObj.AddComponent<RectTransform>();
+        }
+        textRect.anchorMin = new Vector2(0f, 0f);
+        textRect.anchorMax = new Vector2(1f, 1f);
+        textRect.offsetMin = new Vector2(16f, 10f);
+        textRect.offsetMax = new Vector2(-16f, -10f);
+        Text text = textObj.GetComponent<Text>() ?? textObj.AddComponent<Text>();
+        text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        text.fontSize = bodySize + 1;
+        text.alignment = TextAnchor.MiddleLeft;
+        text.color = textColor;
+        text.supportRichText = false;
+        input.textComponent = text;
+
+        GameObject placeholderObj = existing != null ? existing.Find("Placeholder")?.gameObject : null;
+        if (placeholderObj == null)
+        {
+            placeholderObj = new GameObject("Placeholder");
+            placeholderObj.transform.SetParent(root.transform, false);
+        }
+        RectTransform placeRect = placeholderObj.GetComponent<RectTransform>();
+        if (placeRect == null)
+        {
+            placeRect = placeholderObj.AddComponent<RectTransform>();
+        }
+        placeRect.anchorMin = new Vector2(0f, 0f);
+        placeRect.anchorMax = new Vector2(1f, 1f);
+        placeRect.offsetMin = new Vector2(16f, 10f);
+        placeRect.offsetMax = new Vector2(-16f, -10f);
+        Text placeholder = placeholderObj.GetComponent<Text>() ?? placeholderObj.AddComponent<Text>();
+        placeholder.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        placeholder.fontSize = bodySize + 1;
+        placeholder.alignment = TextAnchor.MiddleLeft;
+        placeholder.color = new Color(textColor.r, textColor.g, textColor.b, 0.45f);
+        placeholder.text = "Ask the AI...";
+        placeholder.resizeTextForBestFit = false;
+        input.placeholder = placeholder;
+        input.targetGraphic = image;
+        Navigation navigation = input.navigation;
+        navigation.mode = Navigation.Mode.None;
+        input.navigation = navigation;
+        return input;
+    }
+
     private static void EnsureEventSystem()
     {
         EventSystem existing = EventSystem.current != null ? EventSystem.current : Object.FindObjectOfType<EventSystem>();
@@ -1560,12 +2019,20 @@ public class CppQuestionPadCinematic : MonoBehaviour
         backButton.gameObject.SetActive(false);
         hintButton.onClick.RemoveAllListeners();
         hintButton.gameObject.SetActive(false);
+        aiButton.onClick.RemoveAllListeners();
+        aiButton.gameObject.SetActive(false);
         retryWrongButton.onClick.RemoveAllListeners();
         retryWrongButton.gameObject.SetActive(false);
         languageRoButton.onClick.RemoveAllListeners();
         languageRoButton.gameObject.SetActive(false);
         languageEnButton.onClick.RemoveAllListeners();
         languageEnButton.gameObject.SetActive(false);
+        if (aiChatPanel != null) aiChatPanel.gameObject.SetActive(false);
+        if (aiChatTitleText != null) aiChatTitleText.gameObject.SetActive(false);
+        if (aiChatHistoryText != null) aiChatHistoryText.gameObject.SetActive(false);
+        if (aiChatInput != null) aiChatInput.gameObject.SetActive(false);
+        if (aiChatSendButton != null) aiChatSendButton.gameObject.SetActive(false);
+        if (aiChatBackButton != null) aiChatBackButton.gameObject.SetActive(false);
         HideOptions();
     }
 
@@ -1592,9 +2059,16 @@ public class CppQuestionPadCinematic : MonoBehaviour
         nextButton.gameObject.SetActive(false);
         backButton.gameObject.SetActive(false);
         hintButton.gameObject.SetActive(false);
+        aiButton.gameObject.SetActive(false);
         retryWrongButton.gameObject.SetActive(false);
         languageRoButton.gameObject.SetActive(false);
         languageEnButton.gameObject.SetActive(false);
+        if (aiChatPanel != null) aiChatPanel.gameObject.SetActive(false);
+        if (aiChatTitleText != null) aiChatTitleText.gameObject.SetActive(false);
+        if (aiChatHistoryText != null) aiChatHistoryText.gameObject.SetActive(false);
+        if (aiChatInput != null) aiChatInput.gameObject.SetActive(false);
+        if (aiChatSendButton != null) aiChatSendButton.gameObject.SetActive(false);
+        if (aiChatBackButton != null) aiChatBackButton.gameObject.SetActive(false);
         HideOptions();
     }
 
