@@ -25,7 +25,7 @@ public class PacketManager {
             case 18: return new FetchCompletedTasksResponsePacket();
             case 21: return new ClaimQRLoginPacket();
         }
-        
+
         return null;
     }
 }
