@@ -20,6 +20,7 @@ namespace NeuroKey.Network
                 22 => new ChildAuthResponsePacket(),
                 23 => new FetchChildStatsPacket(),
                 24 => new FetchChildStatsResponsePacket(),
+                25 => new VerifySessionPacket(),
                 _ => throw new Exception("Unknown packet ID: " + id),
             };
         }
@@ -54,6 +55,7 @@ namespace NeuroKey.Network
         public bool Success;
         public long ChildId;
         public string ChildName;
+        public string SessionToken;
         public ChildAuthResponsePacket() : base(22) { }
         protected override void Write(BinaryWriter writer)
         {
@@ -62,6 +64,7 @@ namespace NeuroKey.Network
             if (BitConverter.IsLittleEndian) Array.Reverse(longBytes);
             writer.Write(longBytes);
             PutString(writer, ChildName);
+            PutString(writer, SessionToken);
         }
         protected override void Read(BinaryReader reader)
         {
@@ -70,6 +73,29 @@ namespace NeuroKey.Network
             if (BitConverter.IsLittleEndian) Array.Reverse(longBytes);
             ChildId = BitConverter.ToInt64(longBytes, 0);
             ChildName = ReadString(reader);
+            SessionToken = ReadString(reader);
+        }
+    }
+
+    public class VerifySessionPacket : Packet
+    {
+        public long ChildId;
+        public string SessionToken;
+        public VerifySessionPacket(long childId, string sessionToken) : base(25) { ChildId = childId; SessionToken = sessionToken; }
+        public VerifySessionPacket() : base(25) { }
+        protected override void Write(BinaryWriter writer)
+        {
+            byte[] longBytes = BitConverter.GetBytes(ChildId);
+            if (BitConverter.IsLittleEndian) Array.Reverse(longBytes);
+            writer.Write(longBytes);
+            PutString(writer, SessionToken);
+        }
+        protected override void Read(BinaryReader reader)
+        {
+            byte[] longBytes = reader.ReadBytes(8);
+            if (BitConverter.IsLittleEndian) Array.Reverse(longBytes);
+            ChildId = BitConverter.ToInt64(longBytes, 0);
+            SessionToken = ReadString(reader);
         }
     }
 

@@ -52,3 +52,4 @@
 # Misc
 /.DS_Store
 Thumbs.db
+session.json

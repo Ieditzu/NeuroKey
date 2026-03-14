@@ -28,6 +28,7 @@ public class PacketManager {
             case 22 -> new ChildAuthResponsePacket();
             case 23 -> new FetchChildStatsPacket();
             case 24 -> new FetchChildStatsResponsePacket();
+            case 25 -> new VerifySessionPacket();
 
             default -> throw new PacketException("Unknown packet ID: " + id);
         };

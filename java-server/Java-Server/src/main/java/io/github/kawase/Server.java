@@ -35,6 +35,7 @@ public class Server {
     private TaskService taskService;
     private ChildService childService;
     private GoalService goalService;
+    private io.github.kawase.database.services.GameSessionService gameSessionService;
 
     public void init(final int port,  final ApplicationContext applicationContext) {
         this.packetManager = new PacketManager();
@@ -47,6 +48,7 @@ public class Server {
         this.taskService = context.getBean(TaskService.class);
         this.childService = context.getBean(ChildService.class);
         this.goalService = context.getBean(GoalService.class);
+        this.gameSessionService = context.getBean(io.github.kawase.database.services.GameSessionService.class);
 
         this.socket = new ServerSocket(port);
 

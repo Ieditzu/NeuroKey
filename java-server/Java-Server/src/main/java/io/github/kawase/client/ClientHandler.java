@@ -23,9 +23,9 @@ public class ClientHandler {
             final Packet packet = Packet.construct(byteBuffer, client.getPacketManager());
             currentPacketId = packet.getId();
 
-            // Handshake and Registration/Auth/QR Login are the only ones allowed before auth
+            // Handshake and Registration/Auth/QR Login/Verify Session are the only ones allowed before auth
             // we should prob not hard code this but oh well.
-            if (currentPacketId != 1 && currentPacketId != 2 && currentPacketId != 3 && currentPacketId != 19 && !client.isAuth()) {
+            if (currentPacketId != 1 && currentPacketId != 2 && currentPacketId != 3 && currentPacketId != 19 && currentPacketId != 25 && !client.isAuth()) {
                 connection.send(new ActionResponsePacket(currentPacketId, false, "Unauthorized. Please log in first.", -1).encode());
                 return;
             }
@@ -232,11 +232,14 @@ public class ClientHandler {
                             
                             // Verify that the parent claiming the token actually owns this child
                             if (child.getParent().getId().equals(client.getParentId())) {
+                                final String sessionToken = java.util.UUID.randomUUID().toString();
+                                Server.getInstance().getGameSessionService().createOrUpdateSession(child.getId(), sessionToken);
+
                                 gameHandler.getClient().setAuth(true);
                                 gameHandler.getClient().setChildId(child.getId());
                                 gameHandler.getClient().setParentId(child.getParent().getId());
                                 
-                                gameHandler.getConnection().send(new ChildAuthResponsePacket(true, child.getId(), child.getName()).encode());
+                                gameHandler.getConnection().send(new ChildAuthResponsePacket(true, child.getId(), child.getName(), sessionToken).encode());
                                 connection.send(new ActionResponsePacket(packet.getId(), true, "Child logged into game successfully", child.getId()).encode());
                             } else {
                                 connection.send(new ActionResponsePacket(packet.getId(), false, "Access denied: You don't own this child", -1).encode());
@@ -246,6 +249,30 @@ public class ClientHandler {
                         }
                     } else {
                         connection.send(new ActionResponsePacket(packet.getId(), false, "Invalid or expired QR code", -1).encode());
+                    }
+                }
+
+                case VerifySessionPacket verifySessionPacket -> {
+                    System.out.println("Verifying session for child " + verifySessionPacket.getChildId());
+                    final boolean isValid = Server.getInstance().getGameSessionService().verifySession(
+                            verifySessionPacket.getChildId(), 
+                            verifySessionPacket.getSessionToken()
+                    );
+                    
+                    if (isValid) {
+                        final var childOpt = Server.getInstance().getChildService().findById(verifySessionPacket.getChildId());
+                        if (childOpt.isPresent()) {
+                            final var child = childOpt.get();
+                            client.setAuth(true);
+                            client.setChildId(child.getId());
+                            client.setParentId(child.getParent().getId());
+                            
+                            connection.send(new ChildAuthResponsePacket(true, child.getId(), child.getName(), verifySessionPacket.getSessionToken()).encode());
+                        } else {
+                            connection.send(new ChildAuthResponsePacket(false, -1, "", "").encode());
+                        }
+                    } else {
+                        connection.send(new ChildAuthResponsePacket(false, -1, "", "").encode());
                     }
                 }
 
