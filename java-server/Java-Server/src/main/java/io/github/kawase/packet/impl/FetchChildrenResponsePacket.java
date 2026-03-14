@@ -27,12 +27,12 @@ public class FetchChildrenResponsePacket extends Packet {
     private List<ChildDto> children = new ArrayList<>();
 
     public FetchChildrenResponsePacket(final List<ChildDto> children) {
-        super(0x0D);
+        super(16);
         this.children = children;
     }
 
     public FetchChildrenResponsePacket() {
-        super(0x0D);
+        super(16);
     }
 
     @Override

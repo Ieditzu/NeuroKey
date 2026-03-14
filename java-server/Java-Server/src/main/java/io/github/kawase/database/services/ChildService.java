@@ -53,6 +53,11 @@ public class ChildService {
         });
     }
 
+    @Transactional
+    public void deleteChild(final Long childId) {
+        childRepository.deleteById(childId);
+    }
+
     @Transactional(readOnly = true)
     public java.util.List<io.github.kawase.database.entity.CompletedTask> getCompletedTasks(final Long childId) {
         return childRepository.findById(childId)

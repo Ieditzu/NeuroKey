@@ -303,6 +303,19 @@ public class ClientHandler {
                     connection.send(new ActionResponsePacket(packet.getId(), true, "PFP updated successfully", -1).encode());
                 }
 
+                case RemoveChildPacket removeChildPacket -> {
+                    System.out.println("Remove Child: " + removeChildPacket.getChildId());
+                    final var child = Server.getInstance().getChildService().findById(removeChildPacket.getChildId())
+                            .orElseThrow(() -> new RuntimeException("Child not found"));
+
+                    if (!child.getParent().getId().equals(client.getParentId())) {
+                        throw new RuntimeException("Access denied: This child does not belong to you.");
+                    }
+
+                    Server.getInstance().getChildService().deleteChild(removeChildPacket.getChildId());
+                    connection.send(new ActionResponsePacket(packet.getId(), true, "Child removed successfully", removeChildPacket.getChildId()).encode());
+                }
+
                 default -> throw new IllegalStateException("Unexpected Packet: " + packet);
             }
         } catch (Exception e) {
