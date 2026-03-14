@@ -21,12 +21,7 @@ public static class FpsBootstrap
         player.transform.position = spawnPos;
         player.AddComponent<FirstPersonControllerSimple>();
 
-        // Keep legacy sphere disabled/hidden so only FPS player is visible at spawn.
-        BeanController sphere = Object.FindObjectOfType<BeanController>();
-        if (sphere != null)
-        {
-            sphere.gameObject.SetActive(false);
-        }
+        // Ensure the bean is not disabled when FPS is spawned!
     }
 
     private static Vector3 GuessSpawnPosition()
