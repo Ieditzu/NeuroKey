@@ -42,7 +42,12 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardActions
+import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -56,6 +61,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.barcode.common.BarcodeScannerOptions
 import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.Executors
 
@@ -298,10 +305,10 @@ fun QRScannerSimulatorDialog(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     singleLine = true,
-                    keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(
-                        imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Done
                     ),
-                    keyboardActions = androidx.compose.ui.text.input.KeyboardActions(
+                    keyboardActions = KeyboardActions(
                         onDone = {
                             keyboardController?.hide()
                             if (manualToken.isNotBlank()) onConfirm(manualToken)
@@ -353,8 +360,8 @@ fun QRScannerView(onCodeScanned: (String) -> Unit) {
                 }
 
                 val scanner = BarcodeScanning.getClient(
-                    com.google.mlkit.vision.barcode.common.BarcodeScannerOptions.Builder()
-                        .setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_QR_CODE)
+                    BarcodeScannerOptions.Builder()
+                        .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
                         .build()
                 )
                 
@@ -602,8 +609,8 @@ fun SettingsScreen(viewModel: SocketViewModel) {
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     singleLine = true,
-                    keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
-                    keyboardActions = androidx.compose.ui.text.input.KeyboardActions(onDone = { keyboardController?.hide() }),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = viewModel.primaryColor.value,
                         focusedLabelColor = viewModel.primaryColor.value,
@@ -871,7 +878,7 @@ fun AddGoalDialog(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     singleLine = true,
-                    keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Next),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = primaryColor,
                         focusedLabelColor = primaryColor,
@@ -888,10 +895,10 @@ fun AddGoalDialog(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     singleLine = true,
-                    keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(
-                        imeAction = if (usePoints) androidx.compose.ui.text.input.ImeAction.Next else androidx.compose.ui.text.input.ImeAction.Done
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = if (usePoints) ImeAction.Next else ImeAction.Done
                     ),
-                    keyboardActions = androidx.compose.ui.text.input.KeyboardActions(
+                    keyboardActions = KeyboardActions(
                         onDone = { keyboardController?.hide() }
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -932,14 +939,13 @@ fun AddGoalDialog(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
                         singleLine = true,
-                        keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(
-                            imeAction = androidx.compose.ui.text.input.ImeAction.Done,
-                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                        keyboardOptions = KeyboardOptions(
+                            imeAction = ImeAction.Done,
+                            keyboardType = KeyboardType.Number
                         ),
-                        keyboardActions = androidx.compose.ui.text.input.KeyboardActions(
+                        keyboardActions = KeyboardActions(
                             onDone = { keyboardController?.hide() }
-                        ),
-                        colors = OutlinedTextFieldDefaults.colors(
+                        ),                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = primaryColor,
                             focusedLabelColor = primaryColor,
                             unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
