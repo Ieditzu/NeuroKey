@@ -1,7 +1,11 @@
 package io.github.kawase.packet;
 
 import io.github.kawase.exceptions.PacketException;
-import io.github.kawase.packet.impl.*;
+import io.github.kawase.packet.impl.auth.*;
+import io.github.kawase.packet.impl.child.*;
+import io.github.kawase.packet.impl.core.*;
+import io.github.kawase.packet.impl.game.*;
+import io.github.kawase.packet.impl.qr.*;
 
 public class PacketManager {
     public Packet createPacket(final int id) {
