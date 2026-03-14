@@ -2,7 +2,11 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
+[ExecuteAlways]
 public class SphereRiftPortalSequence : MonoBehaviour
 {
     private enum QuizLanguage
@@ -35,18 +39,16 @@ public class SphereRiftPortalSequence : MonoBehaviour
         }
     }
 
-    [SerializeField] private float portalHeightOffset = 0.48f;
-    [SerializeField] private float triggerRadius = 1.35f;
-    [SerializeField] private float pullRadius = 1.55f;
-    [SerializeField] private float pullDuration = 0.38f;
+    [SerializeField] private float stationHeightOffset = 0.22f;
+    [SerializeField] private float triggerRadius = 1.2f;
     [SerializeField] private float reenterCooldown = 2f;
-    [SerializeField] private float spinSpeed = 82f;
-    [SerializeField] private float pulseSpeed = 3.6f;
     [SerializeField] private float fadeToWhiteDuration = 0.55f;
     [SerializeField] private float textFadeDelay = 0.08f;
-    [SerializeField] private Color riftCoreColor = new Color(0.94f, 0.98f, 1f, 0.98f);
-    [SerializeField] private Color riftRingColor = new Color(0.58f, 0.9f, 1f, 0.96f);
-    [SerializeField] private Color riftGlowColor = new Color(0.96f, 0.98f, 1f, 1f);
+    [SerializeField] private Color stationBaseColor = new Color(0.08f, 0.12f, 0.16f, 1f);
+    [SerializeField] private Color stationScreenColor = new Color(0.2f, 0.78f, 1f, 0.96f);
+    [SerializeField] private Color stationGlowColor = new Color(0.85f, 0.95f, 1f, 1f);
+    [SerializeField] private Color pythonBlueColor = new Color(0.2f, 0.45f, 0.78f, 1f);
+    [SerializeField] private Color pythonYellowColor = new Color(1f, 0.84f, 0.2f, 1f);
 
     private static Canvas overlayCanvas;
     private static Image whiteImage;
@@ -141,33 +143,12 @@ public class SphereRiftPortalSequence : MonoBehaviour
     };
 
     private SphereCollider portalTrigger;
-    private Transform portalRoot;
-    private Transform arrowRoot;
-    private Transform arrowBody;
-    private Transform arrowHead;
-    private Transform[] portalVisualRoots;
-    private Transform[] outerRings;
-    private Transform[] innerRings;
-    private Transform[] cores;
-    private Light[] portalLights;
-    private static readonly Vector3[] PortalOffsets =
-    {
-        new Vector3(-0.42f, 0.02f, 0f),
-        new Vector3(0f, 0.34f, 0f),
-        new Vector3(0.45f, 0.08f, 0f)
-    };
-    private static readonly Color[] PortalCoreColors =
-    {
-        new Color(0.95f, 0.88f, 1f, 0.98f),
-        new Color(0.9f, 0.98f, 1f, 0.98f),
-        new Color(1f, 0.93f, 0.86f, 0.98f)
-    };
-    private static readonly Color[] PortalRingColors =
-    {
-        new Color(0.73f, 0.48f, 1f, 0.96f),
-        new Color(0.3f, 0.88f, 1f, 0.96f),
-        new Color(1f, 0.67f, 0.36f, 0.96f)
-    };
+    private Transform stationRoot;
+    private Transform stationPedestal;
+    private Transform stationScreen;
+    private Transform stationFrame;
+    private Transform stationMarker;
+    private Light stationLight;
     private bool running;
     private bool optionSelected;
     private bool answerCorrect;
@@ -180,15 +161,45 @@ public class SphereRiftPortalSequence : MonoBehaviour
 
     private void Awake()
     {
-        EnsurePortalVisual();
+        if (!Application.isPlaying)
+        {
+            EnsureStationVisual();
+            EnsurePortalTrigger();
+            return;
+        }
+
+        EnsureStationVisual();
         EnsurePortalTrigger();
         EnsureOverlay();
         ResetOverlay();
     }
 
+    private void OnEnable()
+    {
+        if (!Application.isPlaying)
+        {
+            EnsureStationVisual();
+            EnsurePortalTrigger();
+        }
+    }
+
+    private void OnValidate()
+    {
+        if (!Application.isPlaying)
+        {
+            EnsureStationVisual();
+            EnsurePortalTrigger();
+        }
+    }
+
     private void Update()
     {
-        AnimatePortalVisual();
+        if (!Application.isPlaying)
+        {
+            return;
+        }
+
+        AnimateStationVisual();
 
         if (running)
         {
@@ -200,18 +211,17 @@ public class SphereRiftPortalSequence : MonoBehaviour
             return;
         }
 
-        int portalIndex = GetClosestPortalIndex(playerRoot.position);
-        Vector3 portalPosition = portalIndex >= 0 ? portalVisualRoots[portalIndex].position : GetClosestPortalCenter(playerRoot.position);
+        Vector3 stationPosition = GetStationInteractionPoint();
         Vector3 flatPlayer = new Vector3(playerRoot.position.x, 0f, playerRoot.position.z);
-        Vector3 flatPortal = new Vector3(portalPosition.x, 0f, portalPosition.z);
-        float distance = Vector3.Distance(flatPlayer, flatPortal);
-        if (distance <= pullRadius)
+        Vector3 flatStation = new Vector3(stationPosition.x, 0f, stationPosition.z);
+        float distance = Vector3.Distance(flatPlayer, flatStation);
+        if (distance <= triggerRadius)
         {
-            StartCoroutine(PlaySequence(sphere, fps, playerRoot, portalPosition, portalIndex));
+            StartCoroutine(PlaySequence(sphere, fps, playerRoot, stationPosition));
         }
     }
 
-    private IEnumerator PlaySequence(BeanController sphere, FirstPersonControllerSimple fps, Transform playerRoot, Vector3 portalPosition, int portalIndex)
+    private IEnumerator PlaySequence(BeanController sphere, FirstPersonControllerSimple fps, Transform playerRoot, Vector3 stationPosition)
     {
         running = true;
         if (portalTrigger != null)
@@ -232,252 +242,218 @@ public class SphereRiftPortalSequence : MonoBehaviour
             fps.SetCameraControlEnabled(false);
         }
 
-        Rigidbody rb = sphere != null ? sphere.GetComponent<Rigidbody>() : null;
-        if (rb != null)
+        Vector3 facingDirection = (stationPosition - playerRoot.position);
+        facingDirection.y = 0f;
+        if (facingDirection.sqrMagnitude > 0.0001f)
         {
-            rb.velocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
+            Quaternion targetRotation = Quaternion.LookRotation(facingDirection.normalized, Vector3.up);
+            SetPlayerPositionAndRotation(sphere, fps, playerRoot.position, targetRotation);
         }
 
-        Vector3 start = playerRoot.position;
-        Vector3 end = portalPosition;
-        Quaternion startRotation = playerRoot.rotation;
-        Quaternion targetRotation = Quaternion.LookRotation((portalPosition - start).normalized, Vector3.up);
-
-        float elapsed = 0f;
-        while (elapsed < pullDuration)
-        {
-            elapsed += Time.deltaTime;
-            float t = EaseInOut(elapsed / Mathf.Max(0.01f, pullDuration));
-            float swirl = Mathf.Sin(t * Mathf.PI) * 0.12f;
-            Vector3 arc = transform.right * swirl;
-            Vector3 position = Vector3.Lerp(start, end, t) + arc;
-            SetPlayerPositionAndRotation(sphere, fps, position, Quaternion.Slerp(startRotation, targetRotation, t));
-            yield return null;
-        }
-
-        SetPlayerPositionAndRotation(sphere, fps, end, targetRotation);
         yield return FadeWhite(0f, 1f, fadeToWhiteDuration);
         if (textFadeDelay > 0f)
         {
             yield return new WaitForSeconds(textFadeDelay);
         }
 
-        if (portalIndex == 2)
-        {
-            yield return RunRightPortalPythonQuiz();
-        }
-        else if (centerText != null)
-        {
-            centerText.text = "test";
-            centerText.gameObject.SetActive(true);
-            yield return new WaitForSeconds(0.5f);
-        }
+        yield return RunRightPortalPythonQuiz();
 
         yield return FinishPortalSequence(sphere, fps);
     }
 
-    private void EnsurePortalVisual()
+    private void EnsureStationVisual()
     {
-        if (portalRoot != null)
+        if (stationRoot != null)
         {
             return;
         }
 
-        Transform existing = transform.Find("RiftPortalVisual");
+        Transform existing = transform.Find("PythonQuestionStation");
         if (existing != null)
         {
-            Destroy(existing.gameObject);
+            DestroySafe(existing.gameObject);
         }
 
-        portalRoot = new GameObject("RiftPortalVisual").transform;
-        portalRoot.SetParent(transform, false);
-        portalRoot.localPosition = new Vector3(0f, portalHeightOffset, 0f);
-        portalRoot.localRotation = Quaternion.identity;
+        stationRoot = new GameObject("PythonQuestionStation").transform;
+        stationRoot.SetParent(transform, false);
+        stationRoot.localPosition = new Vector3(0f, stationHeightOffset, 0f);
+        stationRoot.localRotation = Quaternion.identity;
 
-        portalVisualRoots = new Transform[PortalOffsets.Length];
-        outerRings = new Transform[PortalOffsets.Length];
-        innerRings = new Transform[PortalOffsets.Length];
-        cores = new Transform[PortalOffsets.Length];
-        portalLights = new Light[PortalOffsets.Length];
+        stationPedestal = GameObject.CreatePrimitive(PrimitiveType.Cylinder).transform;
+        stationPedestal.name = "Pedestal";
+        stationPedestal.SetParent(stationRoot, false);
+        stationPedestal.localScale = new Vector3(0.42f, 0.12f, 0.42f);
+        stationPedestal.localPosition = new Vector3(0f, -0.08f, 0f);
+        DestroySafe(stationPedestal.GetComponent<Collider>());
+        ApplyEmissionMaterial(stationPedestal.gameObject, stationBaseColor, 1.4f);
 
-        for (int i = 0; i < PortalOffsets.Length; i++)
-        {
-            Transform singleRoot = new GameObject("Portal" + i).transform;
-            singleRoot.SetParent(portalRoot, false);
-            singleRoot.localPosition = PortalOffsets[i];
-            singleRoot.localRotation = Quaternion.identity;
-            portalVisualRoots[i] = singleRoot;
+        stationFrame = GameObject.CreatePrimitive(PrimitiveType.Cube).transform;
+        stationFrame.name = "SupportStem";
+        stationFrame.SetParent(stationRoot, false);
+        stationFrame.localScale = new Vector3(0.06f, 0.14f, 0.06f);
+        stationFrame.localPosition = new Vector3(0f, 0.0f, 0.02f);
+        DestroySafe(stationFrame.GetComponent<Collider>());
+        ApplyEmissionMaterial(stationFrame.gameObject, stationBaseColor, 2.1f);
 
-            Transform core = GameObject.CreatePrimitive(PrimitiveType.Sphere).transform;
-            core.name = "Core";
-            core.SetParent(singleRoot, false);
-            core.localScale = new Vector3(0.17f, 0.28f, 0.07f);
-            Destroy(core.GetComponent<Collider>());
-            ApplyEmissionMaterial(core.gameObject, PortalCoreColors[i], 6.2f);
-            cores[i] = core;
+        stationScreen = GameObject.CreatePrimitive(PrimitiveType.Cube).transform;
+        stationScreen.name = "Screen";
+        stationScreen.SetParent(stationRoot, false);
+        stationScreen.localPosition = new Vector3(0f, 0.16f, -0.045f);
+        stationScreen.localRotation = Quaternion.identity;
+        stationScreen.localScale = new Vector3(0.36f, 0.22f, 0.03f);
+        DestroySafe(stationScreen.GetComponent<Collider>());
+        ApplyEmissionMaterial(stationScreen.gameObject, stationScreenColor, 5.5f);
 
-            Transform outerRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder).transform;
-            outerRing.name = "OuterRing";
-            outerRing.SetParent(singleRoot, false);
-            outerRing.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            outerRing.localScale = new Vector3(0.22f, 0.016f, 0.22f);
-            Destroy(outerRing.GetComponent<Collider>());
-            ApplyEmissionMaterial(outerRing.gameObject, PortalRingColors[i], 8.8f);
-            outerRings[i] = outerRing;
+        stationMarker = CreatePythonLogoVisual();
+        stationMarker.name = "PythonLogoMarker";
+        stationMarker.SetParent(stationRoot, false);
+        stationMarker.localPosition = new Vector3(0f, 0.5f, 0f);
+        stationMarker.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        stationMarker.localScale = new Vector3(0.11525f, 0.324f, 0.5f);
 
-            Transform innerRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder).transform;
-            innerRing.name = "InnerRing";
-            innerRing.SetParent(singleRoot, false);
-            innerRing.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            innerRing.localScale = new Vector3(0.15f, 0.011f, 0.15f);
-            Destroy(innerRing.GetComponent<Collider>());
-            ApplyEmissionMaterial(innerRing.gameObject, Color.Lerp(PortalCoreColors[i], Color.white, 0.35f), 7.6f);
-            innerRings[i] = innerRing;
-
-            GameObject lightRoot = new GameObject("RiftLight");
-            lightRoot.transform.SetParent(singleRoot, false);
-            Light portalLight = lightRoot.AddComponent<Light>();
-            portalLight.type = LightType.Point;
-            portalLight.range = 18f;
-            portalLight.intensity = 9.5f;
-            portalLight.color = Color.Lerp(PortalRingColors[i], Color.white, 0.3f);
-            portalLights[i] = portalLight;
-        }
-
-        arrowRoot = new GameObject("GuideMarker").transform;
-        arrowRoot.SetParent(portalRoot, false);
-        arrowRoot.localPosition = new Vector3(0f, 0.8f, 0f);
-        arrowRoot.localRotation = Quaternion.identity;
-
-        arrowBody = GameObject.CreatePrimitive(PrimitiveType.Cube).transform;
-        arrowBody.name = "MarkBody";
-        arrowBody.SetParent(arrowRoot, false);
-        arrowBody.localScale = new Vector3(0.012f, 0.34f, 0.008f);
-        arrowBody.localPosition = new Vector3(0f, 0.06f, 0f);
-        Destroy(arrowBody.GetComponent<Collider>());
-        ApplyEmissionMaterial(arrowBody.gameObject, riftGlowColor, 4.8f);
-
-        arrowHead = GameObject.CreatePrimitive(PrimitiveType.Cube).transform;
-        arrowHead.name = "MarkDot";
-        arrowHead.SetParent(arrowRoot, false);
-        arrowHead.localScale = new Vector3(0.02f, 0.02f, 0.02f);
-        arrowHead.localPosition = new Vector3(0f, -0.18f, 0f);
-        arrowHead.localRotation = Quaternion.identity;
-        Destroy(arrowHead.GetComponent<Collider>());
-        ApplyEmissionMaterial(arrowHead.gameObject, riftGlowColor, 5.8f);
-
+        GameObject lightRoot = new GameObject("StationLight");
+        lightRoot.transform.SetParent(stationRoot, false);
+        lightRoot.transform.localPosition = new Vector3(0f, 0.26f, 0f);
+        stationLight = lightRoot.AddComponent<Light>();
+        stationLight.type = LightType.Point;
+        stationLight.range = 7f;
+        stationLight.intensity = 3.2f;
+        stationLight.color = stationGlowColor;
     }
 
-    private void AnimatePortalVisual()
+    private void AnimateStationVisual()
     {
-        if (portalRoot == null)
+        if (stationRoot == null)
         {
             return;
         }
 
         float time = Time.time;
-        portalRoot.localPosition = new Vector3(0f, portalHeightOffset, 0f);
-
-        if (arrowRoot != null)
+        stationRoot.localPosition = new Vector3(0f, stationHeightOffset, 0f);
+        if (stationMarker != null)
         {
-            float arrowBob = Mathf.Sin(time * 2.2f) * 0.06f;
-            float arrowPulse = 1f + Mathf.Sin(time * 3.5f) * 0.08f;
-            arrowRoot.localPosition = new Vector3(0f, 0.8f + arrowBob, 0f);
-            arrowRoot.localScale = Vector3.one * arrowPulse;
+            float bob = Mathf.Sin(time * 2.1f) * 0.05f;
+            float pulse = 1f + Mathf.Sin(time * 3f) * 0.08f;
+            stationMarker.localPosition = new Vector3(0f, 0.5f + bob, 0f);
+            stationMarker.localScale = new Vector3(0.11525f, 0.324f, 0.5f) * pulse;
         }
 
-        if (portalVisualRoots == null)
+        if (stationScreen != null)
         {
-            return;
+            float screenPulse = 1f + Mathf.Sin(time * 2.6f) * 0.04f;
+            stationScreen.localScale = new Vector3(0.36f, 0.22f, 0.03f * screenPulse);
         }
 
-        for (int i = 0; i < portalVisualRoots.Length; i++)
+        if (stationLight != null)
         {
-            if (portalVisualRoots[i] == null)
-            {
-                continue;
-            }
-
-            float phase = time + (i * 0.5f);
-            portalVisualRoots[i].localPosition = PortalOffsets[i] + new Vector3(0f, Mathf.Sin(phase * 1.45f) * 0.04f, 0f);
-
-            if (outerRings[i] != null)
-            {
-                outerRings[i].Rotate(Vector3.forward, spinSpeed * Time.deltaTime, Space.Self);
-            }
-
-            if (innerRings[i] != null)
-            {
-                innerRings[i].Rotate(Vector3.forward, -spinSpeed * 1.55f * Time.deltaTime, Space.Self);
-            }
-
-            if (cores[i] != null)
-            {
-                float pulse = 1f + Mathf.Sin(phase * pulseSpeed) * 0.08f;
-                cores[i].localScale = new Vector3(0.17f, 0.28f, 0.07f) * pulse;
-            }
-
-            if (portalLights[i] != null)
-            {
-                portalLights[i].intensity = 9.5f + Mathf.Sin(phase * 4f) * 1.4f;
-                portalLights[i].range = 18f + Mathf.Sin(phase * 2.5f) * 1.1f;
-            }
+            stationLight.intensity = 3.2f + Mathf.Sin(time * 2.4f) * 0.45f;
+            stationLight.range = 7f + Mathf.Sin(time * 1.9f) * 0.35f;
         }
     }
 
-    private Vector3 GetClosestPortalCenter(Vector3 playerPosition)
+    private Vector3 GetStationInteractionPoint()
     {
-        if (portalRoot == null || portalVisualRoots == null || portalVisualRoots.Length == 0)
+        if (stationRoot == null)
         {
-            return transform.position + Vector3.up * portalHeightOffset;
+            return transform.position + Vector3.up * stationHeightOffset;
         }
 
-        Vector3 best = portalRoot.position;
-        float bestDistance = float.MaxValue;
-        for (int i = 0; i < portalVisualRoots.Length; i++)
+        if (stationScreen != null)
         {
-            if (portalVisualRoots[i] == null)
-            {
-                continue;
-            }
-
-            float distance = Vector3.SqrMagnitude(playerPosition - portalVisualRoots[i].position);
-            if (distance < bestDistance)
-            {
-                bestDistance = distance;
-                best = portalVisualRoots[i].position;
-            }
+            return stationScreen.position + (transform.forward * 0.18f);
         }
 
-        return best;
+        return stationRoot.position + (transform.forward * 0.35f);
     }
 
-    private int GetClosestPortalIndex(Vector3 playerPosition)
+    private Transform CreatePythonLogoVisual()
     {
-        if (portalVisualRoots == null || portalVisualRoots.Length == 0)
+#if UNITY_EDITOR
+        GameObject pythonAsset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/python/source/python.fbx");
+        if (pythonAsset != null)
         {
-            return -1;
-        }
-
-        int bestIndex = -1;
-        float bestDistance = float.MaxValue;
-        for (int i = 0; i < portalVisualRoots.Length; i++)
-        {
-            if (portalVisualRoots[i] == null)
+            GameObject pythonInstance = Instantiate(pythonAsset);
+            pythonInstance.name = "PythonLogo";
+            foreach (Collider collider in pythonInstance.GetComponentsInChildren<Collider>(true))
             {
-                continue;
+                DestroySafe(collider);
             }
 
-            float distance = Vector3.SqrMagnitude(playerPosition - portalVisualRoots[i].position);
-            if (distance < bestDistance)
-            {
-                bestDistance = distance;
-                bestIndex = i;
-            }
+            return pythonInstance.transform;
         }
+#endif
 
-        return bestIndex;
+        Transform fallbackRoot = new GameObject("PythonLogo").transform;
+
+        Transform pythonTop = GameObject.CreatePrimitive(PrimitiveType.Capsule).transform;
+        pythonTop.name = "PythonTop";
+        pythonTop.SetParent(fallbackRoot, false);
+        pythonTop.localScale = new Vector3(0.13f, 0.08f, 0.026f);
+        pythonTop.localRotation = Quaternion.Euler(0f, 0f, 90f);
+        pythonTop.localPosition = new Vector3(-0.036f, 0.052f, 0f);
+        DestroySafe(pythonTop.GetComponent<Collider>());
+        ApplyEmissionMaterial(pythonTop.gameObject, pythonBlueColor, 4.8f);
+
+        Transform pythonTopHead = GameObject.CreatePrimitive(PrimitiveType.Capsule).transform;
+        pythonTopHead.name = "PythonTopHead";
+        pythonTopHead.SetParent(fallbackRoot, false);
+        pythonTopHead.localScale = new Vector3(0.082f, 0.082f, 0.026f);
+        pythonTopHead.localRotation = Quaternion.identity;
+        pythonTopHead.localPosition = new Vector3(0.07f, 0.034f, 0f);
+        DestroySafe(pythonTopHead.GetComponent<Collider>());
+        ApplyEmissionMaterial(pythonTopHead.gameObject, pythonBlueColor, 4.8f);
+
+        Transform pythonTopBridge = GameObject.CreatePrimitive(PrimitiveType.Cube).transform;
+        pythonTopBridge.name = "PythonTopBridge";
+        pythonTopBridge.SetParent(fallbackRoot, false);
+        pythonTopBridge.localScale = new Vector3(0.092f, 0.038f, 0.026f);
+        pythonTopBridge.localPosition = new Vector3(0.015f, 0.045f, 0f);
+        DestroySafe(pythonTopBridge.GetComponent<Collider>());
+        ApplyEmissionMaterial(pythonTopBridge.gameObject, pythonBlueColor, 4.8f);
+
+        Transform pythonBottom = GameObject.CreatePrimitive(PrimitiveType.Capsule).transform;
+        pythonBottom.name = "PythonBottom";
+        pythonBottom.SetParent(fallbackRoot, false);
+        pythonBottom.localScale = new Vector3(0.13f, 0.08f, 0.026f);
+        pythonBottom.localRotation = Quaternion.Euler(0f, 0f, 90f);
+        pythonBottom.localPosition = new Vector3(0.036f, -0.052f, 0f);
+        DestroySafe(pythonBottom.GetComponent<Collider>());
+        ApplyEmissionMaterial(pythonBottom.gameObject, pythonYellowColor, 4.8f);
+
+        Transform pythonBottomHead = GameObject.CreatePrimitive(PrimitiveType.Capsule).transform;
+        pythonBottomHead.name = "PythonBottomHead";
+        pythonBottomHead.SetParent(fallbackRoot, false);
+        pythonBottomHead.localScale = new Vector3(0.082f, 0.082f, 0.026f);
+        pythonBottomHead.localRotation = Quaternion.identity;
+        pythonBottomHead.localPosition = new Vector3(-0.07f, -0.034f, 0f);
+        DestroySafe(pythonBottomHead.GetComponent<Collider>());
+        ApplyEmissionMaterial(pythonBottomHead.gameObject, pythonYellowColor, 4.8f);
+
+        Transform pythonBottomBridge = GameObject.CreatePrimitive(PrimitiveType.Cube).transform;
+        pythonBottomBridge.name = "PythonBottomBridge";
+        pythonBottomBridge.SetParent(fallbackRoot, false);
+        pythonBottomBridge.localScale = new Vector3(0.092f, 0.038f, 0.026f);
+        pythonBottomBridge.localPosition = new Vector3(-0.015f, -0.045f, 0f);
+        DestroySafe(pythonBottomBridge.GetComponent<Collider>());
+        ApplyEmissionMaterial(pythonBottomBridge.gameObject, pythonYellowColor, 4.8f);
+
+        Transform pythonTopEye = GameObject.CreatePrimitive(PrimitiveType.Cube).transform;
+        pythonTopEye.name = "PythonTopEye";
+        pythonTopEye.SetParent(fallbackRoot, false);
+        pythonTopEye.localScale = new Vector3(0.015f, 0.015f, 0.03f);
+        pythonTopEye.localPosition = new Vector3(0.085f, 0.062f, -0.002f);
+        DestroySafe(pythonTopEye.GetComponent<Collider>());
+        ApplyEmissionMaterial(pythonTopEye.gameObject, stationGlowColor, 5.8f);
+
+        Transform pythonBottomEye = GameObject.CreatePrimitive(PrimitiveType.Cube).transform;
+        pythonBottomEye.name = "PythonBottomEye";
+        pythonBottomEye.SetParent(fallbackRoot, false);
+        pythonBottomEye.localScale = new Vector3(0.015f, 0.015f, 0.03f);
+        pythonBottomEye.localPosition = new Vector3(-0.085f, -0.062f, -0.002f);
+        DestroySafe(pythonBottomEye.GetComponent<Collider>());
+        ApplyEmissionMaterial(pythonBottomEye.gameObject, stationGlowColor, 5.8f);
+
+        return fallbackRoot;
     }
 
     private void EnsurePortalTrigger()
@@ -491,7 +467,7 @@ public class SphereRiftPortalSequence : MonoBehaviour
         portalTrigger.isTrigger = true;
         portalTrigger.enabled = true;
         portalTrigger.radius = triggerRadius;
-        portalTrigger.center = new Vector3(0f, portalHeightOffset + 0.16f, 0f);
+        portalTrigger.center = new Vector3(0f, stationHeightOffset + 0.12f, 0f);
     }
 
     private static bool TryGetPlayer(out BeanController sphere, out FirstPersonControllerSimple fps, out Transform playerRoot)
@@ -1085,6 +1061,24 @@ public class SphereRiftPortalSequence : MonoBehaviour
         return t * t * (3f - 2f * t);
     }
 
+    private static void DestroySafe(Object target)
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+#if UNITY_EDITOR
+        if (!Application.isPlaying)
+        {
+            Object.DestroyImmediate(target);
+            return;
+        }
+#endif
+
+        Object.Destroy(target);
+    }
+
     private static void ApplyEmissionMaterial(GameObject target, Color color, float emissionIntensity)
     {
         Renderer renderer = target.GetComponent<Renderer>();
@@ -1133,4 +1127,31 @@ public static class SphereRiftPortalSequenceBootstrap
             target.AddComponent<SphereRiftPortalSequence>();
         }
     }
+
+#if UNITY_EDITOR
+    [InitializeOnLoadMethod]
+    private static void AttachInEditor()
+    {
+        EditorApplication.delayCall += AttachIfNeededInEditor;
+    }
+
+    private static void AttachIfNeededInEditor()
+    {
+        if (Application.isPlaying)
+        {
+            return;
+        }
+
+        GameObject target = GameObject.Find("Sphere");
+        if (target == null)
+        {
+            return;
+        }
+
+        if (target.GetComponent<SphereRiftPortalSequence>() == null)
+        {
+            target.AddComponent<SphereRiftPortalSequence>();
+        }
+    }
+#endif
 }
