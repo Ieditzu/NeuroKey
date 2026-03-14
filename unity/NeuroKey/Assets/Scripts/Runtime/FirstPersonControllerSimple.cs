@@ -13,7 +13,7 @@ public class FirstPersonControllerSimple : MonoBehaviour
     [SerializeField] private float sprintMultiplier = 3.2f;
     [SerializeField] private float temporaryBoostMultiplier = 4f;
     [SerializeField] private float temporaryBoostDuration = 5f;
-    [SerializeField] private float jumpVelocity = 14f;
+    [SerializeField] private float jumpVelocity = 7f;
     [SerializeField] private float coyoteTime = 0.12f;
     [SerializeField] private float gravity = 9.81f;
     [Header("Physics Interaction")]
@@ -87,6 +87,11 @@ public class FirstPersonControllerSimple : MonoBehaviour
         }
     }
 
+    public void SetJumpVelocity(float newVelocity)
+    {
+        jumpVelocity = Mathf.Max(0f, newVelocity);
+    }
+
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
@@ -128,7 +133,7 @@ public class FirstPersonControllerSimple : MonoBehaviour
 
     private void Update()
     {
-        if (GetKeyDownCompat(KeyCode.Tab))
+        if (GetKeyDownCompat(KeyCode.CapsLock))
         {
             ToggleCursor();
         }
@@ -426,8 +431,8 @@ public class FirstPersonControllerSimple : MonoBehaviour
 
         switch (key)
         {
-            case KeyCode.Tab:
-                return keyboard.tabKey;
+            case KeyCode.CapsLock:
+                return keyboard.capsLockKey;
             case KeyCode.LeftShift:
                 return keyboard.leftShiftKey;
             case KeyCode.RightShift:

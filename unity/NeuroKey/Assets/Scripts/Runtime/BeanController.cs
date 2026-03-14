@@ -10,7 +10,7 @@ public class BeanController : MonoBehaviour
     [SerializeField] private float jumpVelocity = 14f;
     [SerializeField] private float groundCheckDistance = 0.45f;
     [SerializeField] private float coyoteTime = 0.12f;
-    [SerializeField] private float mouseSensitivity = 2f;
+    [SerializeField] private float mouseSensitivity = 18f;
     [Header("Bean Visual")]
     [SerializeField] private GameObject beanVisualPrefab;
     [SerializeField] private float beanVisualScale = 4.4f;
@@ -284,8 +284,5 @@ public class BeanController : MonoBehaviour
         }
     }
 
-    public void SetJumpForce(float newJump)
-    {
-        jumpVelocity = Mathf.Max(0f, newJump);
-    }
+    public void SetJumpForce(float newJump) => jumpVelocity = Mathf.Max(0f, newJump);
 }
