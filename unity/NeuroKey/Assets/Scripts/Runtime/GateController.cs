@@ -96,7 +96,7 @@ public class GateController : MonoBehaviour
 
     private bool IsPlayer(Collider other)
     {
-        return other.GetComponent<SphereController>() != null
+        return other.GetComponent<BeanController>() != null
                || other.GetComponent<CharacterController>() != null
                || other.GetComponentInParent<FirstPersonControllerSimple>() != null;
     }

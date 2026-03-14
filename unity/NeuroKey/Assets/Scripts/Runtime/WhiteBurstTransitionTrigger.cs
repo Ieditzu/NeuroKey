@@ -57,7 +57,7 @@ public class WhiteBurstTransitionTrigger : MonoBehaviour
             return;
         }
 
-        var sphere = other.GetComponent<SphereController>();
+        var sphere = other.GetComponent<BeanController>();
         if (sphere == null)
         {
             return;
@@ -81,7 +81,7 @@ public class WhiteBurstTransitionTrigger : MonoBehaviour
         postTransitionSpawnPoint = target;
     }
 
-    private IEnumerator PlaySequence(SphereController sphere)
+    private IEnumerator PlaySequence(BeanController sphere)
     {
         running = true;
         if (cachedTrigger != null)
@@ -329,7 +329,7 @@ public class WhiteBurstTransitionTrigger : MonoBehaviour
         }
     }
 
-    private static void SetSphereVisible(SphereController sphere, bool visible)
+    private static void SetSphereVisible(BeanController sphere, bool visible)
     {
         if (sphere == null)
         {

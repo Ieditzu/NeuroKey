@@ -16,7 +16,7 @@ public class TubeLiftZone : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        var sphere = other.GetComponent<SphereController>();
+        var sphere = other.GetComponent<BeanController>();
         if (sphere == null)
         {
             return;
@@ -28,7 +28,7 @@ public class TubeLiftZone : MonoBehaviour
 
     private void OnTriggerStay(Collider other)
     {
-        var sphere = other.GetComponent<SphereController>();
+        var sphere = other.GetComponent<BeanController>();
         if (sphere == null)
         {
             return;
@@ -70,7 +70,7 @@ public class TubeLiftZone : MonoBehaviour
 
     private void OnTriggerExit(Collider other)
     {
-        var sphere = other.GetComponent<SphereController>();
+        var sphere = other.GetComponent<BeanController>();
         if (sphere == null)
         {
             return;

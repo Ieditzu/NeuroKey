@@ -19,7 +19,7 @@ public class CppAnswerPad : MonoBehaviour
             return;
         }
 
-        if (!TryGetPlayer(other, out SphereController sphere, out FirstPersonControllerSimple fps, out Collider playerCollider))
+        if (!TryGetPlayer(other, out BeanController sphere, out FirstPersonControllerSimple fps, out Collider playerCollider))
         {
             return;
         }
@@ -62,14 +62,14 @@ public class CppAnswerPad : MonoBehaviour
 
     private static bool TryGetPlayer(
         Collider other,
-        out SphereController sphere,
+        out BeanController sphere,
         out FirstPersonControllerSimple fps,
         out Collider playerCollider)
     {
-        sphere = other.GetComponent<SphereController>();
+        sphere = other.GetComponent<BeanController>();
         if (sphere == null)
         {
-            sphere = other.GetComponentInParent<SphereController>();
+            sphere = other.GetComponentInParent<BeanController>();
         }
 
         fps = other.GetComponent<FirstPersonControllerSimple>();

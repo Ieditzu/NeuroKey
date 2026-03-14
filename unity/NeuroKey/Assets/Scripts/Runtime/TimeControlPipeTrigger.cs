@@ -26,7 +26,7 @@ public class TimeControlPipeTrigger : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.GetComponent<SphereController>() == null)
+        if (other.GetComponent<BeanController>() == null)
         {
             return;
         }
@@ -40,7 +40,7 @@ public class TimeControlPipeTrigger : MonoBehaviour
 
     private void OnTriggerExit(Collider other)
     {
-        if (other.GetComponent<SphereController>() == null)
+        if (other.GetComponent<BeanController>() == null)
         {
             return;
         }
