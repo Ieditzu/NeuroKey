@@ -273,8 +273,18 @@ public class FirstPersonControllerSimple : MonoBehaviour
         Touchscreen touchscreen = Touchscreen.current;
         if (touchscreen != null)
         {
-            TouchControl touch = touchscreen.primaryTouch;
-            if (touch.press.isPressed)
+            int skipId = MobileTouchInput.JoystickPointerId;
+            TouchControl touch = null;
+            foreach (TouchControl t in touchscreen.touches)
+            {
+                if (t.press.isPressed && t.touchId.ReadValue() != skipId)
+                {
+                    touch = t;
+                    break;
+                }
+            }
+
+            if (touch != null && touch.press.isPressed)
             {
                 Vector2 pos = touch.position.ReadValue();
                 if (!touchLookActive)

@@ -15,6 +15,9 @@ public class PauseMenuManager : MonoBehaviour
     public static bool IsGamePaused { get; private set; }
 
     private Canvas canvas;
+    private GameObject panel;
+    private GameObject dimmer;
+    private Button pauseButton;
     private GameObject mainPanel;
     private GameObject tasksPanel;
     
@@ -213,6 +216,9 @@ public class PauseMenuManager : MonoBehaviour
         canvasObject.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         canvasObject.AddComponent<GraphicRaycaster>();
 
+        dimmer = CreateUiObject("Dimmer", canvas.transform);
+        Image dimmerImage = dimmer.AddComponent<Image>();
+        dimmerImage.color = new Color(0.03f, 0.04f, 0.08f, 0.82f);
         GameObject dimmer = CreateUiObject("Dimmer", canvas.transform);
         dimmer.AddComponent<Image>().color = new Color(0.03f, 0.04f, 0.08f, 0.82f);
         StretchToFullscreen(dimmer.GetComponent<RectTransform>());
@@ -265,6 +271,22 @@ public class PauseMenuManager : MonoBehaviour
         Button quitButton = CreateButton(mainPanel.transform, "QuitButton", "Quit Game", new Vector2(0f, -290f), new Color(0.72f, 0.24f, 0.26f, 1f));
         quitButton.onClick.AddListener(QuitGame);
 
+        pauseButton = CreateButton(canvas.transform, "PauseToggleButton", "II", new Vector2(-70f, -70f), new Color(0.12f, 0.4f, 0.8f, 0.9f));
+        RectTransform pauseRect = pauseButton.GetComponent<RectTransform>();
+        pauseRect.anchorMin = new Vector2(1f, 1f);
+        pauseRect.anchorMax = new Vector2(1f, 1f);
+        pauseRect.pivot = new Vector2(1f, 1f);
+        pauseRect.sizeDelta = new Vector2(82f, 82f);
+        Text pauseLabel = pauseButton.GetComponentInChildren<Text>();
+        if (pauseLabel != null)
+        {
+            pauseLabel.text = "II";
+            pauseLabel.fontSize = 34;
+        }
+        pauseButton.onClick.AddListener(PauseGame);
+
+        canvasObject.SetActive(true);
+        SetMenuVisible(false);
         // TASKS PANEL
         tasksPanel = CreateUiObject("TasksPanel", canvas.transform);
         RectTransform tasksRect = tasksPanel.GetComponent<RectTransform>();
@@ -377,6 +399,29 @@ public class PauseMenuManager : MonoBehaviour
         else if (GameClient.Instance != null) { _ = GameClient.Instance.Connect(); }
     }
 
+    private void SetMenuVisible(bool visible)
+    {
+        if (dimmer != null)
+        {
+            dimmer.SetActive(visible);
+        }
+
+        if (panel != null)
+        {
+            panel.SetActive(visible);
+        }
+
+        if (pauseButton != null)
+        {
+            pauseButton.gameObject.SetActive(!visible);
+        }
+
+        if (canvas != null && !canvas.gameObject.activeSelf)
+        {
+            canvas.gameObject.SetActive(true);
+        }
+    }
+
     private void PauseGame()
     {
         RebuildIfNeeded();
@@ -384,6 +429,9 @@ public class PauseMenuManager : MonoBehaviour
         previousTimeScale = Time.timeScale;
         Time.timeScale = 0f;
         IsGamePaused = true;
+
+        SetMenuVisible(true);
+
         if (canvas != null) { 
             canvas.gameObject.SetActive(true); 
             ShowPanel(mainPanel); 
@@ -395,6 +443,8 @@ public class PauseMenuManager : MonoBehaviour
 
     private void ResumeGame()
     {
+        SetMenuVisible(false);
+
         if (canvas != null) canvas.gameObject.SetActive(false);
         Time.timeScale = previousTimeScale <= 0f ? 1f : previousTimeScale;
         IsGamePaused = false;
@@ -402,6 +452,13 @@ public class PauseMenuManager : MonoBehaviour
         Cursor.visible = false;
     }
 
+    private void ForceHiddenIfNotPaused()
+    {
+        if (!IsGamePaused)
+        {
+            SetMenuVisible(false);
+        }
+    }
     private void ForceHiddenIfNotPaused() { if (!IsGamePaused && canvas != null) canvas.gameObject.SetActive(false); }
 
     private void SaveSettings()
