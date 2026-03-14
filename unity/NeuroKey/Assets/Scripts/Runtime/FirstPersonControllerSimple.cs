@@ -19,7 +19,7 @@ public class FirstPersonControllerSimple : MonoBehaviour
     [SerializeField] private float pushForce = 8f;
 
     [Header("Look")]
-    [SerializeField] private float mouseSensitivity = 60f;
+    [SerializeField] private float mouseSensitivity = 12f;
     [SerializeField] private float minPitch = -80f;
     [SerializeField] private float maxPitch = 80f;
     [Tooltip("Optional anchor (e.g., head bone) to position the camera. If null, a local offset is used.")]
@@ -45,10 +45,13 @@ public class FirstPersonControllerSimple : MonoBehaviour
     [SerializeField] private float slopeLimit = 65f;
 
     [Header("Respawn")]
-    [SerializeField] private float fallRespawnY = -8f;
+    [SerializeField] private float fallRespawnY = -1000f;
     [SerializeField] private float waterDrownY = 0f;
     [SerializeField] private float drownDelay = 1.2f;
     [SerializeField] private float waterPullDown = 8f;
+    [SerializeField] private bool useOverrideSpawn = true;
+    [SerializeField] private Vector3 overrideSpawnPosition = new Vector3(74.26f, 11.421f, 241.7f);
+    [SerializeField] private Quaternion overrideSpawnRotation = Quaternion.identity;
 
     [Header("Bindings")]
     [SerializeField] private KeyCode sprintKey = KeyCode.LeftShift;
@@ -86,8 +89,17 @@ public class FirstPersonControllerSimple : MonoBehaviour
     {
         controller = GetComponent<CharacterController>();
         ApplyControllerSize();
-        spawnPosition = transform.position;
-        spawnRotation = transform.rotation;
+        if (useOverrideSpawn)
+        {
+            spawnPosition = overrideSpawnPosition;
+            spawnRotation = overrideSpawnRotation;
+            transform.SetPositionAndRotation(spawnPosition, spawnRotation);
+        }
+        else
+        {
+            spawnPosition = transform.position;
+            spawnRotation = transform.rotation;
+        }
         Camera cam = GetComponentInChildren<Camera>();
         if (cam == null)
         {
