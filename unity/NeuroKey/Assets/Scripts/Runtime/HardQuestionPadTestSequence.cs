@@ -38,15 +38,15 @@ public class HardQuestionPadTestSequence : MonoBehaviour
             return;
         }
 
-        if (!TryGetPlayer(other, out SphereController sphere, out FirstPersonControllerSimple fps))
+        if (!TryGetPlayer(other, out FirstPersonControllerSimple fps))
         {
             return;
         }
 
-        StartCoroutine(PlaySequence(sphere, fps));
+        StartCoroutine(PlaySequence(fps));
     }
 
-    private IEnumerator PlaySequence(SphereController sphere, FirstPersonControllerSimple fps)
+    private IEnumerator PlaySequence(FirstPersonControllerSimple fps)
     {
         running = true;
 
@@ -62,7 +62,7 @@ public class HardQuestionPadTestSequence : MonoBehaviour
             overlayCanvas.gameObject.SetActive(true);
         }
 
-        SetPlayerLockState(sphere, fps, true, true);
+        SetPlayerLockState(fps, true, true);
         if (fps != null)
         {
             fps.SetCameraControlEnabled(false);
@@ -147,21 +147,14 @@ public class HardQuestionPadTestSequence : MonoBehaviour
         whiteImage.color = color;
     }
 
-    private static bool TryGetPlayer(Collider other, out SphereController sphere, out FirstPersonControllerSimple fps)
+    private static bool TryGetPlayer(Collider other, out FirstPersonControllerSimple fps)
     {
-        sphere = other.GetComponent<SphereController>() ?? other.GetComponentInParent<SphereController>();
         fps = other.GetComponent<FirstPersonControllerSimple>() ?? other.GetComponentInParent<FirstPersonControllerSimple>();
-        return sphere != null || fps != null;
+        return fps != null;
     }
 
-    private static void SetPlayerLockState(SphereController sphere, FirstPersonControllerSimple fps, bool movementLocked, bool hardFreeze)
+    private static void SetPlayerLockState(FirstPersonControllerSimple fps, bool movementLocked, bool hardFreeze)
     {
-        if (sphere != null)
-        {
-            sphere.SetMovementLocked(movementLocked);
-            sphere.SetHardFreeze(hardFreeze);
-        }
-
         if (fps != null)
         {
             fps.SetMovementLocked(movementLocked);
