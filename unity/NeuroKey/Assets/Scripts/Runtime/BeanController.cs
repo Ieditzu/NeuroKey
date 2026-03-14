@@ -283,4 +283,9 @@ public class BeanController : MonoBehaviour
             rb.velocity = new Vector3(0, rb.velocity.y, 0);
         }
     }
+
+    public void SetJumpForce(float newJump)
+    {
+        jumpVelocity = Mathf.Max(0f, newJump);
+    }
 }
