@@ -163,11 +163,14 @@ public class CodeChallengePadCinematic : MonoBehaviour
     private static InputField codeInput;
     private static Text codeInputText;
     private static Text codePlaceholder;
+    private static Text codeHighlightText;
     private static Text hintScreenText;
     private static Button leaveButton;
     private static Text leaveButtonText;
     private static Button verifyButton;
     private static Text verifyButtonText;
+    private static Button runButton;
+    private static Text runButtonText;
     private static Button backButton;
     private static Text backButtonText;
     private static Button hintButton;
@@ -199,6 +202,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
     private bool running;
     private bool leaveRequested;
     private bool verifyRequested;
+    private bool runRequested;
     private bool backRequested;
     private bool hintRequested;
     private bool aiChatRequested;
@@ -212,6 +216,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
     private GameObject activePortal;
     private bool overlayInteractionActive;
     private QuizLanguage selectedLanguage = QuizLanguage.Romanian;
+    [SerializeField] private bool enableSyntaxHighlight = true;
     private CodeChallenge activeChallenge;
     private bool awaitingExecution;
     private bool awaitingAiResponse;
@@ -493,6 +498,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
             CodeChallenge challenge = challenges[current];
             activeChallenge = challenge;
             verifyRequested = false;
+            runRequested = false;
             backRequested = false;
             hintRequested = false;
             aiChatRequested = false;
@@ -502,6 +508,8 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
             verifyButton.onClick.RemoveAllListeners();
             verifyButton.onClick.AddListener(OnVerifyClicked);
+            runButton.onClick.RemoveAllListeners();
+            runButton.onClick.AddListener(OnRunClicked);
             backButton.onClick.RemoveAllListeners();
             backButton.onClick.AddListener(OnBackClicked);
             hintButton.onClick.RemoveAllListeners();
@@ -516,7 +524,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
             ShowMainUi(true);
             ShowChallengeButtons(current > 0, true, true, true, false, false);
 
-            while (!verifyRequested && !backRequested && !leaveRequested)
+            while (!verifyRequested && !runRequested && !backRequested && !leaveRequested)
             {
                 if (hintRequested)
                 {
@@ -527,7 +535,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                         yield break;
                     }
                     ShowMainUi(true);
-                    ShowChallengeButtons(current > 0, true, true, true, false, false);
+                    ShowChallengeButtons(current > 0, true, true, true, true, false, false);
                 }
                 else if (aiChatRequested)
                 {
@@ -538,7 +546,14 @@ public class CodeChallengePadCinematic : MonoBehaviour
                         yield break;
                     }
                     ShowMainUi(true);
-                    ShowChallengeButtons(current > 0, true, true, true, false, false);
+                    ShowChallengeButtons(current > 0, true, true, true, true, false, false);
+                }
+                else if (runRequested)
+                {
+                    runRequested = false;
+                    yield return RunCodeOnly(codeInput.text);
+                    ShowMainUi(true);
+                    ShowChallengeButtons(current > 0, true, true, true, true, false, false);
                 }
 
                 yield return null;
@@ -556,6 +571,13 @@ public class CodeChallengePadCinematic : MonoBehaviour
                 continue;
             }
 
+            if (runRequested)
+            {
+                runRequested = false;
+                answers[current] = codeInput.text;
+                continue;
+            }
+
             bool correct = false;
             yield return EvaluateChallenge(challenge, codeInput.text, result => correct = result);
             answers[current] = codeInput.text;
@@ -570,8 +592,8 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
                 feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
                 feedbackText.color = correctColor;
-                ShowChallengeButtons(current > 0, true, true, false, true, false);
-                while (!continueRequested && !backRequested && !leaveRequested)
+                ShowChallengeButtons(current > 0, true, true, true, false, true, false);
+                while (!continueRequested && !backRequested && !runRequested && !leaveRequested)
                 {
                     if (hintRequested)
                     {
@@ -582,7 +604,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                             yield break;
                         }
                         ShowMainUi(true);
-                        ShowChallengeButtons(current > 0, true, true, false, true, false);
+                        ShowChallengeButtons(current > 0, true, true, true, false, true, false);
                         feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
                         feedbackText.color = correctColor;
                     }
@@ -595,7 +617,16 @@ public class CodeChallengePadCinematic : MonoBehaviour
                             yield break;
                         }
                         ShowMainUi(true);
-                        ShowChallengeButtons(current > 0, true, true, false, true, false);
+                        ShowChallengeButtons(current > 0, true, true, true, false, true, false);
+                        feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
+                        feedbackText.color = correctColor;
+                    }
+                    else if (runRequested)
+                    {
+                        runRequested = false;
+                        yield return RunCodeOnly(codeInput.text);
+                        ShowMainUi(true);
+                        ShowChallengeButtons(current > 0, true, true, true, false, true, false);
                         feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
                         feedbackText.color = correctColor;
                     }
@@ -635,7 +666,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
             feedbackText.color = wrongColor;
             verifyRequested = false;
-            while (!verifyRequested && !backRequested && !leaveRequested)
+            while (!verifyRequested && !runRequested && !backRequested && !leaveRequested)
             {
                 if (hintRequested)
                 {
@@ -646,7 +677,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                         yield break;
                     }
                     ShowMainUi(true);
-                    ShowChallengeButtons(current > 0, true, true, true, false, false);
+                    ShowChallengeButtons(current > 0, true, true, true, true, false, false);
                     feedbackText.text = Localize("Incorect. Mai ai ", "Incorrect. You have ") + attemptsLeft[current] + Localize(" incercari.", " attempts left.");
                     feedbackText.color = wrongColor;
                 }
@@ -659,7 +690,16 @@ public class CodeChallengePadCinematic : MonoBehaviour
                         yield break;
                     }
                     ShowMainUi(true);
-                    ShowChallengeButtons(current > 0, true, true, true, false, false);
+                    ShowChallengeButtons(current > 0, true, true, true, true, false, false);
+                    feedbackText.text = Localize("Incorect. Mai ai ", "Incorrect. You have ") + attemptsLeft[current] + Localize(" incercari.", " attempts left.");
+                    feedbackText.color = wrongColor;
+                }
+                else if (runRequested)
+                {
+                    runRequested = false;
+                    yield return RunCodeOnly(codeInput.text);
+                    ShowMainUi(true);
+                    ShowChallengeButtons(current > 0, true, true, true, true, false, false);
                     feedbackText.text = Localize("Incorect. Mai ai ", "Incorrect. You have ") + attemptsLeft[current] + Localize(" incercari.", " attempts left.");
                     feedbackText.color = wrongColor;
                 }
@@ -854,6 +894,62 @@ public class CodeChallengePadCinematic : MonoBehaviour
         onResult?.Invoke(finalCorrect);
     }
 
+    private IEnumerator RunCodeOnly(string submittedCode)
+    {
+        if (mode != ChallengeMode.Medium)
+        {
+            yield break;
+        }
+
+        feedbackText.text = Localize("Rulez codul...", "Running code...");
+        feedbackText.color = textColor;
+        if (outputText != null)
+        {
+            outputText.text = Localize("Rulez codul pe server...", "Running code on server...");
+            outputText.color = editorTextColor;
+        }
+
+        awaitingExecution = true;
+        lastExecutionOutput = string.Empty;
+        lastExecutionError = string.Empty;
+        bool execSent = false;
+        yield return SendPacketWithConnect(new ExecuteCPPCodePacket(submittedCode), success => execSent = success);
+        if (!execSent)
+        {
+            awaitingExecution = false;
+            if (outputText != null)
+            {
+                outputText.text = Localize("Nu pot contacta serverul de executie.", "Can't reach the execution server.");
+                outputText.color = wrongColor;
+            }
+            return;
+        }
+
+        float execElapsed = 0f;
+        while (awaitingExecution && execElapsed < 12f && !leaveRequested)
+        {
+            execElapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (awaitingExecution)
+        {
+            awaitingExecution = false;
+            if (outputText != null)
+            {
+                outputText.text = Localize("Timeout la executie.", "Execution timed out.");
+                outputText.color = wrongColor;
+            }
+            return;
+        }
+
+        if (outputText != null)
+        {
+            outputText.text = BuildOutputBlock(lastExecutionOutput, lastExecutionError);
+            outputText.color = string.IsNullOrWhiteSpace(lastExecutionError) ? editorTextColor : wrongColor;
+        }
+    }
+
     private string BuildOutputBlock(string output, string error)
     {
         string cleanOutput = string.IsNullOrWhiteSpace(output) ? Localize("(fara output)", "(no output)") : output.TrimEnd();
@@ -952,6 +1048,137 @@ public class CodeChallengePadCinematic : MonoBehaviour
         }
 
         return builder.ToString();
+    }
+
+    private static readonly HashSet<string> CppKeywords = new HashSet<string>
+    {
+        "int","bool","void","double","float","char","long","short","signed","unsigned","const","static","return",
+        "if","else","for","while","do","switch","case","break","continue","default","true","false","using","namespace",
+        "include","std","string","class","struct","public","private","protected","virtual","override","template","typename",
+        "new","delete","this","nullptr","auto","sizeof"
+    };
+
+    private void UpdateSyntaxHighlight(string rawText)
+    {
+        if (!enableSyntaxHighlight || codeHighlightText == null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(rawText))
+        {
+            codeHighlightText.text = string.Empty;
+            return;
+        }
+
+        codeHighlightText.text = HighlightCpp(rawText);
+    }
+
+    private string HighlightCpp(string text)
+    {
+        const string kwColor = "#4EA1FF";
+        const string numColor = "#D19A66";
+        const string strColor = "#98C379";
+        const string comColor = "#5C6370";
+
+        StringBuilder output = new StringBuilder(text.Length * 2);
+        int i = 0;
+        while (i < text.Length)
+        {
+            char c = text[i];
+
+            if (c == '/' && i + 1 < text.Length && text[i + 1] == '/')
+            {
+                int start = i;
+                i += 2;
+                while (i < text.Length && text[i] != '\n') i++;
+                AppendColored(output, EscapeRich(text.Substring(start, i - start)), comColor);
+                continue;
+            }
+
+            if (c == '/' && i + 1 < text.Length && text[i + 1] == '*')
+            {
+                int start = i;
+                i += 2;
+                while (i + 1 < text.Length && !(text[i] == '*' && text[i + 1] == '/')) i++;
+                i = Mathf.Min(text.Length, i + 2);
+                AppendColored(output, EscapeRich(text.Substring(start, i - start)), comColor);
+                continue;
+            }
+
+            if (c == '"' || c == '\'')
+            {
+                char quote = c;
+                int start = i;
+                i++;
+                while (i < text.Length)
+                {
+                    if (text[i] == '\\' && i + 1 < text.Length)
+                    {
+                        i += 2;
+                        continue;
+                    }
+                    if (text[i] == quote)
+                    {
+                        i++;
+                        break;
+                    }
+                    i++;
+                }
+                AppendColored(output, EscapeRich(text.Substring(start, i - start)), strColor);
+                continue;
+            }
+
+            if (char.IsLetter(c) || c == '_')
+            {
+                int start = i;
+                i++;
+                while (i < text.Length && (char.IsLetterOrDigit(text[i]) || text[i] == '_')) i++;
+                string word = text.Substring(start, i - start);
+                if (CppKeywords.Contains(word))
+                {
+                    AppendColored(output, EscapeRich(word), kwColor);
+                }
+                else
+                {
+                    output.Append(EscapeRich(word));
+                }
+                continue;
+            }
+
+            if (char.IsDigit(c))
+            {
+                int start = i;
+                i++;
+                while (i < text.Length && (char.IsDigit(text[i]) || text[i] == '.')) i++;
+                AppendColored(output, EscapeRich(text.Substring(start, i - start)), numColor);
+                continue;
+            }
+
+            output.Append(EscapeRich(c.ToString()));
+            i++;
+        }
+
+        return output.ToString();
+    }
+
+    private static void AppendColored(StringBuilder builder, string text, string color)
+    {
+        builder.Append("<color=");
+        builder.Append(color);
+        builder.Append('>');
+        builder.Append(text);
+        builder.Append("</color>");
+    }
+
+    private static string EscapeRich(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return string.Empty;
+        }
+
+        return text.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
     }
 
     private IEnumerator ShowHintScreen(string hintText)
@@ -1195,7 +1422,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
     private void ShowChallengeButtons(bool showBack, bool showHint, bool showAi, bool showVerify, bool showContinue, bool showRetryWrong)
     {
-        if (backButton == null || hintButton == null || aiButton == null || verifyButton == null || continueButton == null || retryWrongButton == null)
+        if (backButton == null || hintButton == null || aiButton == null || runButton == null || verifyButton == null || continueButton == null || retryWrongButton == null)
         {
             return;
         }
@@ -1203,6 +1430,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         backButton.gameObject.SetActive(showBack);
         hintButton.gameObject.SetActive(showHint);
         aiButton.gameObject.SetActive(showAi);
+        runButton.gameObject.SetActive(showVerify && mode == ChallengeMode.Medium);
         verifyButton.gameObject.SetActive(showVerify);
         continueButton.gameObject.SetActive(showContinue);
         retryWrongButton.gameObject.SetActive(showRetryWrong);
@@ -1217,6 +1445,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         counterText.text = Localize("Intrebarea ", "Question ") + (currentIndex + 1) + " / " + total;
         promptText.text = challenge.Prompt;
         codeInput.text = currentAnswer;
+        UpdateSyntaxHighlight(codeInput.text);
         feedbackText.text = Localize("Incercari ramase: ", "Attempts left: ") + attemptsLeft + " / " + GetAttemptsAllowed();
         feedbackText.color = textColor;
         if (outputText != null && mode == ChallengeMode.Medium)
@@ -1234,6 +1463,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
             CodeChallenge challenge = retryChallenges[current];
             activeChallenge = challenge;
             verifyRequested = false;
+            runRequested = false;
             backRequested = false;
             hintRequested = false;
             aiChatRequested = false;
@@ -1244,6 +1474,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
             counterText.text = Localize("Refacere ", "Retry ") + (current + 1) + " / " + retryChallenges.Length;
             promptText.text = challenge.Prompt;
             codeInput.text = retryAnswers[current];
+            UpdateSyntaxHighlight(codeInput.text);
             feedbackText.text = Localize("Incercari ramase: ", "Attempts left: ") + retryAttempts[current] + " / " + GetAttemptsAllowed();
             feedbackText.color = textColor;
             if (outputText != null && mode == ChallengeMode.Medium)
@@ -1254,6 +1485,8 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
             verifyButton.onClick.RemoveAllListeners();
             verifyButton.onClick.AddListener(OnVerifyClicked);
+            runButton.onClick.RemoveAllListeners();
+            runButton.onClick.AddListener(OnRunClicked);
             backButton.onClick.RemoveAllListeners();
             backButton.onClick.AddListener(OnBackClicked);
             hintButton.onClick.RemoveAllListeners();
@@ -1266,7 +1499,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
             ShowMainUi(true);
             ShowChallengeButtons(current > 0, true, true, true, false, false);
 
-            while (!verifyRequested && !backRequested && !leaveRequested)
+            while (!verifyRequested && !runRequested && !backRequested && !leaveRequested)
             {
                 if (hintRequested)
                 {
@@ -1288,7 +1521,25 @@ public class CodeChallengePadCinematic : MonoBehaviour
                         yield break;
                     }
                     ShowMainUi(true);
-                    ShowChallengeButtons(current > 0, true, true, true, false, false);
+                    ShowChallengeButtons(current > 0, true, true, true, true, false, false);
+                }
+                else if (aiChatRequested)
+                {
+                    aiChatRequested = false;
+                    yield return ShowAiChatScreen();
+                    if (leaveRequested)
+                    {
+                        yield break;
+                    }
+                    ShowMainUi(true);
+                    ShowChallengeButtons(current > 0, true, true, true, true, false, false);
+                }
+                else if (runRequested)
+                {
+                    runRequested = false;
+                    yield return RunCodeOnly(codeInput.text);
+                    ShowMainUi(true);
+                    ShowChallengeButtons(current > 0, true, true, true, true, false, false);
                 }
 
                 yield return null;
@@ -1306,6 +1557,13 @@ public class CodeChallengePadCinematic : MonoBehaviour
                 continue;
             }
 
+            if (runRequested)
+            {
+                runRequested = false;
+                retryAnswers[current] = codeInput.text;
+                continue;
+            }
+
             retryAnswers[current] = codeInput.text;
             bool retryCorrect = false;
             yield return EvaluateChallenge(challenge, codeInput.text, result => retryCorrect = result);
@@ -1315,10 +1573,17 @@ public class CodeChallengePadCinematic : MonoBehaviour
                 solved[retrySourceIndex[current]] = true;
                 feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
                 feedbackText.color = correctColor;
-                ShowChallengeButtons(current > 0, true, true, false, true, false);
+                ShowChallengeButtons(current > 0, true, true, true, false, true, false);
 
-                while (!continueRequested && !leaveRequested)
+                while (!continueRequested && !runRequested && !leaveRequested)
                 {
+                    if (runRequested)
+                    {
+                        runRequested = false;
+                        yield return RunCodeOnly(codeInput.text);
+                        ShowMainUi(true);
+                        ShowChallengeButtons(current > 0, true, true, true, false, true, false);
+                    }
                     yield return null;
                 }
 
@@ -1347,6 +1612,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
     }
 
     private void OnVerifyClicked() => verifyRequested = true;
+    private void OnRunClicked() => runRequested = true;
     private void OnBackClicked() => backRequested = true;
     private void OnHintClicked() => hintRequested = true;
     private void OnAiChatClicked() => aiChatRequested = true;
@@ -1729,12 +1995,15 @@ public class CodeChallengePadCinematic : MonoBehaviour
         codeInput = EnsureCodeInput(panelImage.transform);
         codeInputText = codeInput.textComponent;
         codePlaceholder = codeInput.placeholder as Text;
+        codeInput.onValueChanged.RemoveAllListeners();
+        codeInput.onValueChanged.AddListener(UpdateSyntaxHighlight);
 
         leaveButton = EnsureButton(root, "LeaveButton", new Vector2(0.11f, 0.11f), new Vector2(180f, 56f), buttonColor, "Leave", buttonTextSize);
         hintScreenBackButton = EnsureButton(root, "HintScreenBackButton", new Vector2(0.27f, 0.11f), new Vector2(180f, 56f), buttonColor, "Back", buttonTextSize);
         languageRoButton = EnsureButton(root, "LanguageRoButton", new Vector2(0.39f, 0.45f), new Vector2(220f, 64f), accentColor, "Romana", buttonTextSize);
         languageEnButton = EnsureButton(root, "LanguageEnButton", new Vector2(0.61f, 0.45f), new Vector2(220f, 64f), secondaryAccentColor, "English", buttonTextSize);
         verifyButton = EnsureButton(panelImage.transform, "VerifyButton", new Vector2(0.80f, 0.17f), new Vector2(160f, 52f), accentColor, "Verificare", buttonTextSize);
+        runButton = EnsureButton(panelImage.transform, "RunButton", new Vector2(0.86f, 0.17f), new Vector2(140f, 52f), secondaryAccentColor, "Ruleaza", buttonTextSize);
         backButton = EnsureButton(panelImage.transform, "BackButton", new Vector2(0.58f, 0.17f), new Vector2(150f, 52f), buttonColor, "Back", buttonTextSize);
         hintButton = EnsureButton(panelImage.transform, "HintButton", new Vector2(0.69f, 0.17f), new Vector2(150f, 52f), secondaryAccentColor, "Hint", buttonTextSize);
         aiButton = EnsureButton(panelImage.transform, "AiButton", new Vector2(0.75f, 0.17f), new Vector2(140f, 52f), new Color(0.14f, 0.14f, 0.14f, 0.92f), "AI", buttonTextSize);
@@ -1753,6 +2022,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         languageRoButtonText = languageRoButton.GetComponentInChildren<Text>(true);
         languageEnButtonText = languageEnButton.GetComponentInChildren<Text>(true);
         verifyButtonText = verifyButton.GetComponentInChildren<Text>(true);
+        runButtonText = runButton.GetComponentInChildren<Text>(true);
         backButtonText = backButton.GetComponentInChildren<Text>(true);
         hintButtonText = hintButton.GetComponentInChildren<Text>(true);
         aiButtonText = aiButton.GetComponentInChildren<Text>(true);
@@ -1852,10 +2122,28 @@ public class CodeChallengePadCinematic : MonoBehaviour
         text.alignment = TextAnchor.UpperLeft;
         text.horizontalOverflow = HorizontalWrapMode.Wrap;
         text.verticalOverflow = VerticalWrapMode.Truncate;
-        text.color = editorTextColor;
+        text.color = new Color(editorTextColor.r, editorTextColor.g, editorTextColor.b, 0f);
         text.supportRichText = false;
         text.resizeTextForBestFit = false;
         input.textComponent = text;
+
+        GameObject highlightObj = GetOrCreateUiObject(root.transform, "HighlightText");
+        RectTransform highlightRect = highlightObj.GetComponent<RectTransform>();
+        highlightRect.anchorMin = new Vector2(0f, 0f);
+        highlightRect.anchorMax = new Vector2(1f, 1f);
+        highlightRect.offsetMin = new Vector2(16f, 16f);
+        highlightRect.offsetMax = new Vector2(-16f, -16f);
+        highlightRect.localScale = Vector3.one;
+        Text highlight = highlightObj.GetComponent<Text>() ?? highlightObj.AddComponent<Text>();
+        highlight.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        highlight.fontSize = codeTextSize - 1;
+        highlight.alignment = TextAnchor.UpperLeft;
+        highlight.horizontalOverflow = HorizontalWrapMode.Wrap;
+        highlight.verticalOverflow = VerticalWrapMode.Truncate;
+        highlight.color = editorTextColor;
+        highlight.supportRichText = true;
+        highlight.raycastTarget = false;
+        codeHighlightText = highlight;
 
         GameObject placeholderObj = GetOrCreateUiObject(root.transform, "Placeholder");
         RectTransform placeRect = placeholderObj.GetComponent<RectTransform>();
@@ -2009,10 +2297,11 @@ public class CodeChallengePadCinematic : MonoBehaviour
         SetRect(feedbackText.rectTransform, new Vector2(0.24f, 0.24f), new Vector2(520f, 120f));
         SetRect(codeInput.GetComponent<RectTransform>(), new Vector2(0.71f, 0.58f), new Vector2(620f, 340f));
         SetRect(outputText.rectTransform, new Vector2(0.71f, 0.30f), new Vector2(620f, 120f));
-        SetRect(backButton.GetComponent<RectTransform>(), new Vector2(0.58f, 0.16f), new Vector2(120f, 48f));
-        SetRect(hintButton.GetComponent<RectTransform>(), new Vector2(0.68f, 0.16f), new Vector2(120f, 48f));
-        SetRect(aiButton.GetComponent<RectTransform>(), new Vector2(0.77f, 0.16f), new Vector2(120f, 48f));
-        SetRect(verifyButton.GetComponent<RectTransform>(), new Vector2(0.86f, 0.16f), new Vector2(140f, 48f));
+        SetRect(backButton.GetComponent<RectTransform>(), new Vector2(0.56f, 0.16f), new Vector2(110f, 48f));
+        SetRect(hintButton.GetComponent<RectTransform>(), new Vector2(0.66f, 0.16f), new Vector2(110f, 48f));
+        SetRect(aiButton.GetComponent<RectTransform>(), new Vector2(0.75f, 0.16f), new Vector2(100f, 48f));
+        SetRect(runButton.GetComponent<RectTransform>(), new Vector2(0.83f, 0.16f), new Vector2(110f, 48f));
+        SetRect(verifyButton.GetComponent<RectTransform>(), new Vector2(0.91f, 0.16f), new Vector2(120f, 48f));
         SetRect(continueButton.GetComponent<RectTransform>(), new Vector2(0.82f, 0.16f), new Vector2(160f, 48f));
         SetRect(retryWrongButton.GetComponent<RectTransform>(), new Vector2(0.72f, 0.16f), new Vector2(260f, 48f));
         SetRect(leaveButton.GetComponent<RectTransform>(), new Vector2(0.10f, 0.09f), new Vector2(156f, 48f));
@@ -2116,6 +2405,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         leaveButton.gameObject.SetActive(false);
         hintScreenBackButton.gameObject.SetActive(false);
         verifyButton.gameObject.SetActive(false);
+        runButton.gameObject.SetActive(false);
         backButton.gameObject.SetActive(false);
         hintButton.gameObject.SetActive(false);
         aiButton.gameObject.SetActive(false);
@@ -2182,11 +2472,14 @@ public class CodeChallengePadCinematic : MonoBehaviour
         codeInput = null;
         codeInputText = null;
         codePlaceholder = null;
+        codeHighlightText = null;
         hintScreenText = null;
         leaveButton = null;
         leaveButtonText = null;
         verifyButton = null;
         verifyButtonText = null;
+        runButton = null;
+        runButtonText = null;
         backButton = null;
         backButtonText = null;
         hintButton = null;
@@ -2294,6 +2587,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         if (leaveButtonText != null) leaveButtonText.text = "Leave";
         if (hintScreenBackButtonText != null) hintScreenBackButtonText.text = Localize("Inapoi", "Back");
         if (verifyButtonText != null) verifyButtonText.text = Localize("Verificare", "Verify");
+        if (runButtonText != null) runButtonText.text = Localize("Ruleaza", "Run");
         if (backButtonText != null) backButtonText.text = Localize("Inapoi", "Back");
         if (hintButtonText != null) hintButtonText.text = "Hint";
         if (aiButtonText != null) aiButtonText.text = "AI";
