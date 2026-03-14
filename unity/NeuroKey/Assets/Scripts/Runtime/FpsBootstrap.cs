@@ -6,6 +6,12 @@ public static class FpsBootstrap
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Spawn()
     {
+        // If a bean-based player already exists in the scene, keep using it and avoid spawning a duplicate FPS rig.
+        if (Object.FindObjectOfType<BeanController>() != null)
+        {
+            return;
+        }
+
         if (Object.FindObjectOfType<FirstPersonControllerSimple>() != null)
         {
             return;
@@ -20,8 +26,21 @@ public static class FpsBootstrap
 
         player.transform.position = spawnPos;
         player.AddComponent<FirstPersonControllerSimple>();
+        AddBeanBody(player, cc);
 
         // Ensure the bean is not disabled when FPS is spawned!
+    }
+
+    private static void AddBeanBody(GameObject player, CharacterController cc)
+    {
+        GameObject beanBody = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        beanBody.name = "FPS_BeanBody";
+        Object.Destroy(beanBody.GetComponent<Collider>());
+        beanBody.transform.SetParent(player.transform, false);
+
+        float bodyHeight = cc != null ? cc.height : 2f;
+        beanBody.transform.localPosition = new Vector3(0f, bodyHeight * 0.5f, 0f);
+        beanBody.transform.localScale = new Vector3(0.6f, 1.1f, 0.6f);
     }
 
     private static Vector3 GuessSpawnPosition()

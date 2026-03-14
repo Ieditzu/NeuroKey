@@ -53,10 +53,20 @@ public class BeanController : MonoBehaviour
             Destroy(temp);
         }
 
-        var cam = GetComponentInChildren<Camera>();
-        if (cam != null)
+        var mainCam = Camera.main;
+        if (mainCam != null)
         {
-            camTransform = cam.transform;
+            // First-person: put the main camera inside the bean and drive it from this controller.
+            var follow = mainCam.GetComponent<BeanCameraFollow>();
+            if (follow != null)
+            {
+                Destroy(follow);
+            }
+
+            camTransform = mainCam.transform;
+            camTransform.SetParent(transform, false);
+            camTransform.localPosition = new Vector3(0f, 1.1f, 0f);
+            camTransform.localRotation = Quaternion.identity;
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
         }

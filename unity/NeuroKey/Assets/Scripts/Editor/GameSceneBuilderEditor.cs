@@ -3123,10 +3123,10 @@ public static class GameSceneBuilderEditor
         cameraTransform.position = target.position + new Vector3(0f, 15f, 0f);
         cameraTransform.rotation = Quaternion.Euler(90f, 0f, 0f);
 
-        var follow = cam.GetComponent<TopDownCameraFollow>();
+        var follow = cam.GetComponent<BeanCameraFollow>();
         if (follow == null)
         {
-            follow = cam.gameObject.AddComponent<TopDownCameraFollow>();
+            follow = cam.gameObject.AddComponent<BeanCameraFollow>();
         }
 
         follow.target = target;
