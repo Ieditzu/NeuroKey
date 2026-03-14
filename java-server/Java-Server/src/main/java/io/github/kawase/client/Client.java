@@ -16,5 +16,6 @@ public class Client {
     private boolean handshake;
 
     private Long parentId;
+    private Long childId;
 }
 

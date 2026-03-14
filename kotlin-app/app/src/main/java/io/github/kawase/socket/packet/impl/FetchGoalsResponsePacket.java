@@ -1,7 +1,6 @@
 package io.github.kawase.socket.packet.impl;
 
 import io.github.kawase.socket.packet.Packet;
-
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,12 +11,16 @@ public class FetchGoalsResponsePacket extends Packet {
         public String title;
         public String reward;
         public boolean isCompleted;
+        public int requiredPoints;
+        public long requiredTaskId;
 
-        public GoalDto(long id, String title, String reward, boolean isCompleted) {
+        public GoalDto(long id, String title, String reward, boolean isCompleted, int requiredPoints, long requiredTaskId) {
             this.id = id;
             this.title = title;
             this.reward = reward;
             this.isCompleted = isCompleted;
+            this.requiredPoints = requiredPoints;
+            this.requiredTaskId = requiredTaskId;
         }
     }
 
@@ -32,6 +35,10 @@ public class FetchGoalsResponsePacket extends Packet {
         super(0x0E);
     }
 
+    public List<GoalDto> getGoals() {
+        return goals;
+    }
+
     @Override
     protected void write(final ByteBuffer buffer) {
         buffer.putInt(goals.size());
@@ -40,6 +47,8 @@ public class FetchGoalsResponsePacket extends Packet {
             putString(goal.title, buffer);
             putString(goal.reward, buffer);
             buffer.put((byte) (goal.isCompleted ? 1 : 0));
+            buffer.putInt(goal.requiredPoints);
+            buffer.putLong(goal.requiredTaskId);
         }
     }
 
@@ -51,11 +60,9 @@ public class FetchGoalsResponsePacket extends Packet {
             String title = readString(buffer);
             String reward = readString(buffer);
             boolean isCompleted = buffer.get() == 1;
-            goals.add(new GoalDto(id, title, reward, isCompleted));
+            int reqPoints = buffer.getInt();
+            long reqTaskId = buffer.getLong();
+            goals.add(new GoalDto(id, title, reward, isCompleted, reqPoints, reqTaskId));
         }
-    }
-
-    public List<GoalDto> getGoals() {
-        return goals;
     }
 }

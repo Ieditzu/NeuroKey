@@ -22,6 +22,12 @@ public class PacketManager {
             case 16 -> new FetchChildrenResponsePacket();
             case 17 -> new FetchCompletedTasksPacket();
             case 18 -> new FetchCompletedTasksResponsePacket();
+            case 19 -> new GenerateQRLoginPacket();
+            case 20 -> new QRLoginResponsePacket();
+            case 21 -> new ClaimQRLoginPacket();
+            case 22 -> new ChildAuthResponsePacket();
+            case 23 -> new FetchChildStatsPacket();
+            case 24 -> new FetchChildStatsResponsePacket();
 
             default -> throw new PacketException("Unknown packet ID: " + id);
         };

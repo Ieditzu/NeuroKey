@@ -3,7 +3,6 @@ package io.github.kawase.socket.packet;
 import io.github.kawase.socket.exceptions.PacketException;
 import io.github.kawase.socket.packet.impl.*;
 
-// considering this is a basic irc using one simple method is enough instead of over complicating the manager with suppliers etc.
 public class PacketManager {
     public Packet createPacket(final int id) {
         switch (id) {
@@ -23,9 +22,10 @@ public class PacketManager {
             case 16: return new FetchChildrenResponsePacket();
             case 17: return new FetchCompletedTasksPacket();
             case 18: return new FetchCompletedTasksResponsePacket();
-
-            default: throw new PacketException("Unknown packet ID: " + id);
+            case 21: return new ClaimQRLoginPacket();
         }
+
+        return null;
     }
 }
 

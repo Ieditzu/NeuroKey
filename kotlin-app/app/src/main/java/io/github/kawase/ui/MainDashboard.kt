@@ -1,5 +1,15 @@
 package io.github.kawase.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.util.Size
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -30,16 +40,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.common.InputImage
+import java.util.concurrent.Executors
 
 sealed class Screen(val route: String, val icon: ImageVector, val label: String) {
     object Home : Screen("home", Icons.Default.Home, "Home")
@@ -58,12 +76,19 @@ fun MainDashboard(viewModel: SocketViewModel) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     var showAddGoalDialog by remember { mutableStateOf(false) }
+    var showQRDialog by remember { mutableStateOf<Child?>(null) }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "bg")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(50000, easing = LinearEasing), RepeatMode.Restart), label = "rot"
+    )
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        // Decorative blurred circles
-        Box(modifier = Modifier.fillMaxSize().blur(100.dp)) {
-            Box(modifier = Modifier.offset(x = (-50).dp, y = (-50).dp).size(200.dp).background(viewModel.primaryColor.value.copy(alpha = 0.15f), CircleShape))
-            Box(modifier = Modifier.align(Alignment.BottomEnd).offset(x = 50.dp, y = 50.dp).size(250.dp).background(viewModel.primaryColor.value.copy(alpha = 0.1f), CircleShape))
+        // Dynamic Glass Background
+        Box(modifier = Modifier.fillMaxSize().blur(100.dp).graphicsLayer(rotationZ = rotation)) {
+            Box(modifier = Modifier.offset(x = (-100).dp, y = (-100).dp).size(300.dp).background(viewModel.primaryColor.value.copy(alpha = 0.15f), CircleShape))
+            Box(modifier = Modifier.align(Alignment.BottomEnd).offset(x = 100.dp, y = 100.dp).size(400.dp).background(viewModel.primaryColor.value.copy(alpha = 0.1f), CircleShape))
         }
 
         Scaffold(
@@ -167,11 +192,16 @@ fun MainDashboard(viewModel: SocketViewModel) {
         ) { innerPadding ->
             NavHost(navController, startDestination = "home", modifier = Modifier.padding(innerPadding)) {
                 composable("home") {
-                    HomeScreen(viewModel, children) { childId ->
-                        selectedChildId = childId
-                        viewModel.fetchGoals(childId)
-                        navController.navigate("goals")
-                    }
+                    HomeScreen(viewModel, children, 
+                        onChildSelected = { childId ->
+                            selectedChildId = childId
+                            viewModel.fetchGoals(childId)
+                            navController.navigate("goals")
+                        },
+                        onLogIntoGame = { child ->
+                            showQRDialog = child
+                        }
+                    )
                 }
                 composable("history") {
                     HistoryScreen(viewModel)
@@ -198,10 +228,156 @@ fun MainDashboard(viewModel: SocketViewModel) {
             }
         )
     }
+
+    showQRDialog?.let { child ->
+        QRScannerSimulatorDialog(
+            child = child,
+            isDarkMode = viewModel.isDarkMode.value,
+            primaryColor = viewModel.primaryColor.value,
+            onDismiss = { showQRDialog = null },
+            onConfirm = { token ->
+                viewModel.claimQRLogin(token, child.id)
+                showQRDialog = null
+            }
+        )
+    }
 }
 
 @Composable
-fun HomeScreen(viewModel: SocketViewModel, children: List<Child>, onChildSelected: (Long) -> Unit) {
+fun QRScannerSimulatorDialog(
+    child: Child,
+    isDarkMode: Boolean,
+    primaryColor: Color,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var hasCameraPermission by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { granted -> hasCameraPermission = granted }
+    )
+
+    LaunchedEffect(Unit) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            hasCameraPermission = true
+        } else {
+            launcher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(32.dp))
+                .border(1.dp, if(isDarkMode) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), RoundedCornerShape(32.dp)),
+            color = if(isDarkMode) Color(0xFF1A1A1A) else MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp
+        ) {
+            Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("Scan QR Code for ${child.name}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+                
+                if (hasCameraPermission) {
+                    Box(modifier = Modifier.fillMaxWidth().height(300.dp).clip(RoundedCornerShape(24.dp))) {
+                        QRScannerView(onCodeScanned = { onConfirm(it) })
+                    }
+                } else {
+                    Box(modifier = Modifier.fillMaxWidth().height(300.dp).background(Color.Black.copy(alpha = 0.1f), RoundedCornerShape(24.dp)), contentAlignment = Alignment.Center) {
+                        Text("Camera permission required", color = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+
+                var manualToken by remember { mutableStateOf("") }
+                OutlinedTextField(
+                    value = manualToken,
+                    onValueChange = { manualToken = it },
+                    label = { Text("Or enter token manually") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = primaryColor,
+                        focusedLabelColor = primaryColor,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface
+                    )
+                )
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    Button(
+                        onClick = { onConfirm(manualToken) },
+                        enabled = manualToken.isNotBlank(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
+                    ) {
+                        Text("Log In", fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun QRScannerView(onCodeScanned: (String) -> Unit) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
+    var scanned by remember { mutableStateOf(false) }
+
+    AndroidView(
+        factory = { ctx ->
+            val previewView = PreviewView(ctx)
+            val executor = Executors.newSingleThreadExecutor()
+            
+            cameraProviderFuture.addListener({
+                val cameraProvider = cameraProviderFuture.get()
+                val preview = Preview.Builder().build().also {
+                    it.setSurfaceProvider(previewView.surfaceProvider)
+                }
+
+                val scanner = BarcodeScanning.getClient()
+                val imageAnalysis = ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .build()
+
+                imageAnalysis.setAnalyzer(executor) { imageProxy ->
+                    val mediaImage = imageProxy.image
+                    if (mediaImage != null && !scanned) {
+                        val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+                        scanner.process(image)
+                            .addOnSuccessListener { barcodes ->
+                                for (barcode in barcodes) {
+                                    barcode.rawValue?.let { code ->
+                                        scanned = true
+                                        onCodeScanned(code)
+                                    }
+                                }
+                            }
+                            .addOnCompleteListener { imageProxy.close() }
+                    } else {
+                        imageProxy.close()
+                    }
+                }
+
+                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+                try {
+                    cameraProvider.unbindAll()
+                    cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, imageAnalysis)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }, ContextCompat.getMainExecutor(ctx))
+            previewView
+        },
+        modifier = Modifier.fillMaxSize()
+    )
+}
+
+@Composable
+fun HomeScreen(viewModel: SocketViewModel, children: List<Child>, onChildSelected: (Long) -> Unit, onLogIntoGame: (Child) -> Unit) {
     Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
         Text(
             "My Kids",
@@ -274,6 +450,20 @@ fun HomeScreen(viewModel: SocketViewModel, children: List<Child>, onChildSelecte
                                     )
                                 }
                             }
+
+                            IconButton(
+                                onClick = { onLogIntoGame(child) },
+                                modifier = Modifier.size(44.dp).background(viewModel.primaryColor.value.copy(alpha = 0.1f), CircleShape)
+                            ) {
+                                Icon(
+                                    Icons.Default.QrCodeScanner,
+                                    contentDescription = "Log into Game",
+                                    tint = viewModel.primaryColor.value,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.width(8.dp))
                             
                             Icon(
                                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -333,50 +523,55 @@ fun SettingsScreen(viewModel: SocketViewModel) {
                     Text("Dark Mode", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                     Switch(
                         checked = viewModel.isDarkMode.value,
-                        onCheckedChange = { viewModel.setDarkMode(it) },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = viewModel.primaryColor.value,
-                            uncheckedThumbColor = Color.Gray,
-                            uncheckedTrackColor = if(viewModel.isDarkMode.value) Color.DarkGray else Color.LightGray
-                        )
+                        onCheckedChange = { viewModel.toggleDarkMode() },
+                        colors = SwitchDefaults.colors(checkedThumbColor = viewModel.primaryColor.value)
                     )
                 }
                 Spacer(modifier = Modifier.height(24.dp))
-                
-                Text("Theme Color", style = MaterialTheme.typography.labelMedium, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.5f))
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    listOf(Color(0xFF6366F1), Color(0xFF1B3B5F), Color(0xFFD32F2F), Color(0xFF8E24AA), Color(0xFFE64A19), Color(0xFF10B981)).forEach { color ->
-                        ColorPickerOption(color, viewModel.primaryColor.value) { viewModel.setPrimaryColor(it) }
+                Text("Accent Color", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    listOf(Color(0xFF6366F1), Color(0xFFEC4899), Color(0xFF10B981), Color(0xFFF59E0B)).forEach { color ->
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(color, CircleShape)
+                                .border(
+                                    if (viewModel.primaryColor.value == color) 3.dp else 0.dp,
+                                    if (viewModel.primaryColor.value == color) MaterialTheme.colorScheme.onSurface else Color.Transparent,
+                                    CircleShape
+                                )
+                                .clickable { viewModel.updatePrimaryColor(color) }
+                        )
                     }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
-        
-        Text("Manage Kids", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+
+        Text("Account Management", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Surface(
             modifier = Modifier.fillMaxWidth().border(1.dp, if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), RoundedCornerShape(24.dp)),
             shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
+                Text("Add Child", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
                     value = childName,
                     onValueChange = { childName = it },
-                    label = { Text("Kid's Name") },
+                    label = { Text("Child Name") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = viewModel.primaryColor.value,
                         focusedLabelColor = viewModel.primaryColor.value,
                         unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface
                     )
                 )
                 Spacer(modifier = Modifier.height(20.dp))
@@ -391,11 +586,69 @@ fun SettingsScreen(viewModel: SocketViewModel) {
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = viewModel.primaryColor.value)
                 ) {
-                    Text("Add Kid", fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Register Child", fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
         }
         
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        Text("Developer Options", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        var devChildId by remember { mutableStateOf("") }
+        var devToken by remember { mutableStateOf("") }
+        
+        Surface(
+            modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f), RoundedCornerShape(24.dp)),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                OutlinedTextField(
+                    value = devChildId,
+                    onValueChange = { devChildId = it },
+                    label = { Text("Manual Child ID") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.error,
+                        focusedLabelColor = MaterialTheme.colorScheme.error,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface
+                    )
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = devToken,
+                    onValueChange = { devToken = it },
+                    label = { Text("Manual Token") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.error,
+                        focusedLabelColor = MaterialTheme.colorScheme.error,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface
+                    )
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(
+                    onClick = { 
+                        val id = devChildId.toLongOrNull()
+                        if (id != null && devToken.isNotBlank()) {
+                            viewModel.claimQRLogin(devToken, id)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Force Game Login", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(32.dp))
         
         TextButton(
@@ -403,8 +656,6 @@ fun SettingsScreen(viewModel: SocketViewModel) {
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
         ) {
-            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
             Text("Logout", fontWeight = FontWeight.Bold)
         }
         
@@ -412,45 +663,41 @@ fun SettingsScreen(viewModel: SocketViewModel) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(viewModel: SocketViewModel) {
-    val history = viewModel.completedTasks
-
+    val completedTasks = viewModel.completedTasks
+    
     Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-        Text("Task History", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
-        Text("Completed tasks from the game", style = MaterialTheme.typography.bodyMedium, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f) )
+        Text("Activity History", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+        Text("Tracked progress and achievements", style = MaterialTheme.typography.bodyMedium, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
         
         Spacer(modifier = Modifier.height(32.dp))
         
-        if (history.isEmpty()) {
+        if (completedTasks.isEmpty()) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("No tasks completed yet.", color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.3f))
+                Text("No activity recorded yet", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
             }
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(history) { task ->
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.weight(1f)) {
+                items(completedTasks) { task ->
                     Surface(
-                        modifier = Modifier.fillMaxWidth().border(1.dp, if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), RoundedCornerShape(20.dp)),
+                        modifier = Modifier.fillMaxWidth().border(1.dp, if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f), RoundedCornerShape(20.dp)),
                         shape = RoundedCornerShape(20.dp),
                         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
                     ) {
                         Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Surface(modifier = Modifier.size(40.dp), shape = CircleShape, color = viewModel.primaryColor.value.copy(alpha = 0.15f)) {
+                            Surface(modifier = Modifier.size(48.dp), shape = CircleShape, color = viewModel.primaryColor.value.copy(alpha = 0.15f)) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp), tint = viewModel.primaryColor.value)
+                                    Icon(Icons.Default.Check, contentDescription = null, tint = viewModel.primaryColor.value)
                                 }
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(task.taskTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("${task.pointValue} Points", style = MaterialTheme.typography.bodySmall, color = viewModel.primaryColor.value, fontWeight = FontWeight.Black)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Box(modifier = Modifier.size(2.dp).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f), CircleShape))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(task.completedAt, style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.5f))
-                                }
+                                Text(task.taskTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                Text(task.completedAt, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                             }
+                            Text("+${task.pointValue}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = viewModel.primaryColor.value)
                         }
                     }
                 }
@@ -463,53 +710,46 @@ fun HistoryScreen(viewModel: SocketViewModel) {
 @Composable
 fun GoalsScreen(viewModel: SocketViewModel, childId: Long) {
     val goals = viewModel.goals
-
+    
     Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-        Text("Goals", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
-        Text("Set goals and rewards", style = MaterialTheme.typography.bodyMedium, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+        Text("Reward Goals", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+        Text("Set milestones and rewards", style = MaterialTheme.typography.bodyMedium, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
         
         Spacer(modifier = Modifier.height(32.dp))
         
         if (goals.isEmpty()) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("No goals set yet.", color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.3f))
+                Text("No goals set for this child", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
             }
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.weight(1f)) {
                 items(goals) { goal ->
                     Surface(
-                        modifier = Modifier.fillMaxWidth().border(1.dp, if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), RoundedCornerShape(24.dp)),
-                        shape = RoundedCornerShape(24.dp),
+                        modifier = Modifier.fillMaxWidth().border(1.dp, if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f), RoundedCornerShape(20.dp)),
+                        shape = RoundedCornerShape(20.dp),
                         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
                     ) {
-                        Row(modifier = Modifier.padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    goal.title,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = if (goal.completed) viewModel.primaryColor.value else MaterialTheme.colorScheme.onSurface
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(14.dp), tint = viewModel.primaryColor.value)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Reward: ${goal.reward}", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                                }
+                        Column(modifier = Modifier.padding(20.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = viewModel.primaryColor.value, modifier = Modifier.size(24.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(goal.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                             }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Reward: ${goal.reward}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                            Spacer(modifier = Modifier.height(12.dp))
                             
-                            Surface(
-                                shape = CircleShape,
-                                color = if (goal.completed) viewModel.primaryColor.value else Color.Transparent,
-                                border = if (goal.completed) null else androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-                            ) {
-                                Icon(
-                                    if (goal.completed) Icons.Default.Check else Icons.Default.Lock, 
-                                    contentDescription = null, 
-                                    modifier = Modifier.padding(8.dp).size(20.dp), 
-                                    tint = if (goal.completed) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                                )
-                            }
+                            val progress = if (goal.requiredPoints > 0) {
+                                // Simplified progress logic
+                                0.5f 
+                            } else 0f
+                            
+                            LinearProgressIndicator(
+                                progress = progress,
+                                modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
+                                color = viewModel.primaryColor.value,
+                                trackColor = viewModel.primaryColor.value.copy(alpha = 0.1f)
+                            )
                         }
                     }
                 }
@@ -517,22 +757,6 @@ fun GoalsScreen(viewModel: SocketViewModel, childId: Long) {
         }
         Spacer(modifier = Modifier.height(100.dp))
     }
-}
-
-@Composable
-fun ColorPickerOption(color: Color, selectedColor: Color, onColorSelected: (Color) -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(44.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(color)
-            .clickable { onColorSelected(color) }
-            .border(
-                if (color == selectedColor) 3.dp else 0.dp, 
-                if (color == selectedColor) (if(selectedColor.luminance() < 0.3f) Color.White else Color.Black) else Color.Transparent, 
-                RoundedCornerShape(12.dp)
-            )
-    )
 }
 
 @Composable
@@ -545,132 +769,26 @@ fun AddGoalDialog(
 ) {
     var title by remember { mutableStateOf("") }
     var reward by remember { mutableStateOf("") }
-    var points by remember { mutableStateOf("50") }
+    var points by remember { mutableStateOf("") }
     var selectedTaskId by remember { mutableStateOf(-1L) }
-    var usePoints by remember { mutableStateOf(true) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(32.dp))
-                .border(1.dp, if(isDarkMode) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), RoundedCornerShape(32.dp)),
-            color = if(isDarkMode) Color(0xFF1A1A1A).copy(alpha = 0.95f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(32.dp)),
+            color = if(isDarkMode) Color(0xFF1A1A1A) else MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp
         ) {
-            Column(
-                modifier = Modifier.padding(32.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    "New Goal", 
-                    style = MaterialTheme.typography.headlineSmall, 
-                    fontWeight = FontWeight.Black, 
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+            Column(modifier = Modifier.padding(32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("New Goal", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Goal Name") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = primaryColor,
-                        focusedLabelColor = primaryColor,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedContainerColor = if(isDarkMode) Color.Black.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.03f),
-                        focusedContainerColor = if(isDarkMode) Color.Black.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.05f)
-                    )
-                )
-                OutlinedTextField(
-                    value = reward,
-                    onValueChange = { reward = it },
-                    label = { Text("Reward") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = primaryColor,
-                        focusedLabelColor = primaryColor,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedContainerColor = if(isDarkMode) Color.Black.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.03f),
-                        focusedContainerColor = if(isDarkMode) Color.Black.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.05f)
-                    )
-                )
-                
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-                
-                Text("How to complete", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    FilterChip(
-                        selected = usePoints,
-                        onClick = { usePoints = true },
-                        label = { Text("Points") },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilterChip(
-                        selected = !usePoints,
-                        onClick = { usePoints = false },
-                        label = { Text("Static Task") },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                if (usePoints) {
-                    OutlinedTextField(
-                        value = points,
-                        onValueChange = { points = it },
-                        label = { Text("Points Required") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = primaryColor,
-                            focusedLabelColor = primaryColor,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedContainerColor = if(isDarkMode) Color.Black.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.03f),
-                            focusedContainerColor = if(isDarkMode) Color.Black.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.05f)
-                        )
-                    )
-                } else {
-                    Text("Select Task:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
-                    LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
-                        items(tasks) { task ->
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { selectedTaskId = task.id }
-                                    .padding(vertical = 4.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                color = if (selectedTaskId == task.id) primaryColor.copy(alpha = 0.2f) else Color.Transparent,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, if (selectedTaskId == task.id) primaryColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-                            ) {
-                                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    RadioButton(selected = selectedTaskId == task.id, onClick = { selectedTaskId = task.id })
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(task.name, style = MaterialTheme.typography.bodyMedium, fontWeight = if(selectedTaskId == task.id) FontWeight.Bold else FontWeight.Normal, color = MaterialTheme.colorScheme.onSurface)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Goal Title") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
+                OutlinedTextField(value = reward, onValueChange = { reward = it }, label = { Text("Reward") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
+                OutlinedTextField(value = points, onValueChange = { points = it }, label = { Text("Required Points") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Cancel")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
                     Button(
-                        onClick = { onConfirm(title, reward, points.toIntOrNull() ?: 0, if (usePoints) -1L else selectedTaskId) },
-                        enabled = title.isNotBlank() && reward.isNotBlank(),
+                        onClick = { onConfirm(title, reward, points.toIntOrNull() ?: 0, selectedTaskId) },
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
                     ) {
