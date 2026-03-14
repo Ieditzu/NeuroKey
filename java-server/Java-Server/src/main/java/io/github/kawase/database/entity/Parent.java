@@ -20,6 +20,9 @@ public class Parent {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
+    @Column(columnDefinition = "TEXT")
+    private String profilePicture;
+
     @ToString.Exclude
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Child> childEntities;

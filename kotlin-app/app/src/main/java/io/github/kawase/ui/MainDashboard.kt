@@ -2,9 +2,14 @@ package io.github.kawase.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.util.Base64
 import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.launch
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -12,6 +17,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,6 +28,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
@@ -37,16 +45,16 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardActions
-import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,10 +68,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
 import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
-import com.google.mlkit.vision.barcode.common.BarcodeScannerOptions
 import com.google.mlkit.vision.common.InputImage
+import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 
 sealed class Screen(val route: String, val icon: ImageVector, val label: String) {
@@ -296,7 +306,7 @@ fun QRScannerSimulatorDialog(
                 }
 
                 var manualToken by remember { mutableStateOf("") }
-                val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+                val keyboardController = LocalSoftwareKeyboardController.current
 
                 OutlinedTextField(
                     value = manualToken,
@@ -448,25 +458,30 @@ fun HomeScreen(viewModel: SocketViewModel, children: List<Child>, onChildSelecte
                             .padding(24.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Box(modifier = Modifier.size(60.dp).background(viewModel.primaryColor.value.copy(alpha = 0.15f), CircleShape).border(2.dp, viewModel.primaryColor.value, CircleShape))
-                                Text(
-                                    child.name.take(1).uppercase(),
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Black,
-                                    color = viewModel.primaryColor.value
-                                )
+                            PfpView(child.pfp, child.name, viewModel.primaryColor.value, Modifier.size(60.dp)) {
+                                // PFP change handled in settings for now or we could add it here
                             }
                             
                             Spacer(modifier = Modifier.width(20.dp))
                             
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    child.name,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        child.name,
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    if (child.isOnline) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .background(Color(0xFF10B981), CircleShape)
+                                                .shadow(4.dp, CircleShape)
+                                        )
+                                    }
+                                }
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(16.dp), tint = viewModel.primaryColor.value)
@@ -479,16 +494,30 @@ fun HomeScreen(viewModel: SocketViewModel, children: List<Child>, onChildSelecte
                                 }
                             }
 
-                            IconButton(
-                                onClick = { onLogIntoGame(child) },
-                                modifier = Modifier.size(44.dp).background(viewModel.primaryColor.value.copy(alpha = 0.1f), CircleShape)
-                            ) {
-                                Icon(
-                                    Icons.Default.QrCodeScanner,
-                                    contentDescription = "Log into Game",
-                                    tint = viewModel.primaryColor.value,
-                                    modifier = Modifier.size(24.dp)
-                                )
+                            if (!child.isOnline) {
+                                IconButton(
+                                    onClick = { onLogIntoGame(child) },
+                                    modifier = Modifier.size(44.dp).background(viewModel.primaryColor.value.copy(alpha = 0.1f), CircleShape)
+                                ) {
+                                    Icon(
+                                        Icons.Default.QrCodeScanner,
+                                        contentDescription = "Log into Game",
+                                        tint = viewModel.primaryColor.value,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            } else {
+                                IconButton(
+                                    onClick = { onLogIntoGame(child) },
+                                    modifier = Modifier.size(44.dp).background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f), CircleShape)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Devices,
+                                        contentDescription = "Force New Login",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
                             }
                             
                             Spacer(modifier = Modifier.width(8.dp))
@@ -501,10 +530,105 @@ fun HomeScreen(viewModel: SocketViewModel, children: List<Child>, onChildSelecte
                         }
                     }
                 }
+                item { Spacer(modifier = Modifier.height(120.dp)) }
             }
         }
-        Spacer(modifier = Modifier.height(100.dp))
     }
+}
+
+@Composable
+fun PfpView(base64: String?, name: String, primaryColor: Color, modifier: Modifier = Modifier, onEdit: (() -> Unit)? = null) {
+    Box(modifier = modifier.clip(CircleShape).clickable(enabled = onEdit != null) { onEdit?.invoke() }, contentAlignment = Alignment.Center) {
+        if (base64 != null && base64.isNotEmpty()) {
+            val bitmap = remember(base64) {
+                try {
+                    val bytes = Base64.decode(base64, Base64.DEFAULT)
+                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                } catch (e: Exception) { null }
+            }
+            if (bitmap != null) {
+                Image(bitmap = bitmap.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            } else {
+                DefaultAvatar(name, primaryColor)
+            }
+        } else {
+            DefaultAvatar(name, primaryColor)
+        }
+        
+        if (onEdit != null) {
+            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun DefaultAvatar(name: String, primaryColor: Color) {
+    Box(modifier = Modifier.fillMaxSize().background(primaryColor.copy(alpha = 0.15f)).border(2.dp, primaryColor, CircleShape), contentAlignment = Alignment.Center) {
+        Text(name.take(1).uppercase(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = primaryColor)
+    }
+}
+
+@Composable
+fun ImagePickerBottomSheet(onImageSelected: (String) -> Unit, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let {
+            val inputStream = context.contentResolver.openInputStream(it)
+            val bytes = inputStream?.readBytes()
+            bytes?.let { b -> onImageSelected(Base64.encodeToString(b, Base64.DEFAULT)) }
+        }
+        onDismiss()
+    }
+    
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap: Bitmap? ->
+        bitmap?.let {
+            val outputStream = ByteArrayOutputStream()
+            it.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)
+            onImageSelected(Base64.encodeToString(outputStream.toByteArray(), Base64.DEFAULT))
+        }
+        onDismiss()
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Update Profile Picture") },
+        text = { Text("Choose a source for your new profile picture.") },
+        confirmButton = {
+            TextButton(onClick = { galleryLauncher.launch("image/*") }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.PhotoLibrary, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Gallery")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { cameraLauncher.launch() }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.CameraAlt, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Camera")
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun ColorBox(color: Color, viewModel: SocketViewModel) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .background(color, CircleShape)
+            .border(
+                if (viewModel.primaryColor.value == color) 3.dp else 0.dp,
+                if (viewModel.primaryColor.value == color) MaterialTheme.colorScheme.onSurface else Color.Transparent,
+                CircleShape
+            )
+            .clickable { viewModel.updatePrimaryColor(color) }
+    )
 }
 
 @Composable
@@ -512,6 +636,7 @@ fun SettingsScreen(viewModel: SocketViewModel) {
     var childName by remember { mutableStateOf("") }
     val email by viewModel.email
     val scrollState = rememberScrollState()
+    var showPfpPickerForId by remember { mutableStateOf<Long?>(null) } // -1 for parent, childId for kids
 
     Column(modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(scrollState)) {
         Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
@@ -523,10 +648,8 @@ fun SettingsScreen(viewModel: SocketViewModel) {
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
         ) {
             Row(modifier = Modifier.padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
-                Surface(modifier = Modifier.size(56.dp), shape = CircleShape, color = viewModel.primaryColor.value.copy(alpha = 0.15f)) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = viewModel.primaryColor.value)
-                    }
+                PfpView(viewModel.parentPfp.value, email, viewModel.primaryColor.value, Modifier.size(56.dp)) {
+                    showPfpPickerForId = -1L
                 }
                 Spacer(modifier = Modifier.width(20.dp))
                 Column {
@@ -567,24 +690,14 @@ fun SettingsScreen(viewModel: SocketViewModel) {
                 
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     val themeColors = listOf(
-                        Color(0xFF6366F1), // Indigo
-                        Color(0xFF8B5CF6), // Purple
-                        Color(0xFFEC4899), // Pink
-                        Color(0xFFEF4444), // Red
-                        Color(0xFFF59E0B), // Amber
-                        Color(0xFF84CC16), // Lime
-                        Color(0xFF10B981), // Green
-                        Color(0xFF06B6D4)  // Cyan
+                        Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFFEC4899), Color(0xFFEF4444),
+                        Color(0xFFF59E0B), Color(0xFF84CC16), Color(0xFF10B981), Color(0xFF06B6D4)
                     )
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        themeColors.take(4).forEach { color ->
-                            ColorPickerOption(color, viewModel.primaryColor.value) { viewModel.updatePrimaryColor(it) }
-                        }
+                        themeColors.take(4).forEach { color -> ColorBox(color, viewModel) }
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        themeColors.drop(4).forEach { color ->
-                            ColorPickerOption(color, viewModel.primaryColor.value) { viewModel.updatePrimaryColor(it) }
-                        }
+                        themeColors.drop(4).forEach { color -> ColorBox(color, viewModel) }
                     }
                 }
             }
@@ -595,13 +708,29 @@ fun SettingsScreen(viewModel: SocketViewModel) {
         Text("Manage Kids", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
         Spacer(modifier = Modifier.height(16.dp))
         
+        viewModel.children.forEach { child ->
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp).border(1.dp, if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f), RoundedCornerShape(20.dp)),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+            ) {
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    PfpView(child.pfp, child.name, viewModel.primaryColor.value, Modifier.size(48.dp)) {
+                        showPfpPickerForId = child.id
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(child.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+        }
+
         Surface(
             modifier = Modifier.fillMaxWidth().border(1.dp, if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), RoundedCornerShape(24.dp)),
             shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
-                val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+                val keyboardController = LocalSoftwareKeyboardController.current
                 OutlinedTextField(
                     value = childName,
                     onValueChange = { if (!it.contains("\n")) childName = it },
@@ -615,8 +744,7 @@ fun SettingsScreen(viewModel: SocketViewModel) {
                         focusedBorderColor = viewModel.primaryColor.value,
                         focusedLabelColor = viewModel.primaryColor.value,
                         unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface
                     )
                 )
                 Spacer(modifier = Modifier.height(20.dp))
@@ -708,6 +836,13 @@ fun SettingsScreen(viewModel: SocketViewModel) {
         }
         
         Spacer(modifier = Modifier.height(100.dp))
+    }
+
+    showPfpPickerForId?.let { id ->
+        ImagePickerBottomSheet(
+            onImageSelected = { base64 -> viewModel.updatePfp(id, base64) },
+            onDismiss = { showPfpPickerForId = null }
+        )
     }
 }
 
@@ -827,8 +962,8 @@ fun ColorPickerOption(color: Color, selectedColor: Color, onColorSelected: (Colo
             .background(color)
             .clickable { onColorSelected(color) }
             .border(
-                if (color == selectedColor) 3.dp else 0.dp, 
-                if (color == selectedColor) (if(selectedColor.luminance() < 0.3f) Color.White else Color.Black) else Color.Transparent, 
+                if (color == selectedColor) { 3.dp } else 0.dp, 
+                if (color == selectedColor) { (if(selectedColor.luminance() < 0.3f) Color.White else Color.Black) } else Color.Transparent, 
                 RoundedCornerShape(12.dp)
             )
     )
@@ -847,7 +982,7 @@ fun AddGoalDialog(
     var points by remember { mutableStateOf("50") }
     var selectedTaskId by remember { mutableStateOf(-1L) }
     var usePoints by remember { mutableStateOf(true) }
-    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -945,7 +1080,8 @@ fun AddGoalDialog(
                         ),
                         keyboardActions = KeyboardActions(
                             onDone = { keyboardController?.hide() }
-                        ),                        colors = OutlinedTextFieldDefaults.colors(
+                        ),
+                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = primaryColor,
                             focusedLabelColor = primaryColor,
                             unfocusedTextColor = MaterialTheme.colorScheme.onSurface,

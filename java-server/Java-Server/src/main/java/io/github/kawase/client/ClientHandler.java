@@ -46,12 +46,12 @@ public class ClientHandler {
                             final var parent = parentOpt.get();
                             client.setAuth(true);
                             client.setParentId(parent.getId());
-                            connection.send(new AuthResponsePacket(true, parent.getId(), "Login successful").encode());
+                            connection.send(new AuthResponsePacket(true, parent.getId(), "Login successful", parent.getProfilePicture()).encode());
                         } else {
-                            connection.send(new AuthResponsePacket(false, -1, "User not found").encode());
+                            connection.send(new AuthResponsePacket(false, -1, "User not found", "").encode());
                         }
                     } else {
-                        connection.send(new AuthResponsePacket(false, -1, "Invalid credentials").encode());
+                        connection.send(new AuthResponsePacket(false, -1, "Invalid credentials", "").encode());
                     }
                 }
 
@@ -161,8 +161,18 @@ public class ClientHandler {
                     System.out.println("Fetch Children for Parent: " + client.getParentId());
                     final var children = Server.getInstance().getParentService().getChildren(client.getParentId());
                     final var dtos = new java.util.ArrayList<FetchChildrenResponsePacket.ChildDto>();
+                    
+                    // Get all active child IDs from current connections
+                    java.util.Set<Long> onlineChildIds = new java.util.HashSet<>();
+                    for (var entry : Server.getInstance().getActiveConnections().keySet()) {
+                        if (entry.getChildId() != null) {
+                            onlineChildIds.add(entry.getChildId());
+                        }
+                    }
+
                     for (final var child : children) {
-                        dtos.add(new FetchChildrenResponsePacket.ChildDto(child.getId(), child.getName(), child.getTotalPoints()));
+                        boolean isOnline = onlineChildIds.contains(child.getId());
+                        dtos.add(new FetchChildrenResponsePacket.ChildDto(child.getId(), child.getName(), child.getTotalPoints(), isOnline, child.getProfilePicture()));
                     }
                     connection.send(new FetchChildrenResponsePacket(dtos).encode());
                 }
@@ -274,6 +284,23 @@ public class ClientHandler {
                     } else {
                         connection.send(new ChildAuthResponsePacket(false, -1, "", "").encode());
                     }
+                }
+
+                case UpdatePfpPacket updatePfpPacket -> {
+                    if (updatePfpPacket.getChildId() == -1) {
+                        System.out.println("Update Parent PFP: " + client.getParentId());
+                        Server.getInstance().getParentService().updatePfp(client.getParentId(), updatePfpPacket.getBase64Pfp());
+                    } else {
+                        System.out.println("Update Child PFP: " + updatePfpPacket.getChildId());
+                        // Verify ownership
+                        final var child = Server.getInstance().getChildService().findById(updatePfpPacket.getChildId())
+                                .orElseThrow(() -> new RuntimeException("Child not found"));
+                        if (!child.getParent().getId().equals(client.getParentId())) {
+                            throw new RuntimeException("Access denied.");
+                        }
+                        Server.getInstance().getChildService().updatePfp(updatePfpPacket.getChildId(), updatePfpPacket.getBase64Pfp());
+                    }
+                    connection.send(new ActionResponsePacket(packet.getId(), true, "PFP updated successfully", -1).encode());
                 }
 
                 default -> throw new IllegalStateException("Unexpected Packet: " + packet);

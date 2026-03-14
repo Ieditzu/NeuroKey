@@ -45,6 +45,14 @@ public class ChildService {
                 .orElse(java.util.List.of());
     }
 
+    @Transactional
+    public void updatePfp(final Long childId, final String base64Pfp) {
+        childRepository.findById(childId).ifPresent(child -> {
+            child.setProfilePicture(base64Pfp);
+            childRepository.save(child);
+        });
+    }
+
     @Transactional(readOnly = true)
     public java.util.List<io.github.kawase.database.entity.CompletedTask> getCompletedTasks(final Long childId) {
         return childRepository.findById(childId)

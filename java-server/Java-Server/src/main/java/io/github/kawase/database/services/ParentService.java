@@ -50,6 +50,14 @@ public class ParentService {
         return parentRepository.findById(id);
     }
 
+    @Transactional
+    public void updatePfp(final Long parentId, final String base64Pfp) {
+        parentRepository.findById(parentId).ifPresent(parent -> {
+            parent.setProfilePicture(base64Pfp);
+            parentRepository.save(parent);
+        });
+    }
+
     @Transactional(readOnly = true)
     public java.util.List<io.github.kawase.database.entity.Task> getTasks(final Long parentId) {
         return parentRepository.findById(parentId)
