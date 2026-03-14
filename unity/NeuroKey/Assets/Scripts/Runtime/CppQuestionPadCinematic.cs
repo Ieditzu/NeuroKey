@@ -224,6 +224,16 @@ public class CppQuestionPadCinematic : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        TryStartSequence(other);
+    }
+
+    private void OnTriggerStay(Collider other)
+    {
+        TryStartSequence(other);
+    }
+
+    private void TryStartSequence(Collider other)
+    {
         if (running)
         {
             return;
