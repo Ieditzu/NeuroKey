@@ -11,6 +11,8 @@ public class FirstPersonControllerSimple : MonoBehaviour
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 6f;
     [SerializeField] private float sprintMultiplier = 1.6f;
+    [SerializeField] private float temporaryBoostMultiplier = 3f;
+    [SerializeField] private float temporaryBoostDuration = 5f;
     [SerializeField] private float jumpHeight = 1.35f;
     [SerializeField] private float gravity = 18f;
 
@@ -72,6 +74,7 @@ public class FirstPersonControllerSimple : MonoBehaviour
     private float lastForwardTapTime = -10f;
     private bool doubleTapSprintActive;
     private float jumpPower;
+    private float speedBoostUntilTime = -1f;
     private Vector2 lastTouchPos;
     private bool touchLookActive;
     public void SetHeadAnchor(Transform anchor)
@@ -120,6 +123,11 @@ public class FirstPersonControllerSimple : MonoBehaviour
         if (GetKeyDownCompat(KeyCode.Tab))
         {
             ToggleCursor();
+        }
+
+        if (GetKeyDownCompat(KeyCode.P))
+        {
+            speedBoostUntilTime = Time.time + temporaryBoostDuration;
         }
 
         if (transform.position.y < fallRespawnY)
@@ -235,6 +243,11 @@ public class FirstPersonControllerSimple : MonoBehaviour
         if (sprintHeld || (doubleTapSprintActive && movingForward))
         {
             speed *= sprintMultiplier;
+        }
+
+        if (Time.time < speedBoostUntilTime)
+        {
+            speed *= temporaryBoostMultiplier;
         }
 
         controller.Move(input * speed * Time.deltaTime);
@@ -403,6 +416,8 @@ public class FirstPersonControllerSimple : MonoBehaviour
                 return keyboard.rightShiftKey;
             case KeyCode.Space:
                 return keyboard.spaceKey;
+            case KeyCode.P:
+                return keyboard.pKey;
             case KeyCode.W:
                 return keyboard.wKey;
             case KeyCode.A:

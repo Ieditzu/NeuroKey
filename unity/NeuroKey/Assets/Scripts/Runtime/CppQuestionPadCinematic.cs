@@ -1616,10 +1616,28 @@ public static class CppQuestionPadCinematicBootstrap
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void AttachIfNeeded()
     {
-        GameObject pad = GameObject.Find("CppQuestionPad");
+        AttachToPad("CppQuestionPad");
+        AttachToPad("MediumQuestionPad");
+    }
+
+    private static void AttachToPad(string padName)
+    {
+        GameObject pad = GameObject.Find(padName);
         if (pad == null)
         {
             return;
+        }
+
+        MediumQuestionPadStartSequence mediumSequence = pad.GetComponent<MediumQuestionPadStartSequence>();
+        if (mediumSequence != null)
+        {
+            mediumSequence.enabled = false;
+        }
+
+        CodeChallengePadCinematic codeChallenge = pad.GetComponent<CodeChallengePadCinematic>();
+        if (codeChallenge != null)
+        {
+            codeChallenge.enabled = false;
         }
 
         if (pad.GetComponent<CppQuestionPadCinematic>() == null)
