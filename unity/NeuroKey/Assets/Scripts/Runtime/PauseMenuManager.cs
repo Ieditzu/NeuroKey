@@ -316,6 +316,10 @@ public class PauseMenuManager : MonoBehaviour
         qrButton.onClick.AddListener(GenerateQrLogin);
         if (loggedInChildId != -1) qrButton.interactable = false;
 
+        Button logoutButton = CreateButton(qrSection.transform, "LogoutButton", "Log Out", new Vector2(0f, -140f), new Color(0.65f, 0.22f, 0.22f, 1f));
+        logoutButton.GetComponent<RectTransform>().sizeDelta = new Vector2(220f, 36f);
+        logoutButton.onClick.AddListener(LogoutAccount);
+
         // Actions stack
         GameObject actions = CreateUiObject("Actions", body.transform);
         RectTransform actionsRect = actions.GetComponent<RectTransform>();
@@ -446,6 +450,28 @@ public class PauseMenuManager : MonoBehaviour
             _ = GameClient.Instance.SendPacket(new GenerateQRLoginPacket());
         }
         else if (GameClient.Instance != null) { _ = ConnectAndTryAutoLogin(); }
+    }
+
+    private void LogoutAccount()
+    {
+        loggedInChildId = -1;
+        loggedInChildName = "";
+        loggedInChildPoints = 0;
+        if (qrStatusText != null) qrStatusText.text = "Not logged in";
+        if (qrCodeImage != null)
+        {
+            qrCodeImage.texture = null;
+            qrCodeImage.gameObject.SetActive(false);
+        }
+        if (qrButton != null) qrButton.interactable = true;
+        try
+        {
+            if (File.Exists(SessionFilePath)) File.Delete(SessionFilePath);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("Failed to clear session file: " + e.Message);
+        }
     }
 
     private void PauseGame()
