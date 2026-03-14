@@ -19,7 +19,8 @@ public class PauseMenuManager : MonoBehaviour
     private GameObject mainPanel;
     private GameObject tasksPanel;
     
-    private Slider sensitivitySlider;
+    private Slider sensitivitySlider; // legacy, keep null
+    private InputField sensitivityInput;
     private Text sensitivityValueText;
     private FirstPersonControllerSimple fpsController;
     private float previousTimeScale = 1f;
@@ -269,13 +270,11 @@ public class PauseMenuManager : MonoBehaviour
         mainPanel.AddComponent<Outline>().effectColor = new Color(0.27f, 0.78f, 0.94f, 0.45f);
 
         CreateText("PauseTitle", mainPanel.transform, "PAUSED", 32, FontStyle.Bold, TextAnchor.MiddleCenter, new Color(0.93f, 0.97f, 1f, 1f), new Vector2(0f, 250f), new Vector2(360f, 48f));
-        
-        CreateSensitivitySection(mainPanel.transform);
 
         GameObject qrSection = CreateUiObject("QrSection", mainPanel.transform);
         RectTransform qrRect = qrSection.GetComponent<RectTransform>();
         qrRect.sizeDelta = new Vector2(440f, 200f);
-        qrRect.anchoredPosition = new Vector2(0f, 90f);
+        qrRect.anchoredPosition = new Vector2(0f, 140f);
 
         qrStatusText = CreateText("QrStatus", qrSection.transform, 
             loggedInChildId == -1 ? "Not logged in" : loggedInChildName + " | " + loggedInChildPoints + " pts", 
@@ -293,19 +292,16 @@ public class PauseMenuManager : MonoBehaviour
         qrButton.onClick.AddListener(GenerateQrLogin);
         if (loggedInChildId != -1) qrButton.interactable = false;
 
-        Button tasksBtn = CreateButton(mainPanel.transform, "TasksBtn", "View Tasks", new Vector2(0f, -70f), new Color(0.2f, 0.6f, 0.8f, 1f));
+        Button tasksBtn = CreateButton(mainPanel.transform, "TasksBtn", "View Tasks", new Vector2(0f, 40f), new Color(0.2f, 0.6f, 0.8f, 1f));
         tasksBtn.onClick.AddListener(() => {
             if (qrCodeImage != null) qrCodeImage.gameObject.SetActive(false);
             ShowPanel(tasksPanel);
         });
 
-        Button resumeButton = CreateButton(mainPanel.transform, "ResumeButton", "Resume", new Vector2(0f, -130f), new Color(0.18f, 0.63f, 0.43f, 1f));
+        Button resumeButton = CreateButton(mainPanel.transform, "ResumeButton", "Resume", new Vector2(0f, -40f), new Color(0.18f, 0.63f, 0.43f, 1f));
         resumeButton.onClick.AddListener(ResumeGame);
 
-        Button saveButton = CreateButton(mainPanel.transform, "SaveButton", "Save Settings", new Vector2(0f, -190f), new Color(0.14f, 0.44f, 0.80f, 1f));
-        saveButton.onClick.AddListener(SaveSettings);
-
-        Button quitButton = CreateButton(mainPanel.transform, "QuitButton", "Quit Game", new Vector2(0f, -250f), new Color(0.72f, 0.24f, 0.26f, 1f));
+        Button quitButton = CreateButton(mainPanel.transform, "QuitButton", "Quit Game", new Vector2(0f, -210f), new Color(0.72f, 0.24f, 0.26f, 1f));
         quitButton.onClick.AddListener(QuitGame);
 
         // TASKS PANEL
@@ -375,39 +371,34 @@ public class PauseMenuManager : MonoBehaviour
     {
         GameObject card = CreateUiObject("SensitivityCard", parent);
         RectTransform cardRect = card.GetComponent<RectTransform>();
-        cardRect.sizeDelta = new Vector2(480f, 140f);
+        cardRect.sizeDelta = new Vector2(400f, 140f);
         cardRect.anchoredPosition = new Vector2(0f, 190f);
         card.AddComponent<Image>().color = new Color(0.15f, 0.18f, 0.25f, 0.96f);
 
-        CreateText("SensitivityLabel", card.transform, "Mouse Sensitivity", 20, FontStyle.Bold, TextAnchor.MiddleLeft, Color.white, new Vector2(-140f, 38f), new Vector2(260f, 32f));
-        sensitivityValueText = CreateText("SensitivityValue", card.transform, "1.80", 18, FontStyle.Bold, TextAnchor.MiddleRight, Color.cyan, new Vector2(140f, 38f), new Vector2(110f, 32f));
+        CreateText("SensitivityLabel", card.transform, "Sensitivity", 20, FontStyle.Bold, TextAnchor.MiddleCenter, Color.white, new Vector2(0f, 36f), new Vector2(200f, 30f));
+        sensitivityValueText = null;
 
-        GameObject sliderObject = CreateUiObject("SensitivitySlider", card.transform);
-        sliderObject.GetComponent<RectTransform>().sizeDelta = new Vector2(320f, 22f);
-        sliderObject.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, -12f);
+        GameObject inputObj = CreateUiObject("SensitivityInput", card.transform);
+        RectTransform inputRect = inputObj.GetComponent<RectTransform>();
+        inputRect.sizeDelta = new Vector2(120f, 36f);
+        inputRect.anchoredPosition = new Vector2(0f, -12f);
 
-        GameObject background = CreateUiObject("Background", sliderObject.transform);
-        background.GetComponent<RectTransform>().anchorMin = new Vector2(0f, 0.4f); background.GetComponent<RectTransform>().anchorMax = new Vector2(1f, 0.6f);
-        background.GetComponent<RectTransform>().offsetMin = Vector2.zero; background.GetComponent<RectTransform>().offsetMax = Vector2.zero;
-        background.AddComponent<Image>().color = new Color(0.24f, 0.28f, 0.36f, 1f);
+        Image inputBg = inputObj.AddComponent<Image>();
+        inputBg.color = new Color(0.18f, 0.22f, 0.30f, 0.95f);
+        Outline inputOutline = inputObj.AddComponent<Outline>();
+        inputOutline.effectColor = new Color(0.30f, 0.84f, 0.97f, 0.6f);
+        inputOutline.effectDistance = new Vector2(1f, -1f);
 
-        GameObject fill = CreateUiObject("Fill", CreateUiObject("Fill Area", sliderObject.transform).transform);
-        fill.AddComponent<Image>().color = new Color(0.30f, 0.84f, 0.97f, 1f);
-        RectTransform fillRect = fill.GetComponent<RectTransform>();
-        fillRect.anchorMin = Vector2.zero; fillRect.anchorMax = Vector2.one;
-        fillRect.offsetMin = Vector2.zero; fillRect.offsetMax = Vector2.zero;
-        fill.transform.parent.GetComponent<RectTransform>().anchorMin = new Vector2(0f, 0.4f); fill.transform.parent.GetComponent<RectTransform>().anchorMax = new Vector2(1f, 0.6f);
+        sensitivityInput = inputObj.AddComponent<InputField>();
+        sensitivityInput.contentType = InputField.ContentType.DecimalNumber;
+        sensitivityInput.textComponent = CreateText("InputText", inputObj.transform, "1.80", 18, FontStyle.Bold, TextAnchor.MiddleCenter, Color.white, Vector2.zero, new Vector2(0f, 0f));
+        sensitivityInput.placeholder = CreateText("Placeholder", inputObj.transform, "1.80", 18, FontStyle.Normal, TextAnchor.MiddleCenter, new Color(1f,1f,1f,0.4f), Vector2.zero, new Vector2(0f,0f));
+        sensitivityInput.textComponent.rectTransform.anchorMin = Vector2.zero; sensitivityInput.textComponent.rectTransform.anchorMax = Vector2.one;
+        sensitivityInput.textComponent.rectTransform.offsetMin = new Vector2(8f, 6f); sensitivityInput.textComponent.rectTransform.offsetMax = new Vector2(-8f, -6f);
+        ((Text)sensitivityInput.placeholder).rectTransform.anchorMin = Vector2.zero; ((Text)sensitivityInput.placeholder).rectTransform.anchorMax = Vector2.one;
+        ((Text)sensitivityInput.placeholder).rectTransform.offsetMin = new Vector2(8f, 6f); ((Text)sensitivityInput.placeholder).rectTransform.offsetMax = new Vector2(-8f, -6f);
 
-        GameObject handle = CreateUiObject("Handle", CreateUiObject("Handle Slide Area", sliderObject.transform).transform);
-        handle.AddComponent<Image>().color = Color.white;
-        handle.GetComponent<RectTransform>().sizeDelta = new Vector2(14f, 22f);
-        handle.transform.parent.GetComponent<RectTransform>().anchorMin = Vector2.zero; handle.transform.parent.GetComponent<RectTransform>().anchorMax = Vector2.one;
-
-        sensitivitySlider = sliderObject.AddComponent<Slider>();
-        sensitivitySlider.minValue = 0.2f; sensitivitySlider.maxValue = 6f;
-        sensitivitySlider.targetGraphic = handle.GetComponent<Image>();
-        sensitivitySlider.fillRect = fillRect; sensitivitySlider.handleRect = handle.GetComponent<RectTransform>();
-        sensitivitySlider.onValueChanged.AddListener(OnSensitivityChanged);
+        sensitivityInput.onEndEdit.AddListener(OnSensitivityInputChanged);
     }
 
     private void GenerateQrLogin()
@@ -449,7 +440,7 @@ public class PauseMenuManager : MonoBehaviour
 
     private void SaveSettings()
     {
-        float val = sensitivitySlider != null ? sensitivitySlider.value : PlayerPrefs.GetFloat(MouseSensitivityPrefKey, 1.8f);
+        float val = GetCurrentSensitivity();
         PlayerPrefs.SetFloat(MouseSensitivityPrefKey, val);
         PlayerPrefs.Save();
         if (fpsController != null) fpsController.SetMouseSensitivity(val);
@@ -468,7 +459,34 @@ public class PauseMenuManager : MonoBehaviour
 #endif
     }
 
-    private void OnSensitivityChanged(float v) { UpdateSensitivityLabel(v); if (fpsController != null) fpsController.SetMouseSensitivity(v); }
+    private void OnSensitivityChanged(float v) { SetSensitivityValue(v, syncInput: true); }
+
+    private void OnSensitivityInputChanged(string text)
+    {
+        if (!float.TryParse(text, out float v))
+        {
+            v = PlayerPrefs.GetFloat(MouseSensitivityPrefKey, 1.8f);
+        }
+        v = Mathf.Clamp(v, 0.2f, 6f);
+        SetSensitivityValue(v, syncInput: false);
+    }
+
+    private void SetSensitivityValue(float v, bool syncInput)
+    {
+        if (syncInput && sensitivityInput != null) sensitivityInput.SetTextWithoutNotify(v.ToString("0.00"));
+        UpdateSensitivityLabel(v);
+        if (fpsController != null) fpsController.SetMouseSensitivity(v);
+    }
+
+    private float GetCurrentSensitivity()
+    {
+        if (sensitivityInput != null && float.TryParse(sensitivityInput.text, out float val))
+        {
+            return Mathf.Clamp(val, 0.2f, 6f);
+        }
+        if (sensitivitySlider != null) return Mathf.Clamp(sensitivitySlider.value, 0.2f, 6f);
+        return PlayerPrefs.GetFloat(MouseSensitivityPrefKey, 1.8f);
+    }
 
     private void UpdateSensitivityLabel(float v) { if (sensitivityValueText != null) sensitivityValueText.text = v.ToString("0.00"); }
 
@@ -478,8 +496,8 @@ public class PauseMenuManager : MonoBehaviour
     {
         float v = PlayerPrefs.GetFloat(MouseSensitivityPrefKey, 1.8f);
         if (sensitivitySlider != null) sensitivitySlider.SetValueWithoutNotify(v);
-        UpdateSensitivityLabel(v);
-        if (fpsController != null) fpsController.SetMouseSensitivity(v);
+        if (sensitivityInput != null) sensitivityInput.SetTextWithoutNotify(v.ToString("0.00"));
+        SetSensitivityValue(v, syncInput: false);
     }
 
     private static void EnsureEventSystem()
