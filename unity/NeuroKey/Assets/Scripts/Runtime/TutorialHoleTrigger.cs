@@ -22,7 +22,7 @@ public class TutorialHoleTrigger : MonoBehaviour
     private float nextAllowedEnterTime;
 
     private Camera cam;
-    private TopDownCameraFollow camFollow;
+    private BeanCameraFollow camFollow;
     private BackgroundColorCycler camCycler;
     private Vector3 previousCamPosition;
     private Quaternion previousCamRotation;
@@ -211,7 +211,7 @@ public class TutorialHoleTrigger : MonoBehaviour
             return;
         }
 
-        camFollow = cam.GetComponent<TopDownCameraFollow>();
+        camFollow = cam.GetComponent<BeanCameraFollow>();
         camCycler = cam.GetComponent<BackgroundColorCycler>();
         previousCamPosition = cam.transform.position;
         previousCamRotation = cam.transform.rotation;

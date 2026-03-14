@@ -19,7 +19,7 @@ public class BlackoutPipeTrigger : MonoBehaviour
     private bool inCustomRoom;
     private BeanController activeSphere;
     private Camera cam;
-    private TopDownCameraFollow camFollow;
+    private BeanCameraFollow camFollow;
     private BackgroundColorCycler camCycler;
     private Vector3 previousCamPosition;
     private Quaternion previousCamRotation;
@@ -164,7 +164,7 @@ public class BlackoutPipeTrigger : MonoBehaviour
             return;
         }
 
-        camFollow = cam.GetComponent<TopDownCameraFollow>();
+        camFollow = cam.GetComponent<BeanCameraFollow>();
         camCycler = cam.GetComponent<BackgroundColorCycler>();
 
         previousCamPosition = cam.transform.position;
