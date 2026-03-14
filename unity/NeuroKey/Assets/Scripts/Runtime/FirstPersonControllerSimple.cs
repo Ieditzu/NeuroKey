@@ -87,6 +87,11 @@ public class FirstPersonControllerSimple : MonoBehaviour
         }
     }
 
+    public void SetJumpVelocity(float newVelocity)
+    {
+        jumpVelocity = Mathf.Max(0f, newVelocity);
+    }
+
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
