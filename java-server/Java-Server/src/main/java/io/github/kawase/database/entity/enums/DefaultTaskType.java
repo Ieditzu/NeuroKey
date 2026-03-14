@@ -6,12 +6,16 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum DefaultTaskType {
-    CLEAN_ROOM("Clean your room", 10),
-    DO_HOMEWORK("Complete homework", 15),
-    READ_BOOK("Read a book for 30 minutes", 5),
-    BRUSH_TEETH("Brush teeth", 5),
-    WASH_DISHES("Wash the dishes", 10),
-    MAKE_BED("Make the bed", 5);
+    CPP_BASICS("C++ Basics: Hello World Quiz", 10),
+    VARIABLES("Variables & Data Types Challenge", 15),
+    LOGIC_GATES("The 'If-Else' Logic Gate", 20),
+    LOOP_MASTER("Loop Master: For-Loops Challenge", 25),
+    ARRAY_ARCHITECT("Array Architect: Storing Data", 30),
+    FUNCTION_HERO("Function Hero: Reusable Code", 35),
+    POINTER_PIONEER("Pointer Pioneer: Memory Basics", 50),
+    CLASS_CREATOR("Class Creator: Intro to OOP", 60),
+    OOP_INHERITANCE("Object Oriented: Inheritance Quiz", 75),
+    MEMORY_MANAGEMENT("Final Boss: Memory Management", 100);
 
     private final String title;
     private final int pointValue;
