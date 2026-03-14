@@ -594,12 +594,16 @@ fun SettingsScreen(viewModel: SocketViewModel) {
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
+                val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
                 OutlinedTextField(
                     value = childName,
-                    onValueChange = { childName = it },
+                    onValueChange = { if (!it.contains("\n")) childName = it },
                     label = { Text("Kid's Name") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                    keyboardActions = androidx.compose.ui.text.input.KeyboardActions(onDone = { keyboardController?.hide() }),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = viewModel.primaryColor.value,
                         focusedLabelColor = viewModel.primaryColor.value,
@@ -612,6 +616,7 @@ fun SettingsScreen(viewModel: SocketViewModel) {
                 Button(
                     onClick = { 
                         if (childName.isNotBlank()) {
+                            keyboardController?.hide()
                             viewModel.addChild(childName)
                             childName = ""
                         }
@@ -835,6 +840,7 @@ fun AddGoalDialog(
     var points by remember { mutableStateOf("50") }
     var selectedTaskId by remember { mutableStateOf(-1L) }
     var usePoints by remember { mutableStateOf(true) }
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -860,10 +866,12 @@ fun AddGoalDialog(
 
                 OutlinedTextField(
                     value = title,
-                    onValueChange = { title = it },
+                    onValueChange = { if (!it.contains("\n")) title = it },
                     label = { Text("Goal Name") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Next),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = primaryColor,
                         focusedLabelColor = primaryColor,
@@ -875,10 +883,17 @@ fun AddGoalDialog(
                 )
                 OutlinedTextField(
                     value = reward,
-                    onValueChange = { reward = it },
+                    onValueChange = { if (!it.contains("\n")) reward = it },
                     label = { Text("Reward") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(
+                        imeAction = if (usePoints) androidx.compose.ui.text.input.ImeAction.Next else androidx.compose.ui.text.input.ImeAction.Done
+                    ),
+                    keyboardActions = androidx.compose.ui.text.input.KeyboardActions(
+                        onDone = { keyboardController?.hide() }
+                    ),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = primaryColor,
                         focusedLabelColor = primaryColor,
@@ -912,10 +927,18 @@ fun AddGoalDialog(
                 if (usePoints) {
                     OutlinedTextField(
                         value = points,
-                        onValueChange = { points = it },
+                        onValueChange = { if (!it.contains("\n")) points = it },
                         label = { Text("Points Required") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
+                        singleLine = true,
+                        keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Done,
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                        ),
+                        keyboardActions = androidx.compose.ui.text.input.KeyboardActions(
+                            onDone = { keyboardController?.hide() }
+                        ),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = primaryColor,
                             focusedLabelColor = primaryColor,
@@ -956,7 +979,10 @@ fun AddGoalDialog(
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
-                        onClick = { onConfirm(title, reward, points.toIntOrNull() ?: 0, if (usePoints) -1L else selectedTaskId) },
+                        onClick = { 
+                            keyboardController?.hide()
+                            onConfirm(title, reward, points.toIntOrNull() ?: 0, if (usePoints) -1L else selectedTaskId) 
+                        },
                         enabled = title.isNotBlank() && reward.isNotBlank(),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
