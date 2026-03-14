@@ -522,7 +522,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
             ShowMainUi(true);
             ShowChallengeButtons(current > 0, true, true, true, false, false);
 
-            while (!verifyRequested && !runRequested && !backRequested && !leaveRequested)
+            while (!verifyRequested && !backRequested && !leaveRequested)
             {
                 if (hintRequested)
                 {
@@ -569,13 +569,6 @@ public class CodeChallengePadCinematic : MonoBehaviour
                 continue;
             }
 
-            if (runRequested)
-            {
-                runRequested = false;
-                answers[current] = codeInput.text;
-                continue;
-            }
-
             bool correct = false;
             yield return EvaluateChallenge(challenge, codeInput.text, result => correct = result);
             answers[current] = codeInput.text;
@@ -591,7 +584,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                 feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
                 feedbackText.color = correctColor;
                 ShowChallengeButtons(current > 0, true, true, false, true, false);
-                while (!continueRequested && !backRequested && !runRequested && !leaveRequested)
+                while (!continueRequested && !backRequested && !leaveRequested)
                 {
                     if (hintRequested)
                     {
@@ -664,7 +657,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
             feedbackText.color = wrongColor;
             verifyRequested = false;
-            while (!verifyRequested && !runRequested && !backRequested && !leaveRequested)
+            while (!verifyRequested && !backRequested && !leaveRequested)
             {
                 if (hintRequested)
                 {
@@ -1364,7 +1357,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
             ShowMainUi(true);
             ShowChallengeButtons(current > 0, true, true, true, false, false);
 
-            while (!verifyRequested && !runRequested && !backRequested && !leaveRequested)
+            while (!verifyRequested && !backRequested && !leaveRequested)
             {
                 if (hintRequested)
                 {
@@ -1411,13 +1404,6 @@ public class CodeChallengePadCinematic : MonoBehaviour
                 continue;
             }
 
-            if (runRequested)
-            {
-                runRequested = false;
-                retryAnswers[current] = codeInput.text;
-                continue;
-            }
-
             retryAnswers[current] = codeInput.text;
             bool retryCorrect = false;
             yield return EvaluateChallenge(challenge, codeInput.text, result => retryCorrect = result);
@@ -1429,7 +1415,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                 feedbackText.color = correctColor;
                 ShowChallengeButtons(current > 0, true, true, false, true, false);
 
-                while (!continueRequested && !runRequested && !leaveRequested)
+                while (!continueRequested && !leaveRequested)
                 {
                     if (runRequested)
                     {
