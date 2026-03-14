@@ -8,10 +8,13 @@ import org.json.JSONObject;
 import org.json.JSONArray;
 
 public class GeminiAI {
-    private final String apiKey = "AIzaSyAOI3k54KSh4rheY13UpPkuRZnEZJFePK0";
+    private final String apiKey = System.getenv("GEMINI_API_KEY");
 
     public String ask(String question, String context) {
         try {
+            if (apiKey == null || apiKey.isBlank()) {
+                return "AI Error: GEMINI_API_KEY is not set on the server.";
+            }
             final String prompt = "You are an educational AI mentor for a student learning C++ in a game called NeuroKey. " +
                     "Context: " + context + "\n" +
                     "Student's Question: " + question + "\n" +
