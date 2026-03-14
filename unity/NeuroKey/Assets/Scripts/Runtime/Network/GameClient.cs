@@ -19,6 +19,7 @@ namespace NeuroKey.Network
         public bool IsConnected => socket != null && socket.State == WebSocketState.Open;
 
         [SerializeField] private string serverUrl = "wss://neuro.serenityutils.club";
+        [SerializeField] private float connectTimeoutSeconds = 8f;
 
         private void Awake()
         {
@@ -35,21 +36,51 @@ namespace NeuroKey.Network
         {
             if (IsConnected) return;
 
+            CleanupSocket();
+
+            if (!TryCreateServerUri(out Uri serverUri))
+            {
+                Debug.LogError("Connection failed: invalid server URL `" + serverUrl + "`");
+                return;
+            }
+
             socket = new ClientWebSocket();
             cts = new CancellationTokenSource();
+            CancellationTokenSource timeoutCts = null;
+            CancellationTokenSource linkedCts = null;
 
             try
             {
-                await socket.ConnectAsync(new Uri(serverUrl), cts.Token);
+                timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(Mathf.Max(1f, connectTimeoutSeconds)));
+                linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, timeoutCts.Token);
+
+                await socket.ConnectAsync(serverUri, linkedCts.Token);
                 Debug.Log("Connected to server");
                 _ = ReceiveLoop();
 
-                // Send handshake (fire-and-forget is fine, but await to avoid warnings)
                 await SendPacket(new HandShakePacket("unity_game"));
+            }
+            catch (OperationCanceledException) when (timeoutCts != null && timeoutCts.IsCancellationRequested)
+            {
+                Debug.LogError("Connection failed: timeout after " + connectTimeoutSeconds + "s to " + serverUri);
+                CleanupSocket();
             }
             catch (Exception e)
             {
-                Debug.LogError("Connection failed: " + e.Message);
+                Debug.LogError("Connection failed to " + serverUri + ": " + e.Message);
+                CleanupSocket();
+            }
+            finally
+            {
+                if (linkedCts != null)
+                {
+                    linkedCts.Dispose();
+                }
+
+                if (timeoutCts != null)
+                {
+                    timeoutCts.Dispose();
+                }
             }
         }
 
@@ -101,12 +132,38 @@ namespace NeuroKey.Network
 
         private void OnDestroy()
         {
-            if (cts != null) {
+            CleanupSocket();
+        }
+
+        private bool TryCreateServerUri(out Uri uri)
+        {
+            uri = null;
+            string trimmedUrl = string.IsNullOrWhiteSpace(serverUrl) ? string.Empty : serverUrl.Trim();
+            if (string.IsNullOrEmpty(trimmedUrl))
+            {
+                return false;
+            }
+
+            if (!trimmedUrl.StartsWith("ws://", StringComparison.OrdinalIgnoreCase) &&
+                !trimmedUrl.StartsWith("wss://", StringComparison.OrdinalIgnoreCase))
+            {
+                trimmedUrl = "wss://" + trimmedUrl;
+            }
+
+            return Uri.TryCreate(trimmedUrl, UriKind.Absolute, out uri);
+        }
+
+        private void CleanupSocket()
+        {
+            if (cts != null)
+            {
                 cts.Cancel();
                 cts.Dispose();
                 cts = null;
             }
-            if (socket != null) {
+
+            if (socket != null)
+            {
                 socket.Dispose();
                 socket = null;
             }
