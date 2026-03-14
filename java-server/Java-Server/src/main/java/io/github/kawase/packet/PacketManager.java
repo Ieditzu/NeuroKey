@@ -5,6 +5,8 @@ import io.github.kawase.packet.impl.auth.*;
 import io.github.kawase.packet.impl.child.*;
 import io.github.kawase.packet.impl.core.*;
 import io.github.kawase.packet.impl.game.*;
+import io.github.kawase.packet.impl.game.language.ExecuteCPPCodePacket;
+import io.github.kawase.packet.impl.game.language.ExecuteCPPCodeResponsePacket;
 import io.github.kawase.packet.impl.qr.*;
 
 public class PacketManager {
@@ -35,6 +37,8 @@ public class PacketManager {
             case 25 -> new VerifySessionPacket();
             case 26 -> new UpdatePfpPacket();
             case 27 -> new RemoveChildPacket();
+            case 28 -> new ExecuteCPPCodePacket();
+            case 29 -> new ExecuteCPPCodeResponsePacket();
 
             default -> throw new PacketException("Unknown packet ID: " + id);
         };
