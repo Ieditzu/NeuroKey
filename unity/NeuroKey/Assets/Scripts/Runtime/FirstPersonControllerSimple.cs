@@ -13,7 +13,7 @@ public class FirstPersonControllerSimple : MonoBehaviour
     [SerializeField] private float sprintMultiplier = 3.2f;
     [SerializeField] private float temporaryBoostMultiplier = 4f;
     [SerializeField] private float temporaryBoostDuration = 5f;
-    [SerializeField] private float jumpVelocity = 14f;
+    [SerializeField] private float jumpVelocity = 7f;
     [SerializeField] private float coyoteTime = 0.12f;
     [SerializeField] private float gravity = 9.81f;
     [Header("Physics Interaction")]

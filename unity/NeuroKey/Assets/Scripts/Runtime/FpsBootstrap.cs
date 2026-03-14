@@ -33,14 +33,8 @@ public static class FpsBootstrap
 
     private static void AddBeanBody(GameObject player, CharacterController cc)
     {
-        GameObject beanBody = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        beanBody.name = "FPS_BeanBody";
-        Object.Destroy(beanBody.GetComponent<Collider>());
-        beanBody.transform.SetParent(player.transform, false);
-
-        float bodyHeight = cc != null ? cc.height : 2f;
-        beanBody.transform.localPosition = new Vector3(0f, bodyHeight * 0.5f, 0f);
-        beanBody.transform.localScale = new Vector3(0.6f, 1.1f, 0.6f);
+        // No visual proxy for the FPS player; skip spawning FPS_BeanBody.
+        return;
     }
 
     private static Vector3 GuessSpawnPosition()
