@@ -17,7 +17,7 @@ public class BlackoutPipeTrigger : MonoBehaviour
 
     private bool transitionRunning;
     private bool inCustomRoom;
-    private SphereController activeSphere;
+    private BeanController activeSphere;
     private Camera cam;
     private TopDownCameraFollow camFollow;
     private BackgroundColorCycler camCycler;
@@ -75,7 +75,7 @@ public class BlackoutPipeTrigger : MonoBehaviour
             return;
         }
 
-        var sphere = other.GetComponent<SphereController>();
+        var sphere = other.GetComponent<BeanController>();
         if (sphere == null)
         {
             return;
@@ -111,7 +111,7 @@ public class BlackoutPipeTrigger : MonoBehaviour
         }
     }
 
-    private IEnumerator EnterCustomRoomFlow(SphereController sphere)
+    private IEnumerator EnterCustomRoomFlow(BeanController sphere)
     {
         transitionRunning = true;
         activeSphere = sphere;
@@ -156,7 +156,7 @@ public class BlackoutPipeTrigger : MonoBehaviour
         transitionRunning = false;
     }
 
-    private void EnterCustomRoomView(SphereController sphere)
+    private void EnterCustomRoomView(BeanController sphere)
     {
         cam = Camera.main;
         if (cam == null)
@@ -239,7 +239,7 @@ public class BlackoutPipeTrigger : MonoBehaviour
         light.intensity = 1.35f;
     }
 
-    private void SyncPreviewSkin(SphereController sphere)
+    private void SyncPreviewSkin(BeanController sphere)
     {
         if (previewRenderer == null || sphere == null)
         {
@@ -875,7 +875,7 @@ public class BlackoutPipeTrigger : MonoBehaviour
         return Sprite.Create(tex, new Rect(0f, 0f, width, height), new Vector2(0.5f, 0.5f));
     }
 
-    private void EnsureEditablePlayerMaterial(SphereController sphere)
+    private void EnsureEditablePlayerMaterial(BeanController sphere)
     {
         if (sphere == null)
         {

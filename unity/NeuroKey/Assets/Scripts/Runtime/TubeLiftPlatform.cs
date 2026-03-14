@@ -39,7 +39,7 @@ public class TubeLiftPlatform : MonoBehaviour
     private readonly Color baseColor = new Color(0.16f, 0.18f, 0.22f, 1f);
     private readonly Color effectColor = new Color(0.5f, 0.95f, 1f, 1f);
     private readonly Collider[] overlapResults = new Collider[32];
-    private readonly HashSet<SphereController> spherePassengers = new HashSet<SphereController>();
+    private readonly HashSet<BeanController> spherePassengers = new HashSet<BeanController>();
     private readonly HashSet<FirstPersonControllerSimple> fpsPassengers = new HashSet<FirstPersonControllerSimple>();
 
     private void Awake()
@@ -160,7 +160,7 @@ public class TubeLiftPlatform : MonoBehaviour
                 continue;
             }
 
-            SphereController sphere = hit.GetComponentInParent<SphereController>();
+            BeanController sphere = hit.GetComponentInParent<BeanController>();
             if (sphere != null)
             {
                 RegisterSpherePassenger(sphere);
@@ -181,7 +181,7 @@ public class TubeLiftPlatform : MonoBehaviour
         }
     }
 
-    private void RegisterSpherePassenger(SphereController sphere)
+    private void RegisterSpherePassenger(BeanController sphere)
     {
         if (sphere == null)
         {
@@ -212,7 +212,7 @@ public class TubeLiftPlatform : MonoBehaviour
             return;
         }
 
-        SphereController sphere = Object.FindObjectOfType<SphereController>();
+        BeanController sphere = Object.FindObjectOfType<BeanController>();
         if (sphere != null && IsTransformOverPlatform(sphere.transform, platformBounds, 1.0f))
         {
             RegisterSpherePassenger(sphere);

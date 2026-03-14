@@ -184,7 +184,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
             return;
         }
 
-        if (!TryGetPlayer(other, out SphereController sphere, out FirstPersonControllerSimple fps))
+        if (!TryGetPlayer(other, out BeanController sphere, out FirstPersonControllerSimple fps))
         {
             return;
         }
@@ -200,7 +200,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         }
     }
 
-    private IEnumerator PlaySequence(SphereController sphere, FirstPersonControllerSimple fps)
+    private IEnumerator PlaySequence(BeanController sphere, FirstPersonControllerSimple fps)
     {
         running = true;
         leaveRequested = false;
@@ -718,7 +718,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         running = false;
     }
 
-    private void RestorePlayerState(SphereController sphere, FirstPersonControllerSimple fps)
+    private void RestorePlayerState(BeanController sphere, FirstPersonControllerSimple fps)
     {
         SetPlayerLockState(sphere, fps, false, false);
         if (fps != null)
@@ -864,7 +864,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         activePortal = null;
     }
 
-    private static void TeleportPlayer(SphereController sphere, FirstPersonControllerSimple fps, Vector3 position, Quaternion rotation)
+    private static void TeleportPlayer(BeanController sphere, FirstPersonControllerSimple fps, Vector3 position, Quaternion rotation)
     {
         if (fps != null)
         {
@@ -895,7 +895,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         }
     }
 
-    private static void SetPlayerLockState(SphereController sphere, FirstPersonControllerSimple fps, bool movementLocked, bool hardFreeze)
+    private static void SetPlayerLockState(BeanController sphere, FirstPersonControllerSimple fps, bool movementLocked, bool hardFreeze)
     {
         if (sphere != null)
         {
@@ -922,9 +922,9 @@ public class CodeChallengePadCinematic : MonoBehaviour
         return Camera.main;
     }
 
-    private static bool TryGetPlayer(Collider other, out SphereController sphere, out FirstPersonControllerSimple fps)
+    private static bool TryGetPlayer(Collider other, out BeanController sphere, out FirstPersonControllerSimple fps)
     {
-        sphere = other.GetComponent<SphereController>() ?? other.GetComponentInParent<SphereController>();
+        sphere = other.GetComponent<BeanController>() ?? other.GetComponentInParent<BeanController>();
         fps = other.GetComponent<FirstPersonControllerSimple>() ?? other.GetComponentInParent<FirstPersonControllerSimple>();
         return sphere != null || fps != null;
     }

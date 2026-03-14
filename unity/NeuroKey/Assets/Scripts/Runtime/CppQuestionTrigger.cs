@@ -113,7 +113,7 @@ public class CppQuestionTrigger : MonoBehaviour
             return;
         }
 
-        if (!TryGetPlayer(other, out SphereController sphere, out FirstPersonControllerSimple fps))
+        if (!TryGetPlayer(other, out BeanController sphere, out FirstPersonControllerSimple fps))
         {
             return;
         }
@@ -121,7 +121,7 @@ public class CppQuestionTrigger : MonoBehaviour
         StartCoroutine(PlayQuestionSequence(sphere, fps));
     }
 
-    private IEnumerator PlayQuestionSequence(SphereController sphere, FirstPersonControllerSimple fps)
+    private IEnumerator PlayQuestionSequence(BeanController sphere, FirstPersonControllerSimple fps)
     {
         isAnimating = true;
         awaitingAnswer = false;
@@ -186,7 +186,7 @@ public class CppQuestionTrigger : MonoBehaviour
         isAnimating = false;
     }
 
-    public void SubmitAnswer(bool correct, SphereController sphere, FirstPersonControllerSimple fps)
+    public void SubmitAnswer(bool correct, BeanController sphere, FirstPersonControllerSimple fps)
     {
         if (!awaitingAnswer || solved || feedbackActive)
         {
@@ -204,7 +204,7 @@ public class CppQuestionTrigger : MonoBehaviour
         StartCoroutine(ResolveAnswerFeedback(sphere, fps, correct));
     }
 
-    private IEnumerator ResolveAnswerFeedback(SphereController sphere, FirstPersonControllerSimple fps, bool correct)
+    private IEnumerator ResolveAnswerFeedback(BeanController sphere, FirstPersonControllerSimple fps, bool correct)
     {
         SetPlayerLockState(sphere, fps, true, true);
 
@@ -628,12 +628,12 @@ public class CppQuestionTrigger : MonoBehaviour
         }
     }
 
-    private static bool TryGetPlayer(Collider other, out SphereController sphere, out FirstPersonControllerSimple fps)
+    private static bool TryGetPlayer(Collider other, out BeanController sphere, out FirstPersonControllerSimple fps)
     {
-        sphere = other.GetComponent<SphereController>();
+        sphere = other.GetComponent<BeanController>();
         if (sphere == null)
         {
-            sphere = other.GetComponentInParent<SphereController>();
+            sphere = other.GetComponentInParent<BeanController>();
         }
 
         fps = other.GetComponent<FirstPersonControllerSimple>();
@@ -646,7 +646,7 @@ public class CppQuestionTrigger : MonoBehaviour
     }
 
     private static void SetPlayerLockState(
-        SphereController sphere,
+        BeanController sphere,
         FirstPersonControllerSimple fps,
         bool movementLocked,
         bool hardFreeze)

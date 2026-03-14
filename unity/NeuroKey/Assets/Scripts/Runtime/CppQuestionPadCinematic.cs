@@ -239,7 +239,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
             return;
         }
 
-        if (!TryGetPlayer(other, out SphereController sphere, out FirstPersonControllerSimple fps))
+        if (!TryGetPlayer(other, out BeanController sphere, out FirstPersonControllerSimple fps))
         {
             return;
         }
@@ -247,7 +247,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
         StartCoroutine(PlaySequence(sphere, fps));
     }
 
-    private IEnumerator PlaySequence(SphereController sphere, FirstPersonControllerSimple fps)
+    private IEnumerator PlaySequence(BeanController sphere, FirstPersonControllerSimple fps)
     {
         running = true;
         leaveRequested = false;
@@ -1077,7 +1077,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
         running = false;
     }
 
-    private void RestorePlayerState(SphereController sphere, FirstPersonControllerSimple fps)
+    private void RestorePlayerState(BeanController sphere, FirstPersonControllerSimple fps)
     {
         SetPlayerLockState(sphere, fps, false, false);
         if (fps != null)
@@ -1088,7 +1088,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
         running = false;
     }
 
-    private static void TeleportPlayer(SphereController sphere, FirstPersonControllerSimple fps, Vector3 position, Quaternion rotation)
+    private static void TeleportPlayer(BeanController sphere, FirstPersonControllerSimple fps, Vector3 position, Quaternion rotation)
     {
         if (fps != null)
         {
@@ -1247,12 +1247,12 @@ public class CppQuestionPadCinematic : MonoBehaviour
         return Camera.main;
     }
 
-    private static bool TryGetPlayer(Collider other, out SphereController sphere, out FirstPersonControllerSimple fps)
+    private static bool TryGetPlayer(Collider other, out BeanController sphere, out FirstPersonControllerSimple fps)
     {
-        sphere = other.GetComponent<SphereController>();
+        sphere = other.GetComponent<BeanController>();
         if (sphere == null)
         {
-            sphere = other.GetComponentInParent<SphereController>();
+            sphere = other.GetComponentInParent<BeanController>();
         }
 
         fps = other.GetComponent<FirstPersonControllerSimple>();
@@ -1264,7 +1264,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
         return sphere != null || fps != null;
     }
 
-    private static void SetPlayerLockState(SphereController sphere, FirstPersonControllerSimple fps, bool movementLocked, bool hardFreeze)
+    private static void SetPlayerLockState(BeanController sphere, FirstPersonControllerSimple fps, bool movementLocked, bool hardFreeze)
     {
         if (sphere != null)
         {

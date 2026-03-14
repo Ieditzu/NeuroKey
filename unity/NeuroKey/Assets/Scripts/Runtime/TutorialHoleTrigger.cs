@@ -102,7 +102,7 @@ public class TutorialHoleTrigger : MonoBehaviour
             return;
         }
 
-        var sphere = other.GetComponent<SphereController>();
+        var sphere = other.GetComponent<BeanController>();
         if (sphere == null)
         {
             return;
@@ -145,7 +145,7 @@ public class TutorialHoleTrigger : MonoBehaviour
         }
     }
 
-    private IEnumerator PlayTutorialHoleFlow(SphereController sphere)
+    private IEnumerator PlayTutorialHoleFlow(BeanController sphere)
     {
         transitionRunning = true;
 
