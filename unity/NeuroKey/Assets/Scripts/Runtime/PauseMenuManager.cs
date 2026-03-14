@@ -302,7 +302,7 @@ public class PauseMenuManager : MonoBehaviour
 
         qrStatusText = CreateText("QrStatus", qrSection.transform, 
             loggedInChildId == -1 ? "Not logged in" : loggedInChildName + " | " + loggedInChildPoints + " pts", 
-            14, FontStyle.Italic, TextAnchor.MiddleCenter, Color.white, new Vector2(0, 110), new Vector2(300, 28));
+            28, FontStyle.Italic, TextAnchor.MiddleCenter, Color.white, new Vector2(0, 110), new Vector2(380, 70));
 
         GameObject qrImgObj = CreateUiObject("QrCodeImage", qrSection.transform);
         qrCodeImage = qrImgObj.AddComponent<RawImage>();
