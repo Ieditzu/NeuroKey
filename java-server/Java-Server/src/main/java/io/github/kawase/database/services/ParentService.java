@@ -12,7 +12,6 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ParentService {
     private final ParentRepository parentRepository;
-    private final TaskService taskService;
 
     @Transactional
     public Parent createParentAccount(final String email, final String passwordHash) {
@@ -24,11 +23,7 @@ public class ParentService {
         newParent.setEmail(email);
         newParent.setPasswordHash(passwordHash);
 
-        final Parent savedParent = parentRepository.save(newParent);
-        
-        taskService.initializeDefaultTasksForParent(savedParent);
-        
-        return savedParent;
+        return parentRepository.save(newParent);
     }
 
     public boolean loginParent(final String email, final String passwordHash) {
@@ -56,16 +51,6 @@ public class ParentService {
             parent.setProfilePicture(base64Pfp);
             parentRepository.save(parent);
         });
-    }
-
-    @Transactional(readOnly = true)
-    public java.util.List<io.github.kawase.database.entity.Task> getTasks(final Long parentId) {
-        return parentRepository.findById(parentId)
-                .map(parent -> {
-                    parent.getTasks().size(); // Force initialization
-                    return parent.getTasks();
-                })
-                .orElse(java.util.List.of());
     }
 
     @Transactional(readOnly = true)

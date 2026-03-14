@@ -29,9 +29,5 @@ public class Parent {
 
     @ToString.Exclude
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Task> tasks;
-
-    @ToString.Exclude
-    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Goal> goals;
 }

@@ -2,7 +2,6 @@ package io.github.kawase.database.services;
 
 import io.github.kawase.database.entity.Child;
 import io.github.kawase.database.entity.CompletedTask;
-import io.github.kawase.database.entity.Parent;
 import io.github.kawase.database.entity.Task;
 import io.github.kawase.database.entity.enums.DefaultTaskType;
 import io.github.kawase.database.repository.ChildRepository;
@@ -29,18 +28,22 @@ public class TaskService {
     private final GoalService goalService;
 
     @Transactional
-    public List<Task> initializeDefaultTasksForParent(final Parent parent) {
+    public void initializeGlobalTasks() {
+        if (taskRepository.count() > 0) return;
+
         final List<Task> defaultTasks = new ArrayList<>();
-        
         for (final DefaultTaskType defaultTask : DefaultTaskType.values()) {
             final Task task = new Task();
-            task.setParent(parent);
             task.setTitle(defaultTask.getTitle());
             task.setPointValue(defaultTask.getPointValue());
             defaultTasks.add(task);
         }
-        
-        return taskRepository.saveAll(defaultTasks);
+        taskRepository.saveAll(defaultTasks);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Task> getAllTasks() {
+        return taskRepository.findAll();
     }
 
     @Transactional
