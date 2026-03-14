@@ -253,9 +253,9 @@ public class PauseMenuManager : MonoBehaviour
 
     private void ShowPanel(GameObject panel)
     {
-        mainPanel.SetActive(false);
-        tasksPanel.SetActive(false);
-        panel.SetActive(true);
+        if (mainPanel != null) mainPanel.SetActive(false);
+        if (tasksPanel != null) tasksPanel.SetActive(false);
+        if (panel != null) panel.SetActive(true);
     }
 
     private void RebuildTaskList()

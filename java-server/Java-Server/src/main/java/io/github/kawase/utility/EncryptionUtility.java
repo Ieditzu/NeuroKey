@@ -1,9 +1,8 @@
 package io.github.kawase.utility;
 
-
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -11,9 +10,8 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 
 public class EncryptionUtility {
-    private static final String ALGORITHM = "AES/GCM/NoPadding";
-    private static final int TAG_LENGTH_BIT = 128;
-    private static final int IV_LENGTH_BYTE = 12;
+    private static final String ALGORITHM = "AES/CBC/PKCS5Padding";
+    private static final int IV_LENGTH_BYTE = 16;
 
     private static SecretKey deriveKey(final String password) throws Exception {
         final MessageDigest sha = MessageDigest.getInstance("SHA-256");
@@ -52,7 +50,7 @@ public class EncryptionUtility {
 
         final SecretKey key = deriveKey(encryptionKey);
         final Cipher cipher = Cipher.getInstance(ALGORITHM);
-        cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
+        cipher.init(Cipher.ENCRYPT_MODE, key, new IvParameterSpec(iv));
 
         final byte[] cipherText = cipher.doFinal(data);
 
@@ -71,7 +69,7 @@ public class EncryptionUtility {
 
         final SecretKey key = deriveKey(encryptionKey);
         final Cipher cipher = Cipher.getInstance(ALGORITHM);
-        cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
+        cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
 
         return cipher.doFinal(cipherText);
     }

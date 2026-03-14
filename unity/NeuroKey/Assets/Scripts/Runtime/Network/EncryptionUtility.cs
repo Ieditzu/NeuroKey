@@ -7,9 +7,7 @@ namespace NeuroKey.Network
 {
     public static class EncryptionUtility
     {
-        private const int TagLengthBit = 128;
-        private const int TagLengthByte = TagLengthBit / 8;
-        private const int IvLengthByte = 12;
+        private const int IvLengthByte = 16;
 
         private static byte[] DeriveKey(string password)
         {
@@ -48,25 +46,30 @@ namespace NeuroKey.Network
         {
             byte[] key = DeriveKey(encryptionKey);
             byte[] iv = new byte[IvLengthByte];
-            using (var rng = new RNGCryptoServiceProvider())
+            using (var rng = RandomNumberGenerator.Create())
             {
                 rng.GetBytes(iv);
             }
 
-            byte[] tag = new byte[TagLengthByte];
-            byte[] cipherText = new byte[data.Length];
-
-            using (var aesGcm = new AesGcm(key))
+            using (var aes = Aes.Create())
             {
-                aesGcm.Encrypt(iv, data, cipherText, tag);
+                aes.Key = key;
+                aes.IV = iv;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.PKCS7;
+
+                using (var encryptor = aes.CreateEncryptor())
+                using (var ms = new MemoryStream())
+                {
+                    ms.Write(iv, 0, iv.Length);
+                    using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
+                    {
+                        cs.Write(data, 0, data.Length);
+                        cs.FlushFinalBlock();
+                    }
+                    return ms.ToArray();
+                }
             }
-
-            byte[] finalBuffer = new byte[IvLengthByte + cipherText.Length + TagLengthByte];
-            Buffer.BlockCopy(iv, 0, finalBuffer, 0, IvLengthByte);
-            Buffer.BlockCopy(cipherText, 0, finalBuffer, IvLengthByte, cipherText.Length);
-            Buffer.BlockCopy(tag, 0, finalBuffer, IvLengthByte + cipherText.Length, TagLengthByte);
-
-            return finalBuffer;
         }
 
         public static byte[] DecryptBytes(byte[] encryptedData, string encryptionKey)
@@ -75,21 +78,24 @@ namespace NeuroKey.Network
             byte[] iv = new byte[IvLengthByte];
             Buffer.BlockCopy(encryptedData, 0, iv, 0, IvLengthByte);
 
-            int cipherTextLength = encryptedData.Length - IvLengthByte - TagLengthByte;
-            byte[] cipherText = new byte[cipherTextLength];
-            byte[] tag = new byte[TagLengthByte];
-
-            Buffer.BlockCopy(encryptedData, IvLengthByte, cipherText, 0, cipherTextLength);
-            Buffer.BlockCopy(encryptedData, IvLengthByte + cipherTextLength, tag, 0, TagLengthByte);
-
-            byte[] decryptedData = new byte[cipherTextLength];
-
-            using (var aesGcm = new AesGcm(key))
+            using (var aes = Aes.Create())
             {
-                aesGcm.Decrypt(iv, cipherText, tag, decryptedData);
-            }
+                aes.Key = key;
+                aes.IV = iv;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.PKCS7;
 
-            return decryptedData;
+                using (var decryptor = aes.CreateDecryptor())
+                using (var ms = new MemoryStream())
+                {
+                    using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Write))
+                    {
+                        cs.Write(encryptedData, IvLengthByte, encryptedData.Length - IvLengthByte);
+                        cs.FlushFinalBlock();
+                    }
+                    return ms.ToArray();
+                }
+            }
         }
     }
 }
