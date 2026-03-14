@@ -3626,7 +3626,7 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 0.08, g: 0.1, b: 0.12, a: 1}
-    - _Color: {r: 0.07999996, g: 0.09999997, b: 0.11999995, a: 1}
+    - _Color: {r: 0.079999976, g: 0.09999997, b: 0.11999995, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
@@ -31228,7 +31228,7 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 0.08, g: 0.1, b: 0.12, a: 1}
-    - _Color: {r: 0.07999996, g: 0.09999997, b: 0.11999995, a: 1}
+    - _Color: {r: 0.079999976, g: 0.09999997, b: 0.11999995, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
@@ -51528,12 +51528,12 @@ MonoBehaviour:
   m_margin: {x: -5.137395, y: 0, z: 15.139209, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
-  _SortingLayer: 0
-  _SortingLayerID: 0
-  _SortingOrder: 0
   m_hasFontAssetChanged: 0
   m_renderer: {fileID: 1453435083}
   m_maskType: 0
+  _SortingLayer: 0
+  _SortingLayerID: 0
+  _SortingOrder: 0
 --- !u!23 &1453435083
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -52285,7 +52285,7 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 0.08, g: 0.1, b: 0.12, a: 1}
-    - _Color: {r: 0.07999996, g: 0.09999997, b: 0.11999995, a: 1}
+    - _Color: {r: 0.079999976, g: 0.09999997, b: 0.11999995, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
@@ -62781,7 +62781,7 @@ Transform:
   m_GameObject: {fileID: 1787465151}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 64, y: 9.44, z: 196.6}
+  m_LocalPosition: {x: 100.12, y: 9.44, z: 196.6}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
