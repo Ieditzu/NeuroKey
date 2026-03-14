@@ -572,31 +572,47 @@ fun DefaultAvatar(name: String, primaryColor: Color) {
 fun ImagePickerBottomSheet(onImageSelected: (String) -> Unit, onDismiss: () -> Unit) {
     val context = LocalContext.current
     
-    fun processBitmap(bitmap: Bitmap) {
-        val size = 200 // Max 200x200
-        val scaled = if (bitmap.width > size || bitmap.height > size) {
-            val ratio = bitmap.width.toFloat() / bitmap.height.toFloat()
-            val w = if (ratio > 1) size else (size * ratio).toInt()
-            val h = if (ratio > 1) (size / ratio).toInt() else size
-            Bitmap.createScaledBitmap(bitmap, w, h, true)
-        } else bitmap
-        
-        val outputStream = ByteArrayOutputStream()
-        scaled.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)
-        onImageSelected(Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP))
+    fun processBitmap(bitmap: Bitmap?) {
+        if (bitmap == null) {
+            android.widget.Toast.makeText(context, "Failed to capture or load image", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        try {
+            val size = 200 // Max 200x200 for safe transport
+            val scaled = if (bitmap.width > size || bitmap.height > size) {
+                val ratio = bitmap.width.toFloat() / bitmap.height.toFloat()
+                val w = if (ratio > 1) size else (size * ratio).toInt()
+                val h = if (ratio > 1) (size / ratio).toInt() else size
+                Bitmap.createScaledBitmap(bitmap, w, h, true)
+            } else bitmap
+            
+            val outputStream = ByteArrayOutputStream()
+            scaled.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)
+            val base64 = Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
+            onImageSelected(base64)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            android.widget.Toast.makeText(context, "Error processing image", android.widget.Toast.LENGTH_SHORT).show()
+        }
     }
 
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
-            val inputStream = context.contentResolver.openInputStream(it)
-            val bitmap = BitmapFactory.decodeStream(inputStream)
-            bitmap?.let { b -> processBitmap(b) }
+            try {
+                val inputStream = context.contentResolver.openInputStream(it)
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
+                processBitmap(bitmap)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                android.widget.Toast.makeText(context, "Error loading from gallery", android.widget.Toast.LENGTH_SHORT).show()
+            }
         }
         onDismiss()
     }
     
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap: Bitmap? ->
-        bitmap?.let { processBitmap(it) }
+        processBitmap(bitmap)
         onDismiss()
     }
 
@@ -605,7 +621,13 @@ fun ImagePickerBottomSheet(onImageSelected: (String) -> Unit, onDismiss: () -> U
         title = { Text("Update Profile Picture") },
         text = { Text("Choose a source for your new profile picture.") },
         confirmButton = {
-            TextButton(onClick = { galleryLauncher.launch("image/*") }) {
+            TextButton(onClick = { 
+                try {
+                    galleryLauncher.launch("image/*")
+                } catch (e: Exception) {
+                    android.widget.Toast.makeText(context, "Could not open gallery", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.PhotoLibrary, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
@@ -614,7 +636,13 @@ fun ImagePickerBottomSheet(onImageSelected: (String) -> Unit, onDismiss: () -> U
             }
         },
         dismissButton = {
-            TextButton(onClick = { cameraLauncher.launch() }) {
+            TextButton(onClick = { 
+                try {
+                    cameraLauncher.launch()
+                } catch (e: Exception) {
+                    android.widget.Toast.makeText(context, "Could not open camera", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.CameraAlt, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
