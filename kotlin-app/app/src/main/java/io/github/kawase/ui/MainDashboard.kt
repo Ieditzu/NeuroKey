@@ -225,6 +225,24 @@ fun MainDashboard(viewModel: SocketViewModel) {
     }
 }
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.util.Size
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.common.InputImage
+import java.util.concurrent.Executors
+
 @Composable
 fun QRScannerSimulatorDialog(
     child: Child,
@@ -233,7 +251,21 @@ fun QRScannerSimulatorDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
-    var token by remember { mutableStateOf("") }
+    var hasCameraPermission by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { granted -> hasCameraPermission = result }
+    )
+
+    LaunchedEffect(Unit) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            hasCameraPermission = true
+        } else {
+            launcher.launch(Manifest.permission.CAMERA)
+        }
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -244,29 +276,33 @@ fun QRScannerSimulatorDialog(
             color = if(isDarkMode) Color(0xFF1A1A1A) else MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp
         ) {
-            Column(modifier = Modifier.padding(32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Log ${child.name} into Game", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
-                Text("In the game settings, click 'Generate QR' and enter the code below (simulating a scan).", color = MaterialTheme.colorScheme.onSurface)
+            Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("Scan QR Code for ${child.name}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                 
+                if (hasCameraPermission) {
+                    Box(modifier = Modifier.fillMaxWidth().height(300.dp).clip(RoundedCornerShape(24.dp))) {
+                        QRScannerView(onCodeScanned = { onConfirm(it) })
+                    }
+                } else {
+                    Box(modifier = Modifier.fillMaxWidth().height(300.dp).background(Color.Black.copy(alpha = 0.1f), RoundedCornerShape(24.dp)), contentAlignment = Alignment.Center) {
+                        Text("Camera permission required", color = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+
+                var manualToken by remember { mutableStateOf("") }
                 OutlinedTextField(
-                    value = token,
-                    onValueChange = { token = it },
-                    label = { Text("QR Code Token") },
+                    value = manualToken,
+                    onValueChange = { manualToken = it },
+                    label = { Text("Or enter token manually") },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = primaryColor,
-                        focusedLabelColor = primaryColor,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface
-                    )
+                    shape = RoundedCornerShape(16.dp)
                 )
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text("Cancel") }
                     Button(
-                        onClick = { onConfirm(token) },
-                        enabled = token.isNotBlank(),
+                        onClick = { onConfirm(manualToken) },
+                        enabled = manualToken.isNotBlank(),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
                     ) {
@@ -276,6 +312,62 @@ fun QRScannerSimulatorDialog(
             }
         }
     }
+}
+
+@Composable
+fun QRScannerView(onCodeScanned: (String) -> Unit) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
+    var scanned by remember { mutableStateOf(false) }
+
+    AndroidView(
+        factory = { ctx ->
+            val previewView = PreviewView(ctx)
+            val executor = Executors.newSingleThreadExecutor()
+            
+            cameraProviderFuture.addListener({
+                val cameraProvider = cameraProviderFuture.get()
+                val preview = Preview.Builder().build().also {
+                    it.setSurfaceProvider(previewView.previewSurfaceProvider)
+                }
+
+                val scanner = BarcodeScanning.getClient()
+                val imageAnalysis = ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .build()
+
+                imageAnalysis.setAnalyzer(executor) { imageProxy ->
+                    val mediaImage = imageProxy.image
+                    if (mediaImage != null && !scanned) {
+                        val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+                        scanner.process(image)
+                            .addOnSuccessListener { barcodes ->
+                                for (barcode in barcodes) {
+                                    barcode.rawValue?.let { code ->
+                                        scanned = true
+                                        onCodeScanned(code)
+                                    }
+                                }
+                            }
+                            .addOnCompleteListener { imageProxy.close() }
+                    } else {
+                        imageProxy.close()
+                    }
+                }
+
+                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+                try {
+                    cameraProvider.unbindAll()
+                    cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, imageAnalysis)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }, ContextCompat.getMainExecutor(ctx))
+            previewView
+        },
+        modifier = Modifier.fillMaxSize()
+    )
 }
 
 @Composable
@@ -358,7 +450,7 @@ fun HomeScreen(viewModel: SocketViewModel, children: List<Child>, onChildSelecte
                                 modifier = Modifier.size(44.dp).background(viewModel.primaryColor.value.copy(alpha = 0.1f), CircleShape)
                             ) {
                                 Icon(
-                                    Icons.Default.Place,
+                                    Icons.Default.QrCodeScanner,
                                     contentDescription = "Log into Game",
                                     tint = viewModel.primaryColor.value,
                                     modifier = Modifier.size(24.dp)
