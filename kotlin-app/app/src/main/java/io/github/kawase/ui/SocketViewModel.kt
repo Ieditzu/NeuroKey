@@ -33,7 +33,7 @@ import androidx.lifecycle.AndroidViewModel
 
 data class Child(val id: Long, val name: String, val points: Int)
 data class Task(val id: Long, val name: String, val points: Int)
-data class Goal(val id: Long, val title: String, val reward: String, val completed: Boolean)
+data class Goal(val id: Long, val title: String, val reward: String, val completed: Boolean, val requiredPoints: Int)
 data class CompletedTask(val id: Long, val taskTitle: String, val pointValue: Int, val completedAt: String)
 
 class SocketViewModel(application: Application) : AndroidViewModel(application) {
@@ -60,12 +60,12 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
     private var savedEmailHash: String? = prefs.getString("email_hash", null)
     private var savedPasswordHash: String? = prefs.getString("password_hash", null)
 
-    fun setDarkMode(isDark: Boolean) {
-        isDarkMode.value = isDark
-        prefs.edit().putBoolean("dark_mode", isDark).apply()
+    fun toggleDarkMode() {
+        isDarkMode.value = !isDarkMode.value
+        prefs.edit().putBoolean("dark_mode", isDarkMode.value).apply()
     }
 
-    fun setPrimaryColor(color: Color) {
+    fun updatePrimaryColor(color: Color) {
         primaryColor.value = color
         prefs.edit().putInt("primary_color", color.toArgb()).apply()
     }
@@ -263,7 +263,7 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
             is FetchGoalsResponsePacket -> {
                 _goals.clear()
                 packet.goals.forEach { goal ->
-                    _goals.add(Goal(goal.id, goal.title, goal.reward, goal.isCompleted))
+                    _goals.add(Goal(goal.id, goal.title, goal.reward, goal.isCompleted, goal.requiredPoints))
                 }
             }
             is FetchCompletedTasksResponsePacket -> {
