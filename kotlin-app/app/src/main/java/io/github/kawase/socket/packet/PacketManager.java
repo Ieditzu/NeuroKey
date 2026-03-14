@@ -3,7 +3,6 @@ package io.github.kawase.socket.packet;
 import io.github.kawase.socket.exceptions.PacketException;
 import io.github.kawase.socket.packet.impl.*;
 
-// considering this is a basic irc using one simple method is enough instead of over complicating the manager with suppliers etc.
 public class PacketManager {
     public Packet createPacket(final int id) {
         switch (id) {

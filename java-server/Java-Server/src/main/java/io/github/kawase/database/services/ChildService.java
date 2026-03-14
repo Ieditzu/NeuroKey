@@ -35,7 +35,11 @@ public class ChildService {
     public java.util.List<io.github.kawase.database.entity.Goal> getGoals(final Long childId) {
         return childRepository.findById(childId)
                 .map(child -> {
-                    child.getGoals().size(); // Force initialization
+                    child.getGoals().forEach(goal -> {
+                        if (goal.getRequiredTask() != null) {
+                            goal.getRequiredTask().getTitle();
+                        }
+                    });
                     return child.getGoals();
                 })
                 .orElse(java.util.List.of());
@@ -45,7 +49,11 @@ public class ChildService {
     public java.util.List<io.github.kawase.database.entity.CompletedTask> getCompletedTasks(final Long childId) {
         return childRepository.findById(childId)
                 .map(child -> {
-                    child.getCompletedTasks().size(); // Force initialization
+                    child.getCompletedTasks().forEach(ct -> {
+                        if (ct.getTask() != null) {
+                            ct.getTask().getTitle(); // Force initialization of task proxy
+                        }
+                    });
                     return child.getCompletedTasks();
                 })
                 .orElse(java.util.List.of());
