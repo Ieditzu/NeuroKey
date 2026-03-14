@@ -64,6 +64,8 @@ public class SphereRiftPortalSequence : MonoBehaviour
     private static Text previousButtonText;
     private static Button hintButton;
     private static Text hintButtonText;
+    private static Button leaveButton;
+    private static Text leaveButtonText;
     private static Button languageRoButton;
     private static Text languageRoButtonText;
     private static Button languageEnButton;
@@ -616,6 +618,8 @@ public class SphereRiftPortalSequence : MonoBehaviour
         hintButtonText = hintButton.GetComponentInChildren<Text>(true);
         nextButton = EnsureButton(canvasObject.transform, "NextButton", new Vector2(0.66f, 0.12f), new Vector2(180f, 52f), new Color(0.18f, 0.58f, 0.32f, 0.95f), "Next", 22);
         nextButtonText = nextButton.GetComponentInChildren<Text>(true);
+        leaveButton = EnsureButton(canvasObject.transform, "LeaveButton", new Vector2(0.91f, 0.92f), new Vector2(150f, 48f), new Color(0.18f, 0.18f, 0.2f, 0.96f), "Leave", 20);
+        leaveButtonText = leaveButton.GetComponentInChildren<Text>(true);
         languageRoButton = EnsureButton(canvasObject.transform, "LanguageRoButton", new Vector2(0.39f, 0.72f), new Vector2(180f, 48f), new Color(0.28f, 0.56f, 0.8f, 0.95f), "Romana", 20);
         languageRoButtonText = languageRoButton.GetComponentInChildren<Text>(true);
         languageEnButton = EnsureButton(canvasObject.transform, "LanguageEnButton", new Vector2(0.61f, 0.72f), new Vector2(180f, 48f), new Color(0.18f, 0.44f, 0.68f, 0.95f), "English", 20);
@@ -658,6 +662,10 @@ public class SphereRiftPortalSequence : MonoBehaviour
         if (hintButton != null)
         {
             hintButton.gameObject.SetActive(false);
+        }
+        if (leaveButton != null)
+        {
+            leaveButton.gameObject.SetActive(false);
         }
         if (languageRoButton != null)
         {
@@ -713,6 +721,7 @@ public class SphereRiftPortalSequence : MonoBehaviour
         quizCodeText.gameObject.SetActive(true);
         quizHintText.gameObject.SetActive(true);
         quizFeedbackText.gameObject.SetActive(true);
+        ShowLeaveButton(true);
         int current = 0;
         while (current < PythonQuestions.Length && !leaveRequested)
         {
@@ -815,6 +824,7 @@ public class SphereRiftPortalSequence : MonoBehaviour
         nextButton.gameObject.SetActive(false);
         previousButton.gameObject.SetActive(false);
         hintButton.gameObject.SetActive(false);
+        ShowLeaveButton(false);
         quizTitleText.gameObject.SetActive(false);
         quizPromptText.gameObject.SetActive(false);
         quizCodeText.gameObject.SetActive(false);
@@ -859,6 +869,7 @@ public class SphereRiftPortalSequence : MonoBehaviour
     private IEnumerator PromptQuizLanguage()
     {
         languageChosen = false;
+        ShowLeaveButton(true);
         languageRoButton.gameObject.SetActive(true);
         languageEnButton.gameObject.SetActive(true);
         quizTitleText.gameObject.SetActive(true);
@@ -877,6 +888,7 @@ public class SphereRiftPortalSequence : MonoBehaviour
 
         languageRoButton.gameObject.SetActive(false);
         languageEnButton.gameObject.SetActive(false);
+        ShowLeaveButton(false);
     }
 
     private void SelectQuizLanguage(QuizLanguage language)
@@ -890,6 +902,7 @@ public class SphereRiftPortalSequence : MonoBehaviour
         if (nextButtonText != null) nextButtonText.text = Localize("Urmatoarea", "Next");
         if (previousButtonText != null) previousButtonText.text = Localize("Precedenta", "Previous");
         if (hintButtonText != null) hintButtonText.text = "Hint";
+        if (leaveButtonText != null) leaveButtonText.text = "Leave";
         if (languageRoButtonText != null) languageRoButtonText.text = "Romana";
         if (languageEnButtonText != null) languageEnButtonText.text = "English";
     }
@@ -920,6 +933,28 @@ public class SphereRiftPortalSequence : MonoBehaviour
 
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
+    }
+
+    private void ShowLeaveButton(bool visible)
+    {
+        if (leaveButton == null)
+        {
+            return;
+        }
+
+        leaveButton.onClick.RemoveAllListeners();
+        if (visible)
+        {
+            leaveButton.onClick.AddListener(OnLeaveClicked);
+        }
+
+        leaveButton.gameObject.SetActive(visible);
+    }
+
+    private void OnLeaveClicked()
+    {
+        ForceSceneOnlyVisibility();
+        leaveRequested = true;
     }
 
     private static Image EnsureImage(Transform parent, string name, Color color)
