@@ -576,7 +576,10 @@ public class FirstPersonControllerSimple : MonoBehaviour
 
     private void HandleWaterSubmersion()
     {
-        if (transform.position.y < waterDrownY)
+        bool submerged = transform.position.y < waterDrownY;
+        bool standingOnSurface = controller != null && controller.isGrounded;
+
+        if (submerged && !standingOnSurface)
         {
             drownTimer += Time.deltaTime;
             velocity.y -= waterPullDown * Time.deltaTime;
