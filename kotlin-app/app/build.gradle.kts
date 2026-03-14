@@ -52,6 +52,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1")
     implementation("androidx.navigation:navigation-compose:2.7.2")
+    implementation("io.coil-kt:coil-compose:2.4.0")
 
     // CameraX and ML Kit for QR Scanning
     val cameraxVersion = "1.3.0"

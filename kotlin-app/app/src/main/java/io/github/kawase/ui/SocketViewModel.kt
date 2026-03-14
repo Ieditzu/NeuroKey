@@ -31,7 +31,7 @@ import android.content.SharedPreferences
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.AndroidViewModel
 
-data class Child(val id: Long, val name: String, val points: Int, val isOnline: Boolean)
+data class Child(val id: Long, val name: String, val points: Int, val isOnline: Boolean, val pfp: String? = null)
 data class Task(val id: Long, val name: String, val points: Int)
 data class Goal(val id: Long, val title: String, val reward: String, val completed: Boolean, val requiredPoints: Int)
 data class CompletedTask(val id: Long, val taskTitle: String, val pointValue: Int, val completedAt: String)
@@ -56,6 +56,9 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _email = mutableStateOf(prefs.getString("saved_email", "") ?: "")
     val email: State<String> = _email
+
+    private val _parentPfp = mutableStateOf<String?>(null)
+    val parentPfp: State<String?> = _parentPfp
     
     private var savedEmailHash: String? = prefs.getString("email_hash", null)
     private var savedPasswordHash: String? = prefs.getString("password_hash", null)
@@ -176,6 +179,10 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
         sendPacket(ClaimQRLoginPacket(token, childId))
     }
 
+    fun updatePfp(childId: Long, base64Pfp: String) {
+        sendPacket(UpdatePfpPacket(childId, base64Pfp))
+    }
+
     private fun sendPacket(packet: Packet) {
         viewModelScope.launch(Dispatchers.IO) {
             client?.let {
@@ -242,6 +249,7 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
             is AuthResponsePacket -> {
                 if (packet.isSuccess) {
                     _parentId.value = packet.parentId
+                    _parentPfp.value = packet.parentPfp
                     _isLoggedIn.value = true
                     viewModelScope.launch { _successFlow.emit("Logged in successfully") }
                     fetchChildren()
@@ -257,6 +265,11 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
                         if (packet.requestPacketId == 4) { // AddChild
                             fetchChildren()
                         }
+                        if (packet.requestPacketId == 26) { // UpdatePfp
+                            fetchChildren()
+                            // If it was parent PFP, we don't have a direct way to refresh it easily without re-auth 
+                            // or adding a FetchParentStats packet. For now let's just assume it worked.
+                        }
                     } else {
                         _errorFlow.emit("Action failed: ${packet.message}")
                     }
@@ -265,7 +278,7 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
             is FetchChildrenResponsePacket -> {
                 _children.clear()
                 packet.children.forEach { child ->
-                    _children.add(Child(child.id, child.name, child.totalPoints, child.isOnline))
+                    _children.add(Child(child.id, child.name, child.totalPoints, child.isOnline, child.pfp))
                 }
             }
             is FetchTasksResponsePacket -> {
