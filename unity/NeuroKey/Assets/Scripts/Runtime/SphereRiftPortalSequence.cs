@@ -161,6 +161,8 @@ public class SphereRiftPortalSequence : MonoBehaviour
 
     private void Awake()
     {
+        RemoveDuplicateSequenceComponents();
+        RemoveDuplicateStationRoots();
         if (!Application.isPlaying)
         {
             EnsureStationVisual();
@@ -176,6 +178,8 @@ public class SphereRiftPortalSequence : MonoBehaviour
 
     private void OnEnable()
     {
+        RemoveDuplicateSequenceComponents();
+        RemoveDuplicateStationRoots();
         if (!Application.isPlaying)
         {
             EnsureStationVisual();
@@ -185,6 +189,8 @@ public class SphereRiftPortalSequence : MonoBehaviour
 
     private void OnValidate()
     {
+        RemoveDuplicateSequenceComponents();
+        RemoveDuplicateStationRoots();
         if (!Application.isPlaying)
         {
             EnsureStationVisual();
@@ -263,8 +269,10 @@ public class SphereRiftPortalSequence : MonoBehaviour
 
     private void EnsureStationVisual()
     {
-        if (stationRoot != null)
+        RemoveDuplicateStationRoots();
+        if (stationRoot != null && !NeedsStationRebuild())
         {
+            CleanupDuplicateStationChildren();
             return;
         }
 
@@ -319,6 +327,122 @@ public class SphereRiftPortalSequence : MonoBehaviour
         stationLight.range = 7f;
         stationLight.intensity = 3.2f;
         stationLight.color = stationGlowColor;
+        CleanupDuplicateStationChildren();
+    }
+
+    private bool NeedsStationRebuild()
+    {
+        if (stationRoot == null)
+        {
+            return true;
+        }
+
+        int screenCount = 0;
+        int markerCount = 0;
+        for (int i = 0; i < stationRoot.childCount; i++)
+        {
+            string childName = stationRoot.GetChild(i).name;
+            if (childName == "Screen")
+            {
+                screenCount++;
+            }
+            else if (childName == "PythonLogoMarker")
+            {
+                markerCount++;
+            }
+        }
+
+        return screenCount != 1 || markerCount != 1;
+    }
+
+    private void RemoveDuplicateStationRoots()
+    {
+        Transform firstRoot = null;
+        for (int i = transform.childCount - 1; i >= 0; i--)
+        {
+            Transform child = transform.GetChild(i);
+            if (child.name != "PythonQuestionStation")
+            {
+                continue;
+            }
+
+            if (firstRoot == null)
+            {
+                firstRoot = child;
+                continue;
+            }
+
+            DestroySafe(child.gameObject);
+        }
+
+        stationRoot = firstRoot;
+    }
+
+    private void CleanupDuplicateStationChildren()
+    {
+        if (stationRoot == null)
+        {
+            return;
+        }
+
+        Transform firstScreen = null;
+        Transform firstMarker = null;
+        for (int i = stationRoot.childCount - 1; i >= 0; i--)
+        {
+            Transform child = stationRoot.GetChild(i);
+            if (child.name == "Screen")
+            {
+                if (firstScreen == null)
+                {
+                    firstScreen = child;
+                }
+                else
+                {
+                    DestroySafe(child.gameObject);
+                }
+            }
+            else if (child.name == "PythonLogoMarker")
+            {
+                if (firstMarker == null)
+                {
+                    firstMarker = child;
+                }
+                else
+                {
+                    DestroySafe(child.gameObject);
+                }
+            }
+        }
+
+        if (firstScreen != null)
+        {
+            stationScreen = firstScreen;
+        }
+
+        if (firstMarker != null)
+        {
+            stationMarker = firstMarker;
+        }
+    }
+
+    private void RemoveDuplicateSequenceComponents()
+    {
+        SphereRiftPortalSequence[] components = GetComponents<SphereRiftPortalSequence>();
+        if (components.Length <= 1)
+        {
+            return;
+        }
+
+        SphereRiftPortalSequence keeper = components[0];
+        for (int i = 0; i < components.Length; i++)
+        {
+            if (components[i] == keeper)
+            {
+                continue;
+            }
+
+            DestroySafe(components[i]);
+        }
     }
 
     private void AnimateStationVisual()
