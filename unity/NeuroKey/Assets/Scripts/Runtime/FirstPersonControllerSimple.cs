@@ -133,7 +133,7 @@ public class FirstPersonControllerSimple : MonoBehaviour
 
     private void Update()
     {
-        if (GetKeyDownCompat(KeyCode.Tab))
+        if (GetKeyDownCompat(KeyCode.CapsLock))
         {
             ToggleCursor();
         }
@@ -431,8 +431,8 @@ public class FirstPersonControllerSimple : MonoBehaviour
 
         switch (key)
         {
-            case KeyCode.Tab:
-                return keyboard.tabKey;
+            case KeyCode.CapsLock:
+                return keyboard.capsLockKey;
             case KeyCode.LeftShift:
                 return keyboard.leftShiftKey;
             case KeyCode.RightShift:

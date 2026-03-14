@@ -69,7 +69,9 @@ public class PickupUIController : MonoBehaviour
 
         if (targetBox != null)
         {
-            boxPushable = !targetBox.isKinematic;
+            targetBox.isKinematic = true; // off by default
+            boxPushable = false;
+            boxInput = "false";
         }
     }
 
@@ -92,13 +94,14 @@ public class PickupUIController : MonoBehaviour
 
         GUILayout.BeginArea(new Rect(rect.x + 10f, rect.y + 10f, rect.width - 20f, rect.height - 20f));
 
+        bool enterPressed = Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.Return;
+
         GUI.SetNextControlName("JumpField");
         GUILayout.BeginHorizontal();
         GUILayout.Label($"jumpVelocity =", GUILayout.Width(100f));
         jumpInput = GUILayout.TextField(jumpInput, 12);
         GUILayout.EndHorizontal();
 
-        bool enterPressed = Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.Return;
         if (float.TryParse(jumpInput, out float jp))
         {
             bool applyNow = enterPressed ? GUI.GetNameOfFocusedControl() == "JumpField" : true;
@@ -132,5 +135,10 @@ public class PickupUIController : MonoBehaviour
         }
 
         GUILayout.EndArea();
+
+        if (enterPressed)
+        {
+            GUI.FocusControl(null); // exit any focused field when Enter is pressed
+        }
     }
 }
