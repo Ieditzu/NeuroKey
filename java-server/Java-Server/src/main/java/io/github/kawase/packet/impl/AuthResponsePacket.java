@@ -12,7 +12,7 @@ public class AuthResponsePacket extends Packet {
     private String parentPfp;
 
     public AuthResponsePacket(final boolean success, final long parentId, final String message, final String parentPfp) {
-        super(0x02);
+        super(10);
         this.success = success;
         this.parentId = parentId;
         this.message = message;
@@ -20,7 +20,7 @@ public class AuthResponsePacket extends Packet {
     }
 
     public AuthResponsePacket() {
-        super(0x02);
+        super(10);
     }
 
     @Override

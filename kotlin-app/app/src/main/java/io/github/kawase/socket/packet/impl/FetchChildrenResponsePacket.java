@@ -11,12 +11,14 @@ public class FetchChildrenResponsePacket extends Packet {
         public String name;
         public int totalPoints;
         public boolean isOnline;
+        public String pfp;
 
-        public ChildDto(long id, String name, int totalPoints, boolean isOnline) {
+        public ChildDto(long id, String name, int totalPoints, boolean isOnline, String pfp) {
             this.id = id;
             this.name = name;
             this.totalPoints = totalPoints;
             this.isOnline = isOnline;
+            this.pfp = pfp;
         }
     }
 
@@ -43,6 +45,7 @@ public class FetchChildrenResponsePacket extends Packet {
             putString(child.name, buffer);
             buffer.putInt(child.totalPoints);
             buffer.put((byte) (child.isOnline ? 1 : 0));
+            putString(child.pfp == null ? "" : child.pfp, buffer);
         }
     }
 
@@ -54,7 +57,8 @@ public class FetchChildrenResponsePacket extends Packet {
             String name = readString(buffer);
             int points = buffer.getInt();
             boolean isOnline = buffer.get() == 1;
-            children.add(new ChildDto(id, name, points, isOnline));
+            String pfp = readString(buffer);
+            children.add(new ChildDto(id, name, points, isOnline, pfp));
         }
     }
 }
