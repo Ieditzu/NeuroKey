@@ -21,6 +21,10 @@ namespace NeuroKey.Network
                 23 => new FetchChildStatsPacket(),
                 24 => new FetchChildStatsResponsePacket(),
                 25 => new VerifySessionPacket(),
+                28 => new ExecuteCPPCodePacket(),
+                29 => new ExecuteCPPCodeResponsePacket(),
+                30 => new AskAiPacket(),
+                31 => new AiResponsePacket(),
                 _ => throw new Exception("Unknown packet ID: " + id),
             };
         }
@@ -192,5 +196,59 @@ namespace NeuroKey.Network
             TotalPoints = ReadInt32BigEndian(reader);
             GameStatsJson = ReadString(reader);
         }
+    }
+
+    public class ExecuteCPPCodePacket : Packet
+    {
+        public string Code;
+        public ExecuteCPPCodePacket(string code) : base(28) { Code = code; }
+        public ExecuteCPPCodePacket() : base(28) { }
+        protected override void Write(BinaryWriter writer) { PutString(writer, Code ?? string.Empty); }
+        protected override void Read(BinaryReader reader) { Code = ReadString(reader); }
+    }
+
+    public class ExecuteCPPCodeResponsePacket : Packet
+    {
+        public string Output;
+        public string Error;
+        public ExecuteCPPCodeResponsePacket(string output, string error) : base(29) { Output = output; Error = error; }
+        public ExecuteCPPCodeResponsePacket() : base(29) { }
+        protected override void Write(BinaryWriter writer)
+        {
+            PutString(writer, Output ?? string.Empty);
+            PutString(writer, Error ?? string.Empty);
+        }
+        protected override void Read(BinaryReader reader)
+        {
+            Output = ReadString(reader);
+            Error = ReadString(reader);
+        }
+    }
+
+    public class AskAiPacket : Packet
+    {
+        public string Question;
+        public string Context;
+        public AskAiPacket(string question, string context) : base(30) { Question = question; Context = context; }
+        public AskAiPacket() : base(30) { }
+        protected override void Write(BinaryWriter writer)
+        {
+            PutString(writer, Question ?? string.Empty);
+            PutString(writer, Context ?? string.Empty);
+        }
+        protected override void Read(BinaryReader reader)
+        {
+            Question = ReadString(reader);
+            Context = ReadString(reader);
+        }
+    }
+
+    public class AiResponsePacket : Packet
+    {
+        public string Response;
+        public AiResponsePacket(string response) : base(31) { Response = response; }
+        public AiResponsePacket() : base(31) { }
+        protected override void Write(BinaryWriter writer) { PutString(writer, Response ?? string.Empty); }
+        protected override void Read(BinaryReader reader) { Response = ReadString(reader); }
     }
 }

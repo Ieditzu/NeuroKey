@@ -1,8 +1,12 @@
 using System.Collections;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
+using NeuroKey.Network;
 
 [RequireComponent(typeof(Collider))]
 public class CodeChallengePadCinematic : MonoBehaviour
@@ -17,6 +21,13 @@ public class CodeChallengePadCinematic : MonoBehaviour
     {
         Medium = 0,
         Hard = 1
+    }
+
+    private enum AiRequestKind
+    {
+        None = 0,
+        Chat = 1,
+        Evaluation = 2
     }
 
     private struct CodeChallenge
@@ -147,6 +158,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
     private static Text counterText;
     private static Text promptText;
     private static Text feedbackText;
+    private static Text outputText;
     private static Text languagePromptText;
     private static InputField codeInput;
     private static Text codeInputText;
@@ -160,6 +172,8 @@ public class CodeChallengePadCinematic : MonoBehaviour
     private static Text backButtonText;
     private static Button hintButton;
     private static Text hintButtonText;
+    private static Button aiButton;
+    private static Text aiButtonText;
     private static Button continueButton;
     private static Text continueButtonText;
     private static Button retryWrongButton;
@@ -170,6 +184,16 @@ public class CodeChallengePadCinematic : MonoBehaviour
     private static Text languageEnButtonText;
     private static Button hintScreenBackButton;
     private static Text hintScreenBackButtonText;
+    private static Image aiChatPanel;
+    private static Text aiChatTitleText;
+    private static Text aiChatHistoryText;
+    private static InputField aiChatInput;
+    private static Text aiChatInputText;
+    private static Text aiChatPlaceholderText;
+    private static Button aiChatSendButton;
+    private static Text aiChatSendButtonText;
+    private static Button aiChatBackButton;
+    private static Text aiChatBackButtonText;
 
     private Collider triggerCollider;
     private bool running;
@@ -177,14 +201,27 @@ public class CodeChallengePadCinematic : MonoBehaviour
     private bool verifyRequested;
     private bool backRequested;
     private bool hintRequested;
+    private bool aiChatRequested;
     private bool continueRequested;
     private bool retryWrongRequested;
     private bool hintScreenBackRequested;
+    private bool aiChatBackRequested;
+    private bool aiChatSendRequested;
     private bool languageChosen;
     private int score;
     private GameObject activePortal;
     private bool overlayInteractionActive;
     private QuizLanguage selectedLanguage = QuizLanguage.Romanian;
+    private CodeChallenge activeChallenge;
+    private bool awaitingExecution;
+    private bool awaitingAiResponse;
+    private AiRequestKind awaitingAiKind = AiRequestKind.None;
+    private string lastExecutionOutput = string.Empty;
+    private string lastExecutionError = string.Empty;
+    private string pendingAiResponse = string.Empty;
+    private bool networkSubscribed;
+    private readonly List<string> aiChatLines = new List<string>();
+    private const int MaxChatLines = 14;
 
     public void ConfigureForPad(bool useHardMode)
     {
@@ -199,6 +236,17 @@ public class CodeChallengePadCinematic : MonoBehaviour
             triggerCollider.isTrigger = true;
         }
 
+    }
+
+    private void OnEnable()
+    {
+        EnsureDispatcher();
+        RegisterNetworkHandlers();
+    }
+
+    private void OnDisable()
+    {
+        UnregisterNetworkHandlers();
     }
 
     private void OnTriggerEnter(Collider other)
@@ -234,10 +282,115 @@ public class CodeChallengePadCinematic : MonoBehaviour
         }
     }
 
+    private void EnsureDispatcher()
+    {
+        if (!UnityMainThreadDispatcher.IsInitialized)
+        {
+            UnityMainThreadDispatcher.Initialize();
+        }
+    }
+
+    private void RegisterNetworkHandlers()
+    {
+        if (networkSubscribed || GameClient.Instance == null)
+        {
+            return;
+        }
+
+        GameClient.Instance.OnPacketReceived += OnPacketReceived;
+        networkSubscribed = true;
+    }
+
+    private void UnregisterNetworkHandlers()
+    {
+        if (!networkSubscribed || GameClient.Instance == null)
+        {
+            return;
+        }
+
+        GameClient.Instance.OnPacketReceived -= OnPacketReceived;
+        networkSubscribed = false;
+    }
+
+    private void OnPacketReceived(Packet packet)
+    {
+        if (packet is ExecuteCPPCodeResponsePacket execResponse)
+        {
+            UnityMainThreadDispatcher.Instance().Enqueue(() => HandleExecutionResponse(execResponse));
+            return;
+        }
+
+        if (packet is AiResponsePacket aiResponse)
+        {
+            UnityMainThreadDispatcher.Instance().Enqueue(() => HandleAiResponse(aiResponse));
+        }
+    }
+
+    private void HandleExecutionResponse(ExecuteCPPCodeResponsePacket response)
+    {
+        if (!awaitingExecution)
+        {
+            return;
+        }
+
+        awaitingExecution = false;
+        lastExecutionOutput = response.Output ?? string.Empty;
+        lastExecutionError = response.Error ?? string.Empty;
+    }
+
+    private void HandleAiResponse(AiResponsePacket response)
+    {
+        if (!awaitingAiResponse)
+        {
+            return;
+        }
+
+        awaitingAiResponse = false;
+        pendingAiResponse = response.Response ?? string.Empty;
+        if (awaitingAiKind == AiRequestKind.Chat)
+        {
+            AppendChatLine(Localize("AI: ", "AI: ") + pendingAiResponse);
+        }
+    }
+
+    private async Task<bool> SendPacketWithConnectAsync(Packet packet)
+    {
+        if (GameClient.Instance == null)
+        {
+            return false;
+        }
+
+        if (!GameClient.Instance.IsConnected)
+        {
+            await GameClient.Instance.Connect();
+        }
+
+        if (!GameClient.Instance.IsConnected)
+        {
+            return false;
+        }
+
+        await GameClient.Instance.SendPacket(packet);
+        return true;
+    }
+
+    private IEnumerator SendPacketWithConnect(Packet packet, System.Action<bool> onDone)
+    {
+        Task<bool> task = SendPacketWithConnectAsync(packet);
+        while (!task.IsCompleted)
+        {
+            yield return null;
+        }
+
+        onDone?.Invoke(task.Result);
+    }
+
     private IEnumerator PlaySequence(BeanController sphere, FirstPersonControllerSimple fps)
     {
         running = true;
         leaveRequested = false;
+        EnsureDispatcher();
+        RegisterNetworkHandlers();
 
         if (triggerCollider != null)
         {
@@ -338,9 +491,11 @@ public class CodeChallengePadCinematic : MonoBehaviour
         while (current < challenges.Length && !leaveRequested)
         {
             CodeChallenge challenge = challenges[current];
+            activeChallenge = challenge;
             verifyRequested = false;
             backRequested = false;
             hintRequested = false;
+            aiChatRequested = false;
             continueRequested = false;
 
             ApplyChallengeContent(challenge, current, challenges.Length, answers[current], attemptsLeft[current]);
@@ -351,13 +506,15 @@ public class CodeChallengePadCinematic : MonoBehaviour
             backButton.onClick.AddListener(OnBackClicked);
             hintButton.onClick.RemoveAllListeners();
             hintButton.onClick.AddListener(OnHintClicked);
+            aiButton.onClick.RemoveAllListeners();
+            aiButton.onClick.AddListener(OnAiChatClicked);
             continueButton.onClick.RemoveAllListeners();
             continueButton.onClick.AddListener(OnContinueClicked);
             retryWrongButton.onClick.RemoveAllListeners();
             retryWrongButton.onClick.AddListener(OnRetryWrongClicked);
 
             ShowMainUi(true);
-            ShowChallengeButtons(current > 0, true, true, false, false);
+            ShowChallengeButtons(current > 0, true, true, true, false, false);
 
             while (!verifyRequested && !backRequested && !leaveRequested)
             {
@@ -370,7 +527,18 @@ public class CodeChallengePadCinematic : MonoBehaviour
                         yield break;
                     }
                     ShowMainUi(true);
-                    ShowChallengeButtons(current > 0, true, true, false, false);
+                    ShowChallengeButtons(current > 0, true, true, true, false, false);
+                }
+                else if (aiChatRequested)
+                {
+                    aiChatRequested = false;
+                    yield return ShowAiChatScreen();
+                    if (leaveRequested)
+                    {
+                        yield break;
+                    }
+                    ShowMainUi(true);
+                    ShowChallengeButtons(current > 0, true, true, true, false, false);
                 }
 
                 yield return null;
@@ -388,7 +556,8 @@ public class CodeChallengePadCinematic : MonoBehaviour
                 continue;
             }
 
-            bool correct = IsChallengeCorrect(challenge, codeInput.text);
+            bool correct = false;
+            yield return EvaluateChallenge(challenge, codeInput.text, result => correct = result);
             answers[current] = codeInput.text;
 
             if (correct)
@@ -401,7 +570,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
                 feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
                 feedbackText.color = correctColor;
-                ShowChallengeButtons(current > 0, true, false, true, false);
+                ShowChallengeButtons(current > 0, true, true, false, true, false);
                 while (!continueRequested && !backRequested && !leaveRequested)
                 {
                     if (hintRequested)
@@ -413,7 +582,20 @@ public class CodeChallengePadCinematic : MonoBehaviour
                             yield break;
                         }
                         ShowMainUi(true);
-                        ShowChallengeButtons(current > 0, true, false, true, false);
+                        ShowChallengeButtons(current > 0, true, true, false, true, false);
+                        feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
+                        feedbackText.color = correctColor;
+                    }
+                    else if (aiChatRequested)
+                    {
+                        aiChatRequested = false;
+                        yield return ShowAiChatScreen();
+                        if (leaveRequested)
+                        {
+                            yield break;
+                        }
+                        ShowMainUi(true);
+                        ShowChallengeButtons(current > 0, true, true, false, true, false);
                         feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
                         feedbackText.color = correctColor;
                     }
@@ -464,7 +646,20 @@ public class CodeChallengePadCinematic : MonoBehaviour
                         yield break;
                     }
                     ShowMainUi(true);
-                    ShowChallengeButtons(current > 0, true, true, false, false);
+                    ShowChallengeButtons(current > 0, true, true, true, false, false);
+                    feedbackText.text = Localize("Incorect. Mai ai ", "Incorrect. You have ") + attemptsLeft[current] + Localize(" incercari.", " attempts left.");
+                    feedbackText.color = wrongColor;
+                }
+                else if (aiChatRequested)
+                {
+                    aiChatRequested = false;
+                    yield return ShowAiChatScreen();
+                    if (leaveRequested)
+                    {
+                        yield break;
+                    }
+                    ShowMainUi(true);
+                    ShowChallengeButtons(current > 0, true, true, true, false, false);
                     feedbackText.text = Localize("Incorect. Mai ai ", "Incorrect. You have ") + attemptsLeft[current] + Localize(" incercari.", " attempts left.");
                     feedbackText.color = wrongColor;
                 }
@@ -487,7 +682,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         feedbackText.text = Localize("Poti reface intrebarile gresite sau poti iesi.", "You can retry the wrong questions or leave.");
         feedbackText.color = correctColor;
         codeInput.gameObject.SetActive(false);
-        ShowChallengeButtons(false, false, false, false, false);
+        ShowChallengeButtons(false, false, false, false, false, false);
 
         bool hasWrong = false;
         for (int i = 0; i < solved.Length; i++)
@@ -560,6 +755,145 @@ public class CodeChallengePadCinematic : MonoBehaviour
         return mode == ChallengeMode.Hard ? 5 : 4;
     }
 
+    private IEnumerator EvaluateChallenge(CodeChallenge challenge, string submittedCode, System.Action<bool> onResult)
+    {
+        if (mode != ChallengeMode.Medium)
+        {
+            onResult?.Invoke(IsChallengeCorrect(challenge, submittedCode));
+            yield break;
+        }
+
+        feedbackText.text = Localize("Rulez codul...", "Running code...");
+        feedbackText.color = textColor;
+        if (outputText != null)
+        {
+            outputText.text = Localize("Rulez codul pe server...", "Running code on server...");
+            outputText.color = editorTextColor;
+        }
+
+        awaitingExecution = true;
+        lastExecutionOutput = string.Empty;
+        lastExecutionError = string.Empty;
+        bool execSent = false;
+        yield return SendPacketWithConnect(new ExecuteCPPCodePacket(submittedCode), success => execSent = success);
+        if (!execSent)
+        {
+            awaitingExecution = false;
+            if (outputText != null)
+            {
+                outputText.text = Localize("Nu pot contacta serverul de executie.", "Can't reach the execution server.");
+                outputText.color = wrongColor;
+            }
+            onResult?.Invoke(false);
+            yield break;
+        }
+
+        float execElapsed = 0f;
+        while (awaitingExecution && execElapsed < 12f && !leaveRequested)
+        {
+            execElapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (awaitingExecution)
+        {
+            awaitingExecution = false;
+            if (outputText != null)
+            {
+                outputText.text = Localize("Timeout la executie.", "Execution timed out.");
+                outputText.color = wrongColor;
+            }
+            onResult?.Invoke(false);
+            yield break;
+        }
+
+        if (outputText != null)
+        {
+            outputText.text = BuildOutputBlock(lastExecutionOutput, lastExecutionError);
+            outputText.color = string.IsNullOrWhiteSpace(lastExecutionError) ? editorTextColor : wrongColor;
+        }
+
+        feedbackText.text = Localize("Verific cu AI...", "Checking with AI...");
+        feedbackText.color = textColor;
+
+        awaitingAiResponse = true;
+        awaitingAiKind = AiRequestKind.Evaluation;
+        pendingAiResponse = string.Empty;
+        string evalQuestion = BuildAiEvaluationQuestion(challenge, submittedCode, lastExecutionOutput, lastExecutionError);
+        bool aiSent = false;
+        yield return SendPacketWithConnect(new AskAiPacket(evalQuestion, "cpp_eval"), success => aiSent = success);
+        if (!aiSent)
+        {
+            awaitingAiResponse = false;
+            onResult?.Invoke(false);
+            yield break;
+        }
+
+        float aiElapsed = 0f;
+        while (awaitingAiResponse && aiElapsed < 12f && !leaveRequested)
+        {
+            aiElapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (awaitingAiResponse)
+        {
+            awaitingAiResponse = false;
+            onResult?.Invoke(false);
+            yield break;
+        }
+
+        bool? aiCorrect = ParseAiCorrectness(pendingAiResponse);
+        bool finalCorrect = aiCorrect ?? IsChallengeCorrect(challenge, submittedCode);
+        if (!aiCorrect.HasValue)
+        {
+            feedbackText.text = Localize("AI a fost neclar. Folosesc verificarea locala.", "AI was unclear. Using local check.");
+            feedbackText.color = textColor;
+        }
+
+        onResult?.Invoke(finalCorrect);
+    }
+
+    private string BuildOutputBlock(string output, string error)
+    {
+        string cleanOutput = string.IsNullOrWhiteSpace(output) ? Localize("(fara output)", "(no output)") : output.TrimEnd();
+        string cleanError = string.IsNullOrWhiteSpace(error) ? string.Empty : error.TrimEnd();
+        if (!string.IsNullOrEmpty(cleanError))
+        {
+            return Localize("Output:\\n", "Output:\\n") + cleanOutput + "\\n\\n" + Localize("Erori:\\n", "Errors:\\n") + cleanError;
+        }
+
+        return Localize("Output:\\n", "Output:\\n") + cleanOutput;
+    }
+
+    private string BuildAiEvaluationQuestion(CodeChallenge challenge, string submittedCode, string output, string error)
+    {
+        return "Check if the student's C++ solution is correct for the task. Reply with CORRECT or INCORRECT as the first word, then 1 short sentence.\\n\\nTask:\\n"
+            + challenge.Prompt + "\\n\\nStudent code:\\n" + submittedCode + "\\n\\nProgram output:\\n" + (string.IsNullOrWhiteSpace(output) ? "(no output)" : output.Trim())
+            + "\\n\\nErrors:\\n" + (string.IsNullOrWhiteSpace(error) ? "(none)" : error.Trim());
+    }
+
+    private bool? ParseAiCorrectness(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+        {
+            return null;
+        }
+
+        string normalized = response.Trim().ToLowerInvariant();
+        if (normalized.Contains("incorrect") || normalized.Contains("incorect"))
+        {
+            return false;
+        }
+
+        if (normalized.Contains("correct") || normalized.Contains("corect"))
+        {
+            return true;
+        }
+
+        return null;
+    }
+
     private bool IsChallengeCorrect(CodeChallenge challenge, string submittedCode)
     {
         string actual = NormalizeCode(submittedCode);
@@ -625,7 +959,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         hintScreenBackRequested = false;
         SetOverlayVisible(true);
         ShowMainUi(false);
-        ShowChallengeButtons(false, false, false, false, false);
+        ShowChallengeButtons(false, false, false, false, false, false);
 
         hintScreenText.text = hintText;
         LayoutHintScreen();
@@ -648,6 +982,176 @@ public class CodeChallengePadCinematic : MonoBehaviour
         }
     }
 
+    private IEnumerator ShowAiChatScreen()
+    {
+        aiChatBackRequested = false;
+        aiChatSendRequested = false;
+        awaitingAiKind = AiRequestKind.Chat;
+        SetOverlayVisible(true);
+        ShowMainUi(false);
+        ShowChallengeButtons(false, false, false, false, false, false);
+
+        ShowAiChatUi(true);
+        if (aiChatTitleText != null)
+        {
+            aiChatTitleText.text = Localize("Asistent AI", "AI Assistant");
+        }
+        if (aiChatSendButtonText != null)
+        {
+            aiChatSendButtonText.text = Localize("Trimite", "Send");
+        }
+        if (aiChatBackButtonText != null)
+        {
+            aiChatBackButtonText.text = Localize("Inapoi", "Back");
+        }
+        if (aiChatPlaceholderText != null)
+        {
+            aiChatPlaceholderText.text = Localize("Intreaba AI...", "Ask the AI...");
+        }
+        aiChatSendButton.onClick.RemoveAllListeners();
+        aiChatSendButton.onClick.AddListener(OnAiChatSendClicked);
+        aiChatBackButton.onClick.RemoveAllListeners();
+        aiChatBackButton.onClick.AddListener(OnAiChatBackClicked);
+        if (aiChatLines.Count == 0)
+        {
+            AppendChatLine(Localize("AI este gata. Pune o intrebare!", "AI is ready. Ask a question!"));
+        }
+
+        aiChatInput.text = string.Empty;
+        aiChatInput.ActivateInputField();
+        if (EventSystem.current != null)
+        {
+            EventSystem.current.SetSelectedGameObject(aiChatInput.gameObject);
+        }
+        SetCursorVisible(true);
+
+        while (!aiChatBackRequested && !leaveRequested)
+        {
+            if (aiChatSendRequested)
+            {
+                aiChatSendRequested = false;
+                string message = aiChatInput.text;
+                if (!string.IsNullOrWhiteSpace(message))
+                {
+                    aiChatInput.text = string.Empty;
+                    yield return SendAiChatMessage(message);
+                }
+            }
+            yield return null;
+        }
+
+        ShowAiChatUi(false);
+    }
+
+    private void ShowAiChatUi(bool visible)
+    {
+        if (aiChatPanel == null)
+        {
+            return;
+        }
+
+        aiChatPanel.gameObject.SetActive(visible);
+        aiChatTitleText.gameObject.SetActive(visible);
+        aiChatHistoryText.gameObject.SetActive(visible);
+        aiChatInput.gameObject.SetActive(visible);
+        aiChatSendButton.gameObject.SetActive(visible);
+        aiChatBackButton.gameObject.SetActive(visible);
+    }
+
+    private IEnumerator SendAiChatMessage(string message)
+    {
+        if (awaitingAiResponse)
+        {
+            AppendChatLine(Localize("AI lucreaza deja. Asteapta un raspuns.", "AI is already working. Please wait."));
+            yield break;
+        }
+
+        AppendChatLine(Localize("Tu: ", "You: ") + message);
+        awaitingAiResponse = true;
+        awaitingAiKind = AiRequestKind.Chat;
+        pendingAiResponse = string.Empty;
+        aiChatSendButton.interactable = false;
+
+        string question = BuildAiChatQuestion(message);
+        bool sendOk = false;
+        yield return SendPacketWithConnect(new AskAiPacket(question, BuildAiChatContext()), success => sendOk = success);
+        if (!sendOk)
+        {
+            awaitingAiResponse = false;
+            aiChatSendButton.interactable = true;
+            AppendChatLine(Localize("Nu pot contacta serverul AI acum.", "Can't reach the AI server right now."));
+            yield break;
+        }
+
+        float elapsed = 0f;
+        while (awaitingAiResponse && elapsed < 12f && !leaveRequested)
+        {
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        aiChatSendButton.interactable = true;
+        if (awaitingAiResponse)
+        {
+            awaitingAiResponse = false;
+            AppendChatLine(Localize("AI nu a raspuns la timp.", "AI did not respond in time."));
+        }
+    }
+
+    private void AppendChatLine(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            return;
+        }
+
+        aiChatLines.Add(line.Trim());
+        if (aiChatLines.Count > MaxChatLines)
+        {
+            aiChatLines.RemoveAt(0);
+        }
+
+        RefreshChatText();
+    }
+
+    private void RefreshChatText()
+    {
+        if (aiChatHistoryText == null)
+        {
+            return;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < aiChatLines.Count; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append('\n');
+            }
+            builder.Append(aiChatLines[i]);
+        }
+
+        aiChatHistoryText.text = builder.ToString();
+    }
+
+    private string BuildAiChatContext()
+    {
+        if (mode == ChallengeMode.Medium)
+        {
+            return "cpp_medium_hint";
+        }
+
+        return "cpp_hard_hint";
+    }
+
+    private string BuildAiChatQuestion(string userMessage)
+    {
+        string prompt = activeChallenge.Prompt;
+        string code = codeInput != null ? codeInput.text : string.Empty;
+        return "Task:\\n" + prompt + "\\n\\nStudent code:\\n" + code + "\\n\\nQuestion:\\n" + userMessage
+            + "\\n\\nGive a helpful hint without giving away the full solution.";
+    }
+
     private void ShowMainUi(bool visible)
     {
         if (panelImage == null || titleText == null || counterText == null || promptText == null || feedbackText == null || codeInput == null)
@@ -666,6 +1170,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         counterText.gameObject.SetActive(visible);
         promptText.gameObject.SetActive(visible);
         feedbackText.gameObject.SetActive(visible);
+        outputText.gameObject.SetActive(visible && mode == ChallengeMode.Medium);
         codeInput.gameObject.SetActive(visible);
         if (visible)
         {
@@ -688,15 +1193,16 @@ public class CodeChallengePadCinematic : MonoBehaviour
         }
     }
 
-    private void ShowChallengeButtons(bool showBack, bool showHint, bool showVerify, bool showContinue, bool showRetryWrong)
+    private void ShowChallengeButtons(bool showBack, bool showHint, bool showAi, bool showVerify, bool showContinue, bool showRetryWrong)
     {
-        if (backButton == null || hintButton == null || verifyButton == null || continueButton == null || retryWrongButton == null)
+        if (backButton == null || hintButton == null || aiButton == null || verifyButton == null || continueButton == null || retryWrongButton == null)
         {
             return;
         }
 
         backButton.gameObject.SetActive(showBack);
         hintButton.gameObject.SetActive(showHint);
+        aiButton.gameObject.SetActive(showAi);
         verifyButton.gameObject.SetActive(showVerify);
         continueButton.gameObject.SetActive(showContinue);
         retryWrongButton.gameObject.SetActive(showRetryWrong);
@@ -713,6 +1219,11 @@ public class CodeChallengePadCinematic : MonoBehaviour
         codeInput.text = currentAnswer;
         feedbackText.text = Localize("Incercari ramase: ", "Attempts left: ") + attemptsLeft + " / " + GetAttemptsAllowed();
         feedbackText.color = textColor;
+        if (outputText != null && mode == ChallengeMode.Medium)
+        {
+            outputText.text = Localize("Output-ul va aparea aici.", "Output will appear here.");
+            outputText.color = editorTextColor;
+        }
     }
 
     private IEnumerator RunRetryChallenges(CodeChallenge[] retryChallenges, string[] retryAnswers, bool[] retrySolved, int[] retryAttempts, int[] retrySourceIndex, bool[] solved)
@@ -721,9 +1232,11 @@ public class CodeChallengePadCinematic : MonoBehaviour
         while (current < retryChallenges.Length && !leaveRequested)
         {
             CodeChallenge challenge = retryChallenges[current];
+            activeChallenge = challenge;
             verifyRequested = false;
             backRequested = false;
             hintRequested = false;
+            aiChatRequested = false;
             continueRequested = false;
 
             ApplyLocalizedStaticTexts();
@@ -733,9 +1246,25 @@ public class CodeChallengePadCinematic : MonoBehaviour
             codeInput.text = retryAnswers[current];
             feedbackText.text = Localize("Incercari ramase: ", "Attempts left: ") + retryAttempts[current] + " / " + GetAttemptsAllowed();
             feedbackText.color = textColor;
+            if (outputText != null && mode == ChallengeMode.Medium)
+            {
+                outputText.text = Localize("Output-ul va aparea aici.", "Output will appear here.");
+                outputText.color = editorTextColor;
+            }
+
+            verifyButton.onClick.RemoveAllListeners();
+            verifyButton.onClick.AddListener(OnVerifyClicked);
+            backButton.onClick.RemoveAllListeners();
+            backButton.onClick.AddListener(OnBackClicked);
+            hintButton.onClick.RemoveAllListeners();
+            hintButton.onClick.AddListener(OnHintClicked);
+            aiButton.onClick.RemoveAllListeners();
+            aiButton.onClick.AddListener(OnAiChatClicked);
+            continueButton.onClick.RemoveAllListeners();
+            continueButton.onClick.AddListener(OnContinueClicked);
 
             ShowMainUi(true);
-            ShowChallengeButtons(current > 0, true, true, false, false);
+            ShowChallengeButtons(current > 0, true, true, true, false, false);
 
             while (!verifyRequested && !backRequested && !leaveRequested)
             {
@@ -748,7 +1277,18 @@ public class CodeChallengePadCinematic : MonoBehaviour
                         yield break;
                     }
                     ShowMainUi(true);
-                    ShowChallengeButtons(current > 0, true, true, false, false);
+                    ShowChallengeButtons(current > 0, true, true, true, false, false);
+                }
+                else if (aiChatRequested)
+                {
+                    aiChatRequested = false;
+                    yield return ShowAiChatScreen();
+                    if (leaveRequested)
+                    {
+                        yield break;
+                    }
+                    ShowMainUi(true);
+                    ShowChallengeButtons(current > 0, true, true, true, false, false);
                 }
 
                 yield return null;
@@ -767,13 +1307,15 @@ public class CodeChallengePadCinematic : MonoBehaviour
             }
 
             retryAnswers[current] = codeInput.text;
-            if (IsChallengeCorrect(challenge, codeInput.text))
+            bool retryCorrect = false;
+            yield return EvaluateChallenge(challenge, codeInput.text, result => retryCorrect = result);
+            if (retryCorrect)
             {
                 retrySolved[current] = true;
                 solved[retrySourceIndex[current]] = true;
                 feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
                 feedbackText.color = correctColor;
-                ShowChallengeButtons(current > 0, true, false, true, false);
+                ShowChallengeButtons(current > 0, true, true, false, true, false);
 
                 while (!continueRequested && !leaveRequested)
                 {
@@ -807,6 +1349,9 @@ public class CodeChallengePadCinematic : MonoBehaviour
     private void OnVerifyClicked() => verifyRequested = true;
     private void OnBackClicked() => backRequested = true;
     private void OnHintClicked() => hintRequested = true;
+    private void OnAiChatClicked() => aiChatRequested = true;
+    private void OnAiChatSendClicked() => aiChatSendRequested = true;
+    private void OnAiChatBackClicked() => aiChatBackRequested = true;
     private void OnContinueClicked() => continueRequested = true;
     private void OnRetryWrongClicked() => retryWrongRequested = true;
     private void OnHintScreenBackClicked() => hintScreenBackRequested = true;
@@ -1178,6 +1723,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         counterText = EnsureText(panelImage.transform, "CounterText", new Vector2(0.22f, 0.82f), new Vector2(460f, 40f), bodySize, FontStyle.Bold, secondaryAccentColor);
         promptText = EnsureText(panelImage.transform, "PromptText", new Vector2(0.22f, 0.60f), new Vector2(460f, 230f), questionSize, FontStyle.Bold, textColor);
         feedbackText = EnsureText(panelImage.transform, "FeedbackText", new Vector2(0.22f, 0.28f), new Vector2(460f, 120f), bodySize, FontStyle.Bold, textColor);
+        outputText = EnsureText(panelImage.transform, "OutputText", new Vector2(0.71f, 0.30f), new Vector2(600f, 120f), bodySize, FontStyle.Normal, editorTextColor);
         languagePromptText = EnsureText(root, "LanguagePromptText", new Vector2(0.5f, 0.60f), new Vector2(760f, 80f), questionSize, FontStyle.Bold, textColor);
         hintScreenText = EnsureText(root, "HintScreenText", new Vector2(0.5f, 0.58f), new Vector2(1020f, 360f), questionSize, FontStyle.Bold, textColor);
         codeInput = EnsureCodeInput(panelImage.transform);
@@ -1191,8 +1737,16 @@ public class CodeChallengePadCinematic : MonoBehaviour
         verifyButton = EnsureButton(panelImage.transform, "VerifyButton", new Vector2(0.80f, 0.17f), new Vector2(160f, 52f), accentColor, "Verificare", buttonTextSize);
         backButton = EnsureButton(panelImage.transform, "BackButton", new Vector2(0.58f, 0.17f), new Vector2(150f, 52f), buttonColor, "Back", buttonTextSize);
         hintButton = EnsureButton(panelImage.transform, "HintButton", new Vector2(0.69f, 0.17f), new Vector2(150f, 52f), secondaryAccentColor, "Hint", buttonTextSize);
+        aiButton = EnsureButton(panelImage.transform, "AiButton", new Vector2(0.75f, 0.17f), new Vector2(140f, 52f), new Color(0.14f, 0.14f, 0.14f, 0.92f), "AI", buttonTextSize);
         continueButton = EnsureButton(panelImage.transform, "ContinueButton", new Vector2(0.82f, 0.16f), new Vector2(160f, 48f), correctColor, "Continuare", buttonTextSize);
         retryWrongButton = EnsureButton(panelImage.transform, "RetryWrongButton", new Vector2(0.72f, 0.16f), new Vector2(260f, 48f), secondaryAccentColor, "Refa gresite", buttonTextSize);
+
+        aiChatPanel = EnsureImage(root, "AiChatPanel", new Color(1f, 1f, 1f, 0.96f));
+        aiChatTitleText = EnsureText(aiChatPanel.transform, "AiChatTitleText", new Vector2(0.5f, 0.86f), new Vector2(780f, 60f), titleSize - 4, FontStyle.Bold, textColor);
+        aiChatHistoryText = EnsureText(aiChatPanel.transform, "AiChatHistoryText", new Vector2(0.5f, 0.58f), new Vector2(900f, 340f), bodySize, FontStyle.Normal, textColor);
+        aiChatInput = EnsureChatInput(aiChatPanel.transform);
+        aiChatSendButton = EnsureButton(aiChatPanel.transform, "AiChatSendButton", new Vector2(0.76f, 0.12f), new Vector2(170f, 52f), accentColor, "Send", buttonTextSize);
+        aiChatBackButton = EnsureButton(aiChatPanel.transform, "AiChatBackButton", new Vector2(0.24f, 0.12f), new Vector2(170f, 52f), buttonColor, "Back", buttonTextSize);
 
         leaveButtonText = leaveButton.GetComponentInChildren<Text>(true);
         hintScreenBackButtonText = hintScreenBackButton.GetComponentInChildren<Text>(true);
@@ -1201,11 +1755,17 @@ public class CodeChallengePadCinematic : MonoBehaviour
         verifyButtonText = verifyButton.GetComponentInChildren<Text>(true);
         backButtonText = backButton.GetComponentInChildren<Text>(true);
         hintButtonText = hintButton.GetComponentInChildren<Text>(true);
+        aiButtonText = aiButton.GetComponentInChildren<Text>(true);
         continueButtonText = continueButton.GetComponentInChildren<Text>(true);
         retryWrongButtonText = retryWrongButton.GetComponentInChildren<Text>(true);
+        aiChatSendButtonText = aiChatSendButton.GetComponentInChildren<Text>(true);
+        aiChatBackButtonText = aiChatBackButton.GetComponentInChildren<Text>(true);
+        aiChatInputText = aiChatInput.textComponent;
+        aiChatPlaceholderText = aiChatInput.placeholder as Text;
 
         LayoutMainScreen();
         LayoutHintScreen();
+        LayoutAiChatScreen();
 
         EnsureEventSystem();
     }
@@ -1319,6 +1879,72 @@ public class CodeChallengePadCinematic : MonoBehaviour
         return input;
     }
 
+    private InputField EnsureChatInput(Transform parent)
+    {
+        GameObject root = GetOrCreateUiObject(parent, "AiChatInput");
+        RectTransform rect = root.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.22f);
+        rect.anchorMax = new Vector2(0.5f, 0.22f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(760f, 64f);
+        rect.localScale = Vector3.one;
+
+        Image image = root.GetComponent<Image>() ?? root.AddComponent<Image>();
+        image.color = editorColor;
+        image.raycastTarget = true;
+        Outline outline = root.GetComponent<Outline>() ?? root.AddComponent<Outline>();
+        outline.effectColor = new Color(accentColor.r, accentColor.g, accentColor.b, 0.32f);
+        outline.effectDistance = new Vector2(2f, -2f);
+        RectMask2D mask = root.GetComponent<RectMask2D>() ?? root.AddComponent<RectMask2D>();
+        mask.padding = Vector4.zero;
+
+        InputField input = root.GetComponent<InputField>() ?? root.AddComponent<InputField>();
+        input.lineType = InputField.LineType.SingleLine;
+        input.transition = Selectable.Transition.None;
+        input.selectionColor = new Color(accentColor.r, accentColor.g, accentColor.b, 0.22f);
+        input.caretColor = accentColor;
+        input.customCaretColor = true;
+
+        GameObject textObj = GetOrCreateUiObject(root.transform, "Text");
+        RectTransform textRect = textObj.GetComponent<RectTransform>();
+        textRect.anchorMin = new Vector2(0f, 0f);
+        textRect.anchorMax = new Vector2(1f, 1f);
+        textRect.offsetMin = new Vector2(16f, 10f);
+        textRect.offsetMax = new Vector2(-16f, -10f);
+        textRect.localScale = Vector3.one;
+        Text text = textObj.GetComponent<Text>() ?? textObj.AddComponent<Text>();
+        text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        text.fontSize = bodySize + 1;
+        text.alignment = TextAnchor.MiddleLeft;
+        text.horizontalOverflow = HorizontalWrapMode.Wrap;
+        text.verticalOverflow = VerticalWrapMode.Truncate;
+        text.color = editorTextColor;
+        text.supportRichText = false;
+        input.textComponent = text;
+
+        GameObject placeholderObj = GetOrCreateUiObject(root.transform, "Placeholder");
+        RectTransform placeRect = placeholderObj.GetComponent<RectTransform>();
+        placeRect.anchorMin = new Vector2(0f, 0f);
+        placeRect.anchorMax = new Vector2(1f, 1f);
+        placeRect.offsetMin = new Vector2(16f, 10f);
+        placeRect.offsetMax = new Vector2(-16f, -10f);
+        placeRect.localScale = Vector3.one;
+        Text placeholder = placeholderObj.GetComponent<Text>() ?? placeholderObj.AddComponent<Text>();
+        placeholder.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        placeholder.fontSize = bodySize + 1;
+        placeholder.alignment = TextAnchor.MiddleLeft;
+        placeholder.color = new Color(editorTextColor.r, editorTextColor.g, editorTextColor.b, 0.45f);
+        placeholder.text = "Ask the AI...";
+        placeholder.resizeTextForBestFit = false;
+        input.placeholder = placeholder;
+        input.targetGraphic = image;
+        Navigation navigation = input.navigation;
+        navigation.mode = Navigation.Mode.None;
+        input.navigation = navigation;
+        return input;
+    }
+
     private static Button EnsureButton(Transform parent, string name, Vector2 anchor, Vector2 size, Color color, string label, int fontSize)
     {
         GameObject go = GetOrCreateUiObject(parent, name);
@@ -1382,15 +2008,19 @@ public class CodeChallengePadCinematic : MonoBehaviour
         SetRect(promptText.rectTransform, new Vector2(0.24f, 0.58f), new Vector2(520f, 300f));
         SetRect(feedbackText.rectTransform, new Vector2(0.24f, 0.24f), new Vector2(520f, 120f));
         SetRect(codeInput.GetComponent<RectTransform>(), new Vector2(0.71f, 0.58f), new Vector2(620f, 340f));
-        SetRect(backButton.GetComponent<RectTransform>(), new Vector2(0.60f, 0.16f), new Vector2(138f, 48f));
-        SetRect(hintButton.GetComponent<RectTransform>(), new Vector2(0.71f, 0.16f), new Vector2(138f, 48f));
-        SetRect(verifyButton.GetComponent<RectTransform>(), new Vector2(0.82f, 0.16f), new Vector2(160f, 48f));
+        SetRect(outputText.rectTransform, new Vector2(0.71f, 0.30f), new Vector2(620f, 120f));
+        SetRect(backButton.GetComponent<RectTransform>(), new Vector2(0.58f, 0.16f), new Vector2(120f, 48f));
+        SetRect(hintButton.GetComponent<RectTransform>(), new Vector2(0.68f, 0.16f), new Vector2(120f, 48f));
+        SetRect(aiButton.GetComponent<RectTransform>(), new Vector2(0.77f, 0.16f), new Vector2(120f, 48f));
+        SetRect(verifyButton.GetComponent<RectTransform>(), new Vector2(0.86f, 0.16f), new Vector2(140f, 48f));
         SetRect(continueButton.GetComponent<RectTransform>(), new Vector2(0.82f, 0.16f), new Vector2(160f, 48f));
         SetRect(retryWrongButton.GetComponent<RectTransform>(), new Vector2(0.72f, 0.16f), new Vector2(260f, 48f));
         SetRect(leaveButton.GetComponent<RectTransform>(), new Vector2(0.10f, 0.09f), new Vector2(156f, 48f));
 
         promptText.fontSize = 23;
         feedbackText.fontSize = 21;
+        outputText.fontSize = 19;
+        outputText.alignment = TextAnchor.UpperLeft;
     }
 
     private void LayoutHintScreen()
@@ -1401,6 +2031,24 @@ public class CodeChallengePadCinematic : MonoBehaviour
         hintScreenText.fontSize = 23;
         SetRect(leaveButton.GetComponent<RectTransform>(), new Vector2(0.10f, 0.09f), new Vector2(156f, 48f));
         SetRect(hintScreenBackButton.GetComponent<RectTransform>(), new Vector2(0.22f, 0.09f), new Vector2(156f, 48f));
+    }
+
+    private void LayoutAiChatScreen()
+    {
+        if (aiChatPanel == null)
+        {
+            return;
+        }
+
+        SetRect(aiChatPanel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(980f, 620f));
+        SetRect(aiChatTitleText.rectTransform, new Vector2(0.5f, 0.86f), new Vector2(820f, 60f));
+        SetRect(aiChatHistoryText.rectTransform, new Vector2(0.5f, 0.58f), new Vector2(860f, 320f));
+        SetRect(aiChatInput.GetComponent<RectTransform>(), new Vector2(0.5f, 0.24f), new Vector2(760f, 64f));
+        SetRect(aiChatBackButton.GetComponent<RectTransform>(), new Vector2(0.22f, 0.12f), new Vector2(170f, 52f));
+        SetRect(aiChatSendButton.GetComponent<RectTransform>(), new Vector2(0.78f, 0.12f), new Vector2(170f, 52f));
+
+        aiChatHistoryText.alignment = TextAnchor.UpperLeft;
+        aiChatHistoryText.fontSize = 20;
     }
 
     private static void SetRect(RectTransform rect, Vector2 anchor, Vector2 size)
@@ -1461,6 +2109,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         counterText.gameObject.SetActive(false);
         promptText.gameObject.SetActive(false);
         feedbackText.gameObject.SetActive(false);
+        outputText.gameObject.SetActive(false);
         languagePromptText.gameObject.SetActive(false);
         codeInput.gameObject.SetActive(false);
         hintScreenText.gameObject.SetActive(false);
@@ -1469,10 +2118,17 @@ public class CodeChallengePadCinematic : MonoBehaviour
         verifyButton.gameObject.SetActive(false);
         backButton.gameObject.SetActive(false);
         hintButton.gameObject.SetActive(false);
+        aiButton.gameObject.SetActive(false);
         continueButton.gameObject.SetActive(false);
         retryWrongButton.gameObject.SetActive(false);
         languageRoButton.gameObject.SetActive(false);
         languageEnButton.gameObject.SetActive(false);
+        if (aiChatPanel != null) aiChatPanel.gameObject.SetActive(false);
+        if (aiChatTitleText != null) aiChatTitleText.gameObject.SetActive(false);
+        if (aiChatHistoryText != null) aiChatHistoryText.gameObject.SetActive(false);
+        if (aiChatInput != null) aiChatInput.gameObject.SetActive(false);
+        if (aiChatSendButton != null) aiChatSendButton.gameObject.SetActive(false);
+        if (aiChatBackButton != null) aiChatBackButton.gameObject.SetActive(false);
         SetOverlayVisible(false);
     }
 
@@ -1521,6 +2177,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         counterText = null;
         promptText = null;
         feedbackText = null;
+        outputText = null;
         languagePromptText = null;
         codeInput = null;
         codeInputText = null;
@@ -1534,6 +2191,8 @@ public class CodeChallengePadCinematic : MonoBehaviour
         backButtonText = null;
         hintButton = null;
         hintButtonText = null;
+        aiButton = null;
+        aiButtonText = null;
         continueButton = null;
         continueButtonText = null;
         retryWrongButton = null;
@@ -1544,6 +2203,16 @@ public class CodeChallengePadCinematic : MonoBehaviour
         languageEnButtonText = null;
         hintScreenBackButton = null;
         hintScreenBackButtonText = null;
+        aiChatPanel = null;
+        aiChatTitleText = null;
+        aiChatHistoryText = null;
+        aiChatInput = null;
+        aiChatInputText = null;
+        aiChatPlaceholderText = null;
+        aiChatSendButton = null;
+        aiChatSendButtonText = null;
+        aiChatBackButton = null;
+        aiChatBackButtonText = null;
     }
 
     private void ShowLeaveButton(bool visible)
@@ -1592,7 +2261,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
     {
         languageChosen = false;
         ShowMainUi(false);
-        ShowChallengeButtons(false, false, false, false, false);
+        ShowChallengeButtons(false, false, false, false, false, false);
         languagePromptText.text = "Alege limba / Choose language";
         languagePromptText.gameObject.SetActive(true);
         languageRoButton.gameObject.SetActive(true);
@@ -1627,10 +2296,15 @@ public class CodeChallengePadCinematic : MonoBehaviour
         if (verifyButtonText != null) verifyButtonText.text = Localize("Verificare", "Verify");
         if (backButtonText != null) backButtonText.text = Localize("Inapoi", "Back");
         if (hintButtonText != null) hintButtonText.text = "Hint";
+        if (aiButtonText != null) aiButtonText.text = "AI";
         if (continueButtonText != null) continueButtonText.text = Localize("Urmatoarea", "Next");
         if (retryWrongButtonText != null) retryWrongButtonText.text = Localize("Refa gresite", "Retry wrong");
         if (languageRoButtonText != null) languageRoButtonText.text = "Romana";
         if (languageEnButtonText != null) languageEnButtonText.text = "English";
+        if (aiChatTitleText != null) aiChatTitleText.text = Localize("Asistent AI", "AI Assistant");
+        if (aiChatSendButtonText != null) aiChatSendButtonText.text = Localize("Trimite", "Send");
+        if (aiChatBackButtonText != null) aiChatBackButtonText.text = Localize("Inapoi", "Back");
+        if (aiChatPlaceholderText != null) aiChatPlaceholderText.text = Localize("Intreaba AI...", "Ask the AI...");
     }
 
     private string Localize(string romanian, string english)

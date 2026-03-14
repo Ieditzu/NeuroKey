@@ -8,7 +8,7 @@ import org.json.JSONObject;
 import org.json.JSONArray;
 
 public class GeminiAI {
-    private final String apiKey = "AIzaSyCMFjnJ7N0BW1FgCezxYS6z7t-1SEchMnQ";
+    private final String apiKey = "AIzaSyAOI3k54KSh4rheY13UpPkuRZnEZJFePK0";
 
     public String ask(String question, String context) {
         try {
