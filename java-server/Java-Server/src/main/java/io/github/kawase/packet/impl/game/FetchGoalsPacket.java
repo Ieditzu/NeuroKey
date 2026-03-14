@@ -1,33 +1,29 @@
-package io.github.kawase.packet.impl;
+package io.github.kawase.packet.impl.game;
 
 import io.github.kawase.packet.Packet;
 import lombok.Getter;
 import java.nio.ByteBuffer;
 
 @Getter
-public class ClaimQRLoginPacket extends Packet {
-    private String token;
+public class FetchGoalsPacket extends Packet {
     private long childId;
 
-    public ClaimQRLoginPacket(final String token, final long childId) {
-        super(21);
-        this.token = token;
+    public FetchGoalsPacket(final long childId) {
+        super(0x0D);
         this.childId = childId;
     }
 
-    public ClaimQRLoginPacket() {
-        super(21);
+    public FetchGoalsPacket() {
+        super(0x0D);
     }
 
     @Override
     protected void write(final ByteBuffer buffer) {
-        putString(token == null ? "" : token, buffer);
         buffer.putLong(childId);
     }
 
     @Override
     protected void read(final ByteBuffer buffer) {
-        this.token = readString(buffer);
         this.childId = buffer.getLong();
     }
 }

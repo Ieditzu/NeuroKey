@@ -1,14 +1,14 @@
-package io.github.kawase.packet.impl;
+package io.github.kawase.packet.impl.game;
 
 import io.github.kawase.packet.Packet;
 import lombok.Getter;
 import java.nio.ByteBuffer;
 
 @Getter
-public class GenerateQRLoginPacket extends Packet {
+public class FetchTasksPacket extends Packet {
 
-    public GenerateQRLoginPacket() {
-        super(19);
+    public FetchTasksPacket() {
+        super(0x0B);
     }
 
     @Override

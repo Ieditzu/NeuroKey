@@ -2,7 +2,11 @@ package io.github.kawase.client;
 
 import io.github.kawase.Server;
 import io.github.kawase.packet.Packet;
-import io.github.kawase.packet.impl.*;
+import io.github.kawase.packet.impl.auth.*;
+import io.github.kawase.packet.impl.child.*;
+import io.github.kawase.packet.impl.core.*;
+import io.github.kawase.packet.impl.game.*;
+import io.github.kawase.packet.impl.qr.*;
 import io.github.kawase.socket.ServerSocket;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
