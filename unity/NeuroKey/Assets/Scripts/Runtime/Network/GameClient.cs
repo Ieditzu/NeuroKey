@@ -44,8 +44,8 @@ namespace NeuroKey.Network
                 Debug.Log("Connected to server");
                 _ = ReceiveLoop();
 
-                // Send handshake
-                SendPacket(new HandShakePacket("unity_game"));
+                // Send handshake (fire-and-forget is fine, but await to avoid warnings)
+                await SendPacket(new HandShakePacket("unity_game"));
             }
             catch (Exception e)
             {

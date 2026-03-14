@@ -37,7 +37,7 @@ namespace NeuroKey.Network
             long value = 0;
             for (int i = 0; i < 8; i++)
             {
-                value = (value << 8) | (decryptedBytes[i] & 0xFF);
+                value = (value << 8) | ((long)decryptedBytes[i] & 0xFFL);
             }
             return value;
         }

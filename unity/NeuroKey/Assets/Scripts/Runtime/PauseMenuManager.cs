@@ -82,8 +82,8 @@ public class PauseMenuManager : MonoBehaviour
                     loggedInChildId = authResp.ChildId;
                     loggedInChildName = authResp.ChildName;
                     
-                    GameClient.Instance.SendPacket(new FetchChildStatsPacket());
-                    GameClient.Instance.SendPacket(new FetchTasksPacket());
+                    _ = GameClient.Instance.SendPacket(new FetchChildStatsPacket());
+                    _ = GameClient.Instance.SendPacket(new FetchTasksPacket());
 
                     if (qrButton != null) qrButton.interactable = false;
                     if (qrCodeImage != null) qrCodeImage.gameObject.SetActive(false);
@@ -114,7 +114,7 @@ public class PauseMenuManager : MonoBehaviour
             if (actionResp.RequestPacketId == 8 && actionResp.Success) 
             {
                 UnityMainThreadDispatcher.Instance().Enqueue(() => {
-                    GameClient.Instance.SendPacket(new FetchChildStatsPacket()); 
+                    _ = GameClient.Instance.SendPacket(new FetchChildStatsPacket()); 
                 });
             }
         }
@@ -219,8 +219,6 @@ public class PauseMenuManager : MonoBehaviour
         dimmer = CreateUiObject("Dimmer", canvas.transform);
         Image dimmerImage = dimmer.AddComponent<Image>();
         dimmerImage.color = new Color(0.03f, 0.04f, 0.08f, 0.82f);
-        GameObject dimmer = CreateUiObject("Dimmer", canvas.transform);
-        dimmer.AddComponent<Image>().color = new Color(0.03f, 0.04f, 0.08f, 0.82f);
         StretchToFullscreen(dimmer.GetComponent<RectTransform>());
 
         // MAIN PANEL
@@ -344,7 +342,7 @@ public class PauseMenuManager : MonoBehaviour
             long tid = task.Id;
             completeBtn.onClick.AddListener(() => {
                 if (loggedInChildId != -1)
-                    GameClient.Instance.SendPacket(new CompleteTaskPacket(loggedInChildId, tid));
+                    _ = GameClient.Instance.SendPacket(new CompleteTaskPacket(loggedInChildId, tid));
             });
             y -= 60;
         }
@@ -394,7 +392,7 @@ public class PauseMenuManager : MonoBehaviour
         if (GameClient.Instance != null && GameClient.Instance.IsConnected)
         {
             qrStatusText.text = "Generating...";
-            GameClient.Instance.SendPacket(new GenerateQRLoginPacket());
+            _ = GameClient.Instance.SendPacket(new GenerateQRLoginPacket());
         }
         else if (GameClient.Instance != null) { _ = GameClient.Instance.Connect(); }
     }
@@ -454,12 +452,13 @@ public class PauseMenuManager : MonoBehaviour
 
     private void ForceHiddenIfNotPaused()
     {
+        // Hide any pause UI if the game isn't paused
         if (!IsGamePaused)
         {
             SetMenuVisible(false);
+            if (canvas != null) canvas.gameObject.SetActive(false);
         }
     }
-    private void ForceHiddenIfNotPaused() { if (!IsGamePaused && canvas != null) canvas.gameObject.SetActive(false); }
 
     private void SaveSettings()
     {
