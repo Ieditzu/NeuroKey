@@ -49,7 +49,6 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
     [Header("Screen")]
     [SerializeField] private float fadeToWhiteDuration = 0.34f;
-    [SerializeField] private float panelFadeDuration = 0.2f;
 
     [Header("Theme")]
     [SerializeField] private Color pageTint = new Color(0.98f, 0.98f, 0.96f, 1f);
@@ -73,31 +72,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
     private static readonly CodeChallenge[] MediumChallenges =
     {
-        new CodeChallenge(
-            "Debugging 1\n\nScop: functia trebuie sa modifice valoarea originala din `main`.\n\nCe trebuie sa observi:\n- variabila `value` este trimisa in functie\n- dupa apel, la afisare, valoarea ar trebui sa fie marita\n- in forma actuala, functia modifica doar o copie\n\nCerinta:\nRepara functia astfel incat incrementarea sa afecteze variabila originala.",
-            "#include <iostream>\n\nvoid increment(int n) {\n    n++;\n}\n\nint main() {\n    int value = 5;\n    increment(value);\n    std::cout << value << std::endl;\n}",
-            "#include <iostream>\n\nvoid increment(int& n) {\n    n++;\n}\n\nint main() {\n    int value = 5;\n    increment(value);\n    std::cout << value << std::endl;\n}",
-            "Explicatie pas cu pas:\n\nIn C++, parametrul `int n` inseamna ca functia primeste o copie a valorii. Asta inseamna ca in interiorul functiei tu modifici doar copia locala, nu si variabila originala din `main`.\n\nDe aceea, dupa apelul `increment(value)`, variabila `value` ramane neschimbata.\n\nCa sa modifici direct variabila originala, trebuie sa trimiti parametrul prin referinta:\n`int& n`\n\nCand folosesti referinta, `n` devine un alt nume pentru variabila originala, iar `n++` modifica exact valoarea din `main`.\n\nRaspuns corect:\nvoid increment(int& n)\n{\n    n++;\n}"),
-        new CodeChallenge(
-            "Debugging 2\n\nScop: functia trebuie sa intoarca suma tuturor elementelor din vector.\n\nCe trebuie sa observi:\n- variabila `sum` este folosita inainte sa primeasca o valoare initiala\n- bucla trece prea departe, peste ultimul index valid\n\nCerinta:\nRepara functia astfel incat sa calculeze corect suma si sa nu iasa din vector.",
-            "#include <vector>\n\nint sumVector(const std::vector<int>& nums) {\n    int sum;\n    for (size_t i = 0; i <= nums.size(); ++i) {\n        sum += nums[i];\n    }\n    return sum;\n}",
-            "#include <vector>\n\nint sumVector(const std::vector<int>& nums) {\n    int sum = 0;\n    for (size_t i = 0; i < nums.size(); ++i) {\n        sum += nums[i];\n    }\n    return sum;\n}",
-            "Explicatie pas cu pas:\n\nAici sunt doua probleme diferite.\n\n1. `sum` nu este initializat.\nAsta inseamna ca porneste cu o valoare necunoscuta din memorie. Cand aduni peste ea, rezultatul devine imprevizibil.\n\n2. Conditia `i <= nums.size()` este gresita.\nUltimul index valid intr-un vector este `nums.size() - 1`, deci bucla trebuie sa mearga cat timp `i < nums.size()`.\nDaca folosesti `<=`, la ultimul pas incerci sa accesezi o pozitie care nu exista.\n\nForma corecta este:\n- `int sum = 0;`\n- `for (size_t i = 0; i < nums.size(); ++i)`\n\nAsa calculezi sigur suma fara comportament nedefinit."),
-        new CodeChallenge(
-            "Debugging 3\n\nScop: codul trebuie sa afiseze textul inversat.\n\nCe trebuie sa observi:\n- bucla porneste de la ultimul caracter\n- indexul scade pana la 0\n- tipul folosit pentru index nu este potrivit pentru o bucla descrescatoare\n\nCerinta:\nRepara bucla astfel incat programul sa construiasca corect stringul inversat.",
-            "#include <iostream>\n#include <string>\n\nint main() {\n    std::string s = \"debug\";\n    std::string reversed;\n\n    for (size_t i = s.size() - 1; i >= 0; --i) {\n        reversed += s[i];\n    }\n\n    std::cout << reversed << std::endl;\n}",
-            "#include <iostream>\n#include <string>\n\nint main() {\n    std::string s = \"debug\";\n    std::string reversed;\n\n    for (int i = static_cast<int>(s.size()) - 1; i >= 0; --i) {\n        reversed += s[i];\n    }\n\n    std::cout << reversed << std::endl;\n}",
-            "Explicatie pas cu pas:\n\n`size_t` este un tip unsigned, adica nu poate retine valori negative.\n\nIntr-o bucla descrescatoare, dupa ce ajungi la 0 si mai scazi o data, valoarea nu devine `-1`, ci se transforma intr-un numar foarte mare. De aceea conditia `i >= 0` nu functioneaza cum te astepti.\n\nSolutia este sa folosesti un tip semnat, de exemplu `int`, pentru indexul care merge inapoi.\n\nCum `s.size()` intoarce `size_t`, este bine sa faci conversia explicita la `int`:\n`static_cast<int>(s.size()) - 1`\n\nAsa bucla porneste de la ultimul caracter si se opreste corect cand trece de 0."),
-        new CodeChallenge(
-            "Debugging 4\n\nScop: apelul prin pointer de baza trebuie sa execute metoda suprascrisa din clasa derivata.\n\nCe trebuie sa observi:\n- in clasa de baza, metoda `area` este `const`\n- in clasa derivata, semnatura nu este identica\n- daca semnaturile nu coincid, override-ul nu functioneaza corect\n\nCerinta:\nCorecteaza metoda din `Circle` astfel incat apelul `s->area()` sa foloseasca versiunea potrivita.",
-            "#include <iostream>\n\nclass Shape {\npublic:\n    virtual double area() const { return 0.0; }\n};\n\nclass Circle : public Shape {\npublic:\n    explicit Circle(double r) : radius(r) {}\n    double area() { return 3.14159 * radius * radius; }\nprivate:\n    double radius;\n};\n\nint main() {\n    Circle c(2.0);\n    Shape* s = &c;\n    std::cout << s->area() << std::endl;\n}",
-            "#include <iostream>\n\nclass Shape {\npublic:\n    virtual double area() const { return 0.0; }\n};\n\nclass Circle : public Shape {\npublic:\n    explicit Circle(double r) : radius(r) {}\n    double area() const override { return 3.14159 * radius * radius; }\nprivate:\n    double radius;\n};\n\nint main() {\n    Circle c(2.0);\n    Shape* s = &c;\n    std::cout << s->area() << std::endl;\n}",
-            "Explicatie pas cu pas:\n\nCand suprascrii o metoda virtuala, semnatura trebuie sa fie identica cu cea din clasa de baza.\n\nIn `Shape`, metoda este:\n`double area() const`\n\nIn `Circle`, metoda a fost scrisa fara `const`.\nAsta inseamna ca nu mai este exact aceeasi semnatura, deci override-ul nu este cel asteptat.\n\nTrebuie sa adaugi `const` si este foarte bine sa folosesti si `override`, pentru ca acesta te ajuta sa vezi imediat in compilare daca semnatura nu se potriveste.\n\nForma corecta este:\n`double area() const override`\n\nAsa, apelul prin `Shape*` ajunge in metoda din `Circle`."),
-        new CodeChallenge(
-            "Debugging 5\n\nScop: functia trebuie sa intoarca un rezultat valid, fara pointer dangling.\n\nCe trebuie sa observi:\n- `text` este o variabila locala\n- la finalul functiei, variabila este distrusa\n- `c_str()` intoarce un pointer catre memoria interna a acelui string\n\nCerinta:\nSchimba functia astfel incat valoarea returnata sa ramana valida dupa iesirea din functie.",
-            "#include <iostream>\n#include <string>\n\nconst char* getMessage() {\n    std::string text = \"Level complete\";\n    return text.c_str();\n}\n\nint main() {\n    std::cout << getMessage() << std::endl;\n}",
-            "#include <iostream>\n#include <string>\n\nstd::string getMessage() {\n    std::string text = \"Level complete\";\n    return text;\n}\n\nint main() {\n    std::cout << getMessage() << std::endl;\n}",
-            "Explicatie pas cu pas:\n\nVariabila `text` exista doar in interiorul functiei. In momentul in care functia se termina, obiectul este distrus.\n\nMetoda `c_str()` intoarce un pointer catre memoria interna a acelui string. Daca stringul nu mai exista, pointerul ramane suspendat, adica devine invalid.\n\nDe aceea apare problema numita `dangling pointer`.\n\nSolutia simpla si corecta aici este sa returnezi direct `std::string` prin valoare. In C++, asta este sigur si normal.\n\nAstfel, mesajul returnat ramane valid si poate fi afisat fara probleme.")
+        new CodeChallenge("test", "", "", "")
     };
 
     private static readonly CodeChallenge[] HardChallenges =
@@ -181,11 +156,6 @@ public class CodeChallengePadCinematic : MonoBehaviour
             triggerCollider.isTrigger = true;
         }
 
-        MediumQuestionPadStartSequence oldSequence = GetComponent<MediumQuestionPadStartSequence>();
-        if (oldSequence != null)
-        {
-            oldSequence.enabled = false;
-        }
     }
 
     private void OnTriggerEnter(Collider other)
@@ -1384,6 +1354,23 @@ public class CodeChallengePadCinematic : MonoBehaviour
         }
     }
 
+    private void ForceSceneOnlyVisibility()
+    {
+        overlayInteractionActive = false;
+
+        if (EventSystem.current != null)
+        {
+            EventSystem.current.SetSelectedGameObject(null);
+        }
+
+        if (overlayCanvas != null)
+        {
+            overlayCanvas.gameObject.SetActive(false);
+        }
+
+        SetCursorVisible(false);
+    }
+
     private void TearDownOverlay()
     {
         overlayInteractionActive = false;
@@ -1437,12 +1424,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
     private void OnLeaveClicked()
     {
         leaveRequested = true;
-        TearDownOverlay();
-        SetCursorVisible(false);
-        if (EventSystem.current != null)
-        {
-            EventSystem.current.SetSelectedGameObject(null);
-        }
+        ForceSceneOnlyVisibility();
     }
 
     private IEnumerator FadeImage(Image image, float from, float to, float duration, Color color)

@@ -22,11 +22,7 @@ public class FirstPersonControllerSimple : MonoBehaviour
     [SerializeField] private float maxPitch = 80f;
     [Tooltip("Optional anchor (e.g., head bone) to position the camera. If null, a local offset is used.")]
     [SerializeField] private Transform headAnchor;
-    [Header("Third-Person View (disabled)")]
-    [SerializeField] private bool startInThirdPerson = false;
     [SerializeField] private Vector3 thirdPersonOffset = new Vector3(0f, 3.8f, -5.4f);
-    [SerializeField] private float cameraFollowSmooth = 10f;
-    [SerializeField] private KeyCode toggleViewKey = KeyCode.V;
     [Header("Visuals")]
     [Tooltip("If no renderers are found under this player, spawn a simple capsule proxy so the body is visible in third-person.")]
     [SerializeField] private bool spawnProxyBodyIfMissing = false;
@@ -36,7 +32,6 @@ public class FirstPersonControllerSimple : MonoBehaviour
     [SerializeField] private float eyeHeight = 4.0f;
     [SerializeField] private float bodyVisualScale = 8f;
     [SerializeField] private float baseControllerHeight = 1.8f;
-    [SerializeField] private float baseControllerRadius = 0.35f;
     [SerializeField] private float vrHeightScale = 1.35f;
     [SerializeField] private float vrTurnSpeed = 180f; // degrees per second using right stick X
     [SerializeField] private float vrTurnDeadzone = 0.18f;
@@ -63,7 +58,6 @@ public class FirstPersonControllerSimple : MonoBehaviour
     private Transform camTransform;
     private float pitch;
     private Vector3 velocity;
-    private bool thirdPerson;
     private bool movementLocked;
     private bool hardFreeze;
     private bool cameraControlEnabled = true;
@@ -102,8 +96,6 @@ public class FirstPersonControllerSimple : MonoBehaviour
         camTransform.SetParent(transform, false);
         camTransform.localPosition = new Vector3(0f, eyeHeight, 0f);
         camTransform.localRotation = Quaternion.identity;
-        thirdPerson = false; // force first person only
-
         // If running in XR, scale height to feel taller in VR without changing non-VR builds.
         if (IsVrActive())
         {

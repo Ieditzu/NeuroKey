@@ -1302,6 +1302,11 @@ public class CppQuestionPadCinematic : MonoBehaviour
             }
         }
 
+        if (overlayCanvas != null && !overlayCanvas.gameObject.activeSelf)
+        {
+            overlayCanvas.gameObject.SetActive(true);
+        }
+
         Transform root = overlayCanvas.transform;
         pulseImage = EnsureImage(root, "PulseImage", pageTint);
         whiteImage = EnsureImage(root, "WhiteImage", pageTint);
@@ -1510,6 +1515,11 @@ public class CppQuestionPadCinematic : MonoBehaviour
 
     private void ResetOverlay()
     {
+        if (overlayCanvas != null && !overlayCanvas.gameObject.activeSelf)
+        {
+            overlayCanvas.gameObject.SetActive(true);
+        }
+
         pulseImage.color = new Color(pulseColor.r, pulseColor.g, pulseColor.b, 0f);
         pulseImage.enabled = false;
         whiteImage.color = new Color(pageTint.r, pageTint.g, pageTint.b, 0f);
@@ -1548,6 +1558,15 @@ public class CppQuestionPadCinematic : MonoBehaviour
 
     private void HideOverlayImmediate()
     {
+        if (overlayCanvas == null)
+        {
+            return;
+        }
+
+        pulseImage.enabled = false;
+        pulseImage.color = new Color(pulseColor.r, pulseColor.g, pulseColor.b, 0f);
+        whiteImage.enabled = false;
+        whiteImage.color = new Color(pageTint.r, pageTint.g, pageTint.b, 0f);
         menuCard.gameObject.SetActive(false);
         titleText.gameObject.SetActive(false);
         counterText.gameObject.SetActive(false);
@@ -1566,6 +1585,23 @@ public class CppQuestionPadCinematic : MonoBehaviour
         HideOptions();
     }
 
+    private void ForceSceneOnlyVisibility()
+    {
+        HideOverlayImmediate();
+
+        if (EventSystem.current != null)
+        {
+            EventSystem.current.SetSelectedGameObject(null);
+        }
+
+        if (overlayCanvas != null)
+        {
+            overlayCanvas.gameObject.SetActive(false);
+        }
+
+        SetCursorVisible(false);
+    }
+
     private void ShowLeaveButton(bool visible)
     {
         leaveButton.onClick.RemoveAllListeners();
@@ -1578,7 +1614,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
 
     private void OnLeaveClicked()
     {
-        HideOverlayImmediate();
+        ForceSceneOnlyVisibility();
         leaveRequested = true;
     }
 
@@ -1617,7 +1653,6 @@ public static class CppQuestionPadCinematicBootstrap
     private static void AttachIfNeeded()
     {
         AttachToPad("CppQuestionPad");
-        AttachToPad("MediumQuestionPad");
     }
 
     private static void AttachToPad(string padName)
@@ -1626,12 +1661,6 @@ public static class CppQuestionPadCinematicBootstrap
         if (pad == null)
         {
             return;
-        }
-
-        MediumQuestionPadStartSequence mediumSequence = pad.GetComponent<MediumQuestionPadStartSequence>();
-        if (mediumSequence != null)
-        {
-            mediumSequence.enabled = false;
         }
 
         CodeChallengePadCinematic codeChallenge = pad.GetComponent<CodeChallengePadCinematic>();
