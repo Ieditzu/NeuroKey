@@ -15,7 +15,9 @@ public class PauseMenuManager : MonoBehaviour
     public static bool IsGamePaused { get; private set; }
 
     private Canvas canvas;
-    private GameObject panel;
+    private GameObject mainPanel;
+    private GameObject tasksPanel;
+    
     private Slider sensitivitySlider;
     private Text sensitivityValueText;
     private FirstPersonControllerSimple fpsController;
@@ -42,7 +44,7 @@ public class PauseMenuManager : MonoBehaviour
 
         GameObject root = new GameObject("PauseMenuManager");
         instance = root.AddComponent<PauseMenuManager>();
-        root.AddComponent<GameClient>(); // Add network client
+        root.AddComponent<GameClient>(); 
         DontDestroyOnLoad(root);
     }
 
@@ -72,7 +74,6 @@ public class PauseMenuManager : MonoBehaviour
                     loggedInChildId = authResp.ChildId;
                     loggedInChildName = authResp.ChildName;
                     
-                    // Fetch stats and tasks
                     GameClient.Instance.SendPacket(new FetchChildStatsPacket());
                     GameClient.Instance.SendPacket(new FetchTasksPacket());
 
@@ -101,10 +102,10 @@ public class PauseMenuManager : MonoBehaviour
         }
         else if (packet is ActionResponsePacket actionResp)
         {
-            if (actionResp.RequestPacketId == 8 && actionResp.Success) // CompleteTask
+            if (actionResp.RequestPacketId == 8 && actionResp.Success) 
             {
                 UnityMainThreadDispatcher.Instance().Enqueue(() => {
-                    GameClient.Instance.SendPacket(new FetchChildStatsPacket()); // Refresh points
+                    GameClient.Instance.SendPacket(new FetchChildStatsPacket()); 
                 });
             }
         }
@@ -117,7 +118,6 @@ public class PauseMenuManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
-
         instance = this;
         DontDestroyOnLoad(gameObject);
         SceneManager.sceneLoaded += OnSceneLoaded;
@@ -138,7 +138,6 @@ public class PauseMenuManager : MonoBehaviour
     private void Update()
     {
         ReacquireControllerIfNeeded();
-
         if (IsEscapePressed())
         {
             if (IsGamePaused) ResumeGame();
@@ -166,12 +165,7 @@ public class PauseMenuManager : MonoBehaviour
             BuildUi();
             initialized = true;
         }
-
-        if (canvas == null)
-        {
-            BuildUi();
-        }
-
+        if (canvas == null) BuildUi();
         ForceHiddenIfNotPaused();
         EnsureEventSystem();
     }
@@ -187,42 +181,29 @@ public class PauseMenuManager : MonoBehaviour
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 12000;
 
-        CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.matchWidthOrHeight = 0.5f;
-
+        canvasObject.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         canvasObject.AddComponent<GraphicRaycaster>();
 
         GameObject dimmer = CreateUiObject("Dimmer", canvas.transform);
-        Image dimmerImage = dimmer.AddComponent<Image>();
-        dimmerImage.color = new Color(0.03f, 0.04f, 0.08f, 0.82f);
+        dimmer.AddComponent<Image>().color = new Color(0.03f, 0.04f, 0.08f, 0.82f);
         StretchToFullscreen(dimmer.GetComponent<RectTransform>());
 
-        panel = CreateUiObject("Panel", canvas.transform);
-        RectTransform panelRect = panel.GetComponent<RectTransform>();
-        panelRect.sizeDelta = new Vector2(640f, 750f);
-        panelRect.anchorMin = new Vector2(0.5f, 0.5f);
-        panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-        panelRect.pivot = new Vector2(0.5f, 0.5f);
-        panelRect.anchoredPosition = Vector2.zero;
+        // MAIN PANEL
+        mainPanel = CreateUiObject("MainPanel", canvas.transform);
+        RectTransform mainRect = mainPanel.GetComponent<RectTransform>();
+        mainRect.sizeDelta = new Vector2(640f, 600f);
+        mainRect.anchoredPosition = Vector2.zero;
+        mainPanel.AddComponent<Image>().color = new Color(0.10f, 0.13f, 0.19f, 0.97f);
+        mainPanel.AddComponent<Outline>().effectColor = new Color(0.27f, 0.78f, 0.94f, 0.45f);
 
-        Image panelImage = panel.AddComponent<Image>();
-        panelImage.color = new Color(0.10f, 0.13f, 0.19f, 0.97f);
-
-        Outline outline = panel.AddComponent<Outline>();
-        outline.effectColor = new Color(0.27f, 0.78f, 0.94f, 0.45f);
-        outline.effectDistance = new Vector2(2f, -2f);
-
-        CreateText("PauseTitle", panel.transform, "PAUSED", 38, FontStyle.Bold, TextAnchor.MiddleCenter,
-            new Color(0.93f, 0.97f, 1f, 1f), new Vector2(0f, 310f), new Vector2(420f, 56f));
+        CreateText("PauseTitle", mainPanel.transform, "PAUSED", 38, FontStyle.Bold, TextAnchor.MiddleCenter, new Color(0.93f, 0.97f, 1f, 1f), new Vector2(0f, 240f), new Vector2(420f, 56f));
         
-        CreateSensitivitySection(panel.transform);
+        CreateSensitivitySection(mainPanel.transform);
 
-        GameObject qrSection = CreateUiObject("QrSection", panel.transform);
+        GameObject qrSection = CreateUiObject("QrSection", mainPanel.transform);
         RectTransform qrRect = qrSection.GetComponent<RectTransform>();
         qrRect.sizeDelta = new Vector2(540f, 100f);
-        qrRect.anchoredPosition = new Vector2(0f, 100f);
+        qrRect.anchoredPosition = new Vector2(0f, 40f);
 
         qrStatusText = CreateText("QrStatus", qrSection.transform, 
             loggedInChildId == -1 ? "Not logged in" : loggedInChildName + " | " + loggedInChildPoints + " pts", 
@@ -233,32 +214,48 @@ public class PauseMenuManager : MonoBehaviour
         qrButton.onClick.AddListener(GenerateQrLogin);
         if (loggedInChildId != -1) qrButton.interactable = false;
 
-        // Tasks
-        GameObject taskHeader = CreateUiObject("TaskHeader", panel.transform);
-        RectTransform thRect = taskHeader.GetComponent<RectTransform>();
-        thRect.anchoredPosition = new Vector2(0, -10);
-        CreateText("TaskTitle", thRect, "AVAILABLE TASKS", 20, FontStyle.Bold, TextAnchor.MiddleCenter, Color.cyan, Vector2.zero, new Vector2(400, 30));
+        Button tasksBtn = CreateButton(mainPanel.transform, "TasksBtn", "View Tasks", new Vector2(0f, -60f), new Color(0.2f, 0.6f, 0.8f, 1f));
+        tasksBtn.onClick.AddListener(() => ShowPanel(tasksPanel));
 
-        taskListContainer = CreateUiObject("TaskList", panel.transform);
-        RectTransform tlRect = taskListContainer.GetComponent<RectTransform>();
-        tlRect.sizeDelta = new Vector2(500, 200);
-        tlRect.anchoredPosition = new Vector2(0, -130);
-        Image tlImg = taskListContainer.AddComponent<Image>();
-        tlImg.color = new Color(0,0,0,0.2f);
-
-        RebuildTaskList();
-
-        Button resumeButton = CreateButton(panel.transform, "ResumeButton", "Resume", new Vector2(0f, -260f), new Color(0.18f, 0.63f, 0.43f, 1f));
+        Button resumeButton = CreateButton(mainPanel.transform, "ResumeButton", "Resume", new Vector2(0f, -130f), new Color(0.18f, 0.63f, 0.43f, 1f));
         resumeButton.onClick.AddListener(ResumeGame);
 
-        Button saveButton = CreateButton(panel.transform, "SaveButton", "Save Settings", new Vector2(0f, -320f), new Color(0.14f, 0.44f, 0.80f, 1f));
+        Button saveButton = CreateButton(mainPanel.transform, "SaveButton", "Save Settings", new Vector2(0f, -200f), new Color(0.14f, 0.44f, 0.80f, 1f));
         saveButton.onClick.AddListener(SaveSettings);
 
-        Button quitButton = CreateButton(panel.transform, "QuitButton", "Quit Game", new Vector2(0f, -380f), new Color(0.72f, 0.24f, 0.26f, 1f));
+        Button quitButton = CreateButton(mainPanel.transform, "QuitButton", "Quit Game", new Vector2(0f, -270f), new Color(0.72f, 0.24f, 0.26f, 1f));
         quitButton.onClick.AddListener(QuitGame);
 
+        // TASKS PANEL
+        tasksPanel = CreateUiObject("TasksPanel", canvas.transform);
+        RectTransform tasksRect = tasksPanel.GetComponent<RectTransform>();
+        tasksRect.sizeDelta = new Vector2(640f, 500f);
+        tasksRect.anchoredPosition = Vector2.zero;
+        tasksPanel.AddComponent<Image>().color = new Color(0.05f, 0.1f, 0.2f, 0.98f);
+        tasksPanel.AddComponent<Outline>().effectColor = Color.cyan;
+
+        CreateText("TasksTitle", tasksPanel.transform, "AVAILABLE TASKS", 30, FontStyle.Bold, TextAnchor.MiddleCenter, Color.cyan, new Vector2(0, 200), new Vector2(400, 50));
+
+        taskListContainer = CreateUiObject("TaskList", tasksPanel.transform);
+        RectTransform tlRect = taskListContainer.GetComponent<RectTransform>();
+        tlRect.sizeDelta = new Vector2(550, 300);
+        tlRect.anchoredPosition = new Vector2(0, 0);
+
+        Button backBtn = CreateButton(tasksPanel.transform, "BackBtn", "Back", new Vector2(0, -200), new Color(0.4f, 0.4f, 0.4f));
+        backBtn.GetComponent<RectTransform>().sizeDelta = new Vector2(200, 40);
+        backBtn.onClick.AddListener(() => ShowPanel(mainPanel));
+
+        tasksPanel.SetActive(false);
         canvasObject.SetActive(false);
         ApplySavedSensitivity();
+        RebuildTaskList();
+    }
+
+    private void ShowPanel(GameObject panel)
+    {
+        mainPanel.SetActive(false);
+        tasksPanel.SetActive(false);
+        panel.SetActive(true);
     }
 
     private void RebuildTaskList()
@@ -266,25 +263,26 @@ public class PauseMenuManager : MonoBehaviour
         if (taskListContainer == null) return;
         foreach (Transform child in taskListContainer.transform) Destroy(child.gameObject);
 
-        float y = 80;
+        float y = 130;
         foreach (var task in availableTasks)
         {
             GameObject item = CreateUiObject("TaskItem_" + task.Id, taskListContainer.transform);
             RectTransform iRect = item.GetComponent<RectTransform>();
-            iRect.sizeDelta = new Vector2(480, 40);
+            iRect.sizeDelta = new Vector2(520, 50);
             iRect.anchoredPosition = new Vector2(0, y);
+            item.AddComponent<Image>().color = new Color(1,1,1,0.05f);
 
-            CreateText("Label", item.transform, task.Title + " (" + task.Points + " pts)", 14, FontStyle.Normal, TextAnchor.MiddleLeft, Color.white, new Vector2(-100, 0), new Vector2(300, 30));
+            CreateText("Label", item.transform, task.Title + " (" + task.Points + " pts)", 18, FontStyle.Normal, TextAnchor.MiddleLeft, Color.white, new Vector2(-100, 0), new Vector2(300, 40));
             
-            Button completeBtn = CreateButton(item.transform, "Btn", "Complete", new Vector2(160, 0), new Color(0.2f, 0.5f, 0.2f));
-            completeBtn.GetComponent<RectTransform>().sizeDelta = new Vector2(100, 30);
-            completeBtn.GetComponentInChildren<Text>().fontSize = 12;
+            Button completeBtn = CreateButton(item.transform, "Btn", "Complete", new Vector2(180, 0), new Color(0.2f, 0.6f, 0.3f));
+            completeBtn.GetComponent<RectTransform>().sizeDelta = new Vector2(120, 40);
+            completeBtn.GetComponentInChildren<Text>().fontSize = 16;
             long tid = task.Id;
             completeBtn.onClick.AddListener(() => {
                 if (loggedInChildId != -1)
                     GameClient.Instance.SendPacket(new CompleteTaskPacket(loggedInChildId, tid));
             });
-            y -= 45;
+            y -= 60;
         }
     }
 
@@ -293,55 +291,37 @@ public class PauseMenuManager : MonoBehaviour
         GameObject card = CreateUiObject("SensitivityCard", parent);
         RectTransform cardRect = card.GetComponent<RectTransform>();
         cardRect.sizeDelta = new Vector2(540f, 150f);
-        cardRect.anchoredPosition = new Vector2(0f, 210f);
+        cardRect.anchoredPosition = new Vector2(0f, 150f);
+        card.AddComponent<Image>().color = new Color(0.15f, 0.18f, 0.25f, 0.96f);
 
-        Image cardImage = card.AddComponent<Image>();
-        cardImage.color = new Color(0.15f, 0.18f, 0.25f, 0.96f);
-
-        CreateText("SensitivityLabel", card.transform, "Mouse Sensitivity", 24, FontStyle.Bold, TextAnchor.MiddleLeft,
-            new Color(0.92f, 0.96f, 1f, 1f), new Vector2(-160f, 42f), new Vector2(280f, 36f));
-        sensitivityValueText = CreateText("SensitivityValue", card.transform, "1.80", 22, FontStyle.Bold, TextAnchor.MiddleRight,
-            new Color(0.42f, 0.88f, 0.98f, 1f), new Vector2(160f, 42f), new Vector2(120f, 36f));
+        CreateText("SensitivityLabel", card.transform, "Mouse Sensitivity", 24, FontStyle.Bold, TextAnchor.MiddleLeft, Color.white, new Vector2(-160f, 42f), new Vector2(280f, 36f));
+        sensitivityValueText = CreateText("SensitivityValue", card.transform, "1.80", 22, FontStyle.Bold, TextAnchor.MiddleRight, Color.cyan, new Vector2(160f, 42f), new Vector2(120f, 36f));
 
         GameObject sliderObject = CreateUiObject("SensitivitySlider", card.transform);
-        RectTransform sliderRect = sliderObject.GetComponent<RectTransform>();
-        sliderRect.sizeDelta = new Vector2(440f, 36f);
-        sliderRect.anchoredPosition = new Vector2(0f, -18f);
+        sliderObject.GetComponent<RectTransform>().sizeDelta = new Vector2(440f, 36f);
+        sliderObject.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, -18f);
 
         GameObject background = CreateUiObject("Background", sliderObject.transform);
-        RectTransform backgroundRect = background.GetComponent<RectTransform>();
-        backgroundRect.anchorMin = new Vector2(0f, 0.25f);
-        backgroundRect.anchorMax = new Vector2(1f, 0.75f);
-        backgroundRect.offsetMin = Vector2.zero; backgroundRect.offsetMax = Vector2.zero;
+        background.GetComponent<RectTransform>().anchorMin = new Vector2(0f, 0.25f); background.GetComponent<RectTransform>().anchorMax = new Vector2(1f, 0.75f);
+        background.GetComponent<RectTransform>().offsetMin = Vector2.zero; background.GetComponent<RectTransform>().offsetMax = Vector2.zero;
         background.AddComponent<Image>().color = new Color(0.24f, 0.28f, 0.36f, 1f);
 
-        GameObject fillArea = CreateUiObject("Fill Area", sliderObject.transform);
-        RectTransform fillAreaRect = fillArea.GetComponent<RectTransform>();
-        fillAreaRect.anchorMin = new Vector2(0f, 0.25f); fillAreaRect.anchorMax = new Vector2(1f, 0.75f);
-        fillAreaRect.offsetMin = new Vector2(10f, 0f); fillAreaRect.offsetMax = new Vector2(-10f, 0f);
-
-        GameObject fill = CreateUiObject("Fill", fillArea.transform);
-        Image fillImage = fill.AddComponent<Image>();
-        fillImage.color = new Color(0.30f, 0.84f, 0.97f, 1f);
+        GameObject fill = CreateUiObject("Fill", CreateUiObject("Fill Area", sliderObject.transform).transform);
+        fill.AddComponent<Image>().color = new Color(0.30f, 0.84f, 0.97f, 1f);
         RectTransform fillRect = fill.GetComponent<RectTransform>();
         fillRect.anchorMin = Vector2.zero; fillRect.anchorMax = Vector2.one;
         fillRect.offsetMin = Vector2.zero; fillRect.offsetMax = Vector2.zero;
+        fill.transform.parent.GetComponent<RectTransform>().anchorMin = new Vector2(0f, 0.25f); fill.transform.parent.GetComponent<RectTransform>().anchorMax = new Vector2(1f, 0.75f);
 
-        GameObject handleArea = CreateUiObject("Handle Slide Area", sliderObject.transform);
-        RectTransform handleAreaRect = handleArea.GetComponent<RectTransform>();
-        handleAreaRect.anchorMin = Vector2.zero; handleAreaRect.anchorMax = Vector2.one;
-        handleAreaRect.offsetMin = new Vector2(10f, 0f); handleAreaRect.offsetMax = new Vector2(-10f, 0f);
-
-        GameObject handle = CreateUiObject("Handle", handleArea.transform);
-        Image handleImg = handle.AddComponent<Image>();
-        handleImg.color = new Color(0.96f, 0.98f, 1f, 1f);
-        RectTransform handleRect = handle.GetComponent<RectTransform>();
-        handleRect.sizeDelta = new Vector2(22f, 36f);
+        GameObject handle = CreateUiObject("Handle", CreateUiObject("Handle Slide Area", sliderObject.transform).transform);
+        handle.AddComponent<Image>().color = Color.white;
+        handle.GetComponent<RectTransform>().sizeDelta = new Vector2(22f, 36f);
+        handle.transform.parent.GetComponent<RectTransform>().anchorMin = Vector2.zero; handle.transform.parent.GetComponent<RectTransform>().anchorMax = Vector2.one;
 
         sensitivitySlider = sliderObject.AddComponent<Slider>();
         sensitivitySlider.minValue = 0.2f; sensitivitySlider.maxValue = 6f;
-        sensitivitySlider.targetGraphic = handleImg;
-        sensitivitySlider.fillRect = fillRect; sensitivitySlider.handleRect = handleRect;
+        sensitivitySlider.targetGraphic = handle.GetComponent<Image>();
+        sensitivitySlider.fillRect = fillRect; sensitivitySlider.handleRect = handle.GetComponent<RectTransform>();
         sensitivitySlider.onValueChanged.AddListener(OnSensitivityChanged);
     }
 
@@ -352,11 +332,7 @@ public class PauseMenuManager : MonoBehaviour
             qrStatusText.text = "Generating...";
             GameClient.Instance.SendPacket(new GenerateQRLoginPacket());
         }
-        else if (GameClient.Instance != null)
-        {
-            qrStatusText.text = "Connecting...";
-            _ = GameClient.Instance.Connect();
-        }
+        else if (GameClient.Instance != null) { _ = GameClient.Instance.Connect(); }
     }
 
     private void PauseGame()
@@ -366,7 +342,7 @@ public class PauseMenuManager : MonoBehaviour
         previousTimeScale = Time.timeScale;
         Time.timeScale = 0f;
         IsGamePaused = true;
-        if (canvas != null) canvas.gameObject.SetActive(true);
+        if (canvas != null) { canvas.gameObject.SetActive(true); ShowPanel(mainPanel); }
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }

@@ -490,6 +490,60 @@ fun SettingsScreen(viewModel: SocketViewModel) {
         
         Spacer(modifier = Modifier.height(32.dp))
         
+        Text("Developer Options", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        var devChildId by remember { mutableStateOf("") }
+        var devToken by remember { mutableStateOf("") }
+        
+        Surface(
+            modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f), RoundedCornerShape(24.dp)),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                OutlinedTextField(
+                    value = devChildId,
+                    onValueChange = { devChildId = it },
+                    label = { Text("Manual Child ID") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.error,
+                        focusedLabelColor = MaterialTheme.colorScheme.error
+                    )
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = devToken,
+                    onValueChange = { devToken = it },
+                    label = { Text("Manual Token") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.error,
+                        focusedLabelColor = MaterialTheme.colorScheme.error
+                    )
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(
+                    onClick = { 
+                        val id = devChildId.toLongOrNull()
+                        if (id != null && devToken.isNotBlank()) {
+                            viewModel.claimQRLogin(devToken, id)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Force Game Login", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+        
         TextButton(
             onClick = { viewModel.logout() },
             modifier = Modifier.fillMaxWidth(),
