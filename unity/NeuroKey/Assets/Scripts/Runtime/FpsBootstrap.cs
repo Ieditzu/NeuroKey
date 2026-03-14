@@ -31,9 +31,7 @@ public static class FpsBootstrap
 
     private static Vector3 GuessSpawnPosition()
     {
-        return new Vector3(75f, 1.0f, 222f);
-
-        // Start near the sphere's initial position if present.
+        // Prefer to start near the sphere's initial position if present.
         SphereController sphere = Object.FindObjectOfType<SphereController>();
         if (sphere != null)
         {
@@ -47,6 +45,7 @@ public static class FpsBootstrap
             return easyPath.transform.position + new Vector3(0f, 2.0f, -4f);
         }
 
-        return new Vector3(0f, 2.0f, -6f);
+        // Default spawn if no hints found.
+        return new Vector3(75f, 1.0f, 222f);
     }
 }
