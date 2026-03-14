@@ -18,6 +18,10 @@ public class PauseMenuManager : MonoBehaviour
     private Canvas canvas;
     private GameObject mainPanel;
     private GameObject tasksPanel;
+
+    private CanvasGroup menuGroup;
+    private Coroutine menuAnim;
+    private const float menuAnimDuration = 0.18f;
     
     private Slider sensitivitySlider; // legacy, keep null
     private InputField sensitivityInput;
@@ -264,50 +268,83 @@ public class PauseMenuManager : MonoBehaviour
         // MAIN PANEL
         mainPanel = CreateUiObject("MainPanel", canvas.transform);
         RectTransform mainRect = mainPanel.GetComponent<RectTransform>();
-        mainRect.sizeDelta = new Vector2(520f, 620f);
+        mainRect.sizeDelta = new Vector2(720f, 520f);
         mainRect.anchoredPosition = Vector2.zero;
-        mainPanel.AddComponent<Image>().color = new Color(0.10f, 0.13f, 0.19f, 0.97f);
-        mainPanel.AddComponent<Outline>().effectColor = new Color(0.27f, 0.78f, 0.94f, 0.45f);
+        mainPanel.AddComponent<Image>().color = new Color(0.09f, 0.12f, 0.18f, 0.96f);
+        mainPanel.AddComponent<Outline>().effectColor = new Color(0.0f, 0.7f, 1f, 0.4f);
 
-        CreateText("PauseTitle", mainPanel.transform, "PAUSED", 32, FontStyle.Bold, TextAnchor.MiddleCenter, new Color(0.93f, 0.97f, 1f, 1f), new Vector2(0f, 250f), new Vector2(360f, 48f));
+        menuGroup = mainPanel.AddComponent<CanvasGroup>();
+        menuGroup.alpha = 0f;
+        mainPanel.transform.localScale = Vector3.one * 0.95f;
+        mainPanel.SetActive(false);
 
-        GameObject qrSection = CreateUiObject("QrSection", mainPanel.transform);
+        GameObject topBar = CreateUiObject("TopBar", mainPanel.transform);
+        RectTransform topRect = topBar.GetComponent<RectTransform>();
+        topRect.sizeDelta = new Vector2(720f, 88f);
+        topRect.anchoredPosition = new Vector2(0f, 216f);
+        topBar.AddComponent<Image>().color = new Color(0.12f, 0.20f, 0.32f, 0.96f);
+        topBar.AddComponent<Outline>().effectColor = new Color(0f, 0.9f, 1f, 0.35f);
+        CreateText("PauseTitle", topBar.transform, "PAUSED", 34, FontStyle.Bold, TextAnchor.MiddleCenter, new Color(0.93f, 0.97f, 1f, 1f), Vector2.zero, new Vector2(420f, 52f));
+
+        // Body container
+        GameObject body = CreateUiObject("Body", mainPanel.transform);
+        RectTransform bodyRect = body.GetComponent<RectTransform>();
+        bodyRect.sizeDelta = new Vector2(680f, 380f);
+        bodyRect.anchoredPosition = new Vector2(0f, -20f);
+
+        // Info card (status + QR)
+        GameObject qrSection = CreateUiObject("QrSection", body.transform);
         RectTransform qrRect = qrSection.GetComponent<RectTransform>();
-        qrRect.sizeDelta = new Vector2(440f, 200f);
-        qrRect.anchoredPosition = new Vector2(0f, 140f);
+        qrRect.sizeDelta = new Vector2(340f, 300f);
+        qrRect.anchoredPosition = new Vector2(-170f, 20f);
+        qrSection.AddComponent<Image>().color = new Color(0.13f, 0.18f, 0.26f, 0.96f);
+        qrSection.AddComponent<Outline>().effectColor = new Color(0f, 0.8f, 1f, 0.25f);
 
         qrStatusText = CreateText("QrStatus", qrSection.transform, 
             loggedInChildId == -1 ? "Not logged in" : loggedInChildName + " | " + loggedInChildPoints + " pts", 
-            14, FontStyle.Italic, TextAnchor.MiddleCenter, Color.white, new Vector2(0, 90), new Vector2(380, 28));
+            14, FontStyle.Italic, TextAnchor.MiddleCenter, Color.white, new Vector2(0, 110), new Vector2(300, 28));
 
         GameObject qrImgObj = CreateUiObject("QrCodeImage", qrSection.transform);
         qrCodeImage = qrImgObj.AddComponent<RawImage>();
         RectTransform qrImgRect = qrImgObj.GetComponent<RectTransform>();
-        qrImgRect.sizeDelta = new Vector2(150, 150);
-        qrImgRect.anchoredPosition = new Vector2(0, 0);
+        qrImgRect.sizeDelta = new Vector2(160, 160);
+        qrImgRect.anchoredPosition = new Vector2(0, 20);
         qrImgObj.SetActive(false);
 
         qrButton = CreateButton(qrSection.transform, "QrButton", "Generate QR Login", new Vector2(0f, -90f), new Color(0.4f, 0.2f, 0.8f, 1f));
-        qrButton.GetComponent<RectTransform>().sizeDelta = new Vector2(260f, 38f);
+        qrButton.GetComponent<RectTransform>().sizeDelta = new Vector2(220f, 36f);
         qrButton.onClick.AddListener(GenerateQrLogin);
         if (loggedInChildId != -1) qrButton.interactable = false;
 
-        Button tasksBtn = CreateButton(mainPanel.transform, "TasksBtn", "View Tasks", new Vector2(0f, 40f), new Color(0.2f, 0.6f, 0.8f, 1f));
+        // Actions stack
+        GameObject actions = CreateUiObject("Actions", body.transform);
+        RectTransform actionsRect = actions.GetComponent<RectTransform>();
+        actionsRect.sizeDelta = new Vector2(260f, 300f);
+        actionsRect.anchoredPosition = new Vector2(190f, 20f);
+        actions.AddComponent<Image>().color = new Color(0.11f, 0.16f, 0.23f, 0.9f);
+        actions.AddComponent<Outline>().effectColor = new Color(0.0f, 0.65f, 1f, 0.3f);
+
+        CreateText("ActionsTitle", actions.transform, "Quick Actions", 18, FontStyle.Bold, TextAnchor.MiddleCenter, Color.white, new Vector2(0f, 115f), new Vector2(200f, 30f));
+
+        Button resumeButton = CreateButton(actions.transform, "ResumeButton", "Resume", new Vector2(0f, 55f), new Color(0.18f, 0.63f, 0.43f, 1f));
+        resumeButton.GetComponent<RectTransform>().sizeDelta = new Vector2(200f, 44f);
+        resumeButton.onClick.AddListener(ResumeGame);
+
+        Button tasksBtn = CreateButton(actions.transform, "TasksBtn", "View Tasks", new Vector2(0f, 0f), new Color(0.2f, 0.6f, 0.8f, 1f));
+        tasksBtn.GetComponent<RectTransform>().sizeDelta = new Vector2(200f, 44f);
         tasksBtn.onClick.AddListener(() => {
             if (qrCodeImage != null) qrCodeImage.gameObject.SetActive(false);
             ShowPanel(tasksPanel);
         });
 
-        Button resumeButton = CreateButton(mainPanel.transform, "ResumeButton", "Resume", new Vector2(0f, -40f), new Color(0.18f, 0.63f, 0.43f, 1f));
-        resumeButton.onClick.AddListener(ResumeGame);
-
-        Button quitButton = CreateButton(mainPanel.transform, "QuitButton", "Quit Game", new Vector2(0f, -210f), new Color(0.72f, 0.24f, 0.26f, 1f));
+        Button quitButton = CreateButton(actions.transform, "QuitButton", "Quit Game", new Vector2(0f, -55f), new Color(0.72f, 0.24f, 0.26f, 1f));
+        quitButton.GetComponent<RectTransform>().sizeDelta = new Vector2(200f, 44f);
         quitButton.onClick.AddListener(QuitGame);
 
         // TASKS PANEL
         tasksPanel = CreateUiObject("TasksPanel", canvas.transform);
         RectTransform tasksRect = tasksPanel.GetComponent<RectTransform>();
-        tasksRect.sizeDelta = new Vector2(520f, 440f);
+        tasksRect.sizeDelta = new Vector2(620f, 460f);
         tasksRect.anchoredPosition = Vector2.zero;
         tasksPanel.AddComponent<Image>().color = new Color(0.05f, 0.1f, 0.2f, 0.98f);
         tasksPanel.AddComponent<Outline>().effectColor = Color.cyan;
@@ -418,10 +455,12 @@ public class PauseMenuManager : MonoBehaviour
         previousTimeScale = Time.timeScale;
         Time.timeScale = 0f;
         IsGamePaused = true;
-        if (canvas != null) { 
-            canvas.gameObject.SetActive(true); 
-            ShowPanel(mainPanel); 
+        if (canvas != null)
+        {
+            canvas.gameObject.SetActive(true);
+            ShowPanel(mainPanel);
             if (qrCodeImage != null && qrCodeImage.texture != null && loggedInChildId == -1) qrCodeImage.gameObject.SetActive(true);
+            PlayMenuAnimation(true);
         }
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
@@ -429,7 +468,7 @@ public class PauseMenuManager : MonoBehaviour
 
     private void ResumeGame()
     {
-        if (canvas != null) canvas.gameObject.SetActive(false);
+        PlayMenuAnimation(false);
         Time.timeScale = previousTimeScale <= 0f ? 1f : previousTimeScale;
         IsGamePaused = false;
         Cursor.lockState = CursorLockMode.Locked;
@@ -437,6 +476,43 @@ public class PauseMenuManager : MonoBehaviour
     }
 
     private void ForceHiddenIfNotPaused() { if (!IsGamePaused && canvas != null) canvas.gameObject.SetActive(false); }
+
+    private void PlayMenuAnimation(bool show)
+    {
+        if (menuGroup == null || mainPanel == null)
+        {
+            if (canvas != null) canvas.gameObject.SetActive(show);
+            return;
+        }
+        if (menuAnim != null) StopCoroutine(menuAnim);
+        if (show)
+        {
+            mainPanel.SetActive(true);
+            if (canvas != null) canvas.gameObject.SetActive(true);
+        }
+        menuAnim = StartCoroutine(AnimateMenu(show));
+    }
+
+    private System.Collections.IEnumerator AnimateMenu(bool show)
+    {
+        float startAlpha = menuGroup.alpha;
+        float startScale = mainPanel.transform.localScale.x;
+        float targetAlpha = show ? 1f : 0f;
+        float targetScale = show ? 1f : 0.96f;
+        float t = 0f;
+        while (t < menuAnimDuration)
+        {
+            t += Time.unscaledDeltaTime;
+            float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / menuAnimDuration));
+            menuGroup.alpha = Mathf.Lerp(startAlpha, targetAlpha, k);
+            mainPanel.transform.localScale = Vector3.one * Mathf.Lerp(startScale, targetScale, k);
+            yield return null;
+        }
+        menuGroup.alpha = targetAlpha;
+        mainPanel.transform.localScale = Vector3.one * targetScale;
+        if (!show && canvas != null) canvas.gameObject.SetActive(false);
+        menuAnim = null;
+    }
 
     private void SaveSettings()
     {
