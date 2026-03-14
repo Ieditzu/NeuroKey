@@ -10,6 +10,8 @@ import io.github.kawase.socket.packet.PacketManager
 import io.github.kawase.socket.packet.impl.*
 import io.github.kawase.socket.utility.HashUtility
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -28,6 +30,7 @@ import io.github.kawase.ui.theme.SurfaceGray
 import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.AndroidViewModel
 
@@ -63,6 +66,9 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
     private var savedEmailHash: String? = prefs.getString("email_hash", null)
     private var savedPasswordHash: String? = prefs.getString("password_hash", null)
 
+    private var reconnectJob: Job? = null
+    private var currentUrl: String = "wss://neuro.serenityutils.club"
+
     fun toggleDarkMode() {
         isDarkMode.value = !isDarkMode.value
         prefs.edit().putBoolean("dark_mode", isDarkMode.value).apply()
@@ -71,11 +77,6 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
     fun updatePrimaryColor(color: Color) {
         primaryColor.value = color
         prefs.edit().putInt("primary_color", color.toArgb()).apply()
-    }
-
-    fun setSecondaryColor(color: Color) {
-        secondaryColor.value = color
-        prefs.edit().putInt("secondary_color", color.toArgb()).apply()
     }
 
     fun logout() {
@@ -87,6 +88,7 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
             .remove("email_hash")
             .remove("password_hash")
             .apply()
+        client?.close()
     }
 
     private val _children = mutableStateListOf<Child>()
@@ -108,13 +110,25 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
     val successFlow: SharedFlow<String> = _successFlow.asSharedFlow()
 
     fun connect(url: String = "wss://neuro.serenityutils.club") {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                if (client?.isOpen == true) return@launch
-                client = AndroidClientSocket(URI(url))
-                client?.connect()
-            } catch (e: Exception) {
-                _errorFlow.emit("Connection failed: ${e.message}")
+        currentUrl = url
+        if (reconnectJob == null || reconnectJob?.isCompleted == true) {
+            startConnectionLoop()
+        }
+    }
+
+    private fun startConnectionLoop() {
+        reconnectJob = viewModelScope.launch(Dispatchers.IO) {
+            while (true) {
+                if (client == null || !client!!.isOpen) {
+                    Log.d("NeuroKey", "Attempting connection to $currentUrl...")
+                    try {
+                        client = AndroidClientSocket(URI(currentUrl))
+                        client?.connectBlocking()
+                    } catch (e: Exception) {
+                        Log.e("NeuroKey", "Connection failed: ${e.message}")
+                    }
+                }
+                delay(5000) // Retry every 5 seconds
             }
         }
     }
@@ -184,33 +198,24 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun updatePfp(childId: Long, base64Pfp: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val fileName = if (childId == -1L) "pfp_parent.jpg" else "pfp_child_$childId.jpg"
-                val file = java.io.File(getApplication<Application>().filesDir, fileName)
-                val bytes = android.util.Base64.decode(base64Pfp, android.util.Base64.NO_WRAP)
-                file.writeBytes(bytes)
-                
-                // Still send to server as backup
-                sendPacket(UpdatePfpPacket(childId, base64Pfp))
-                
-                fetchChildren()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
+        // Send directly to server
+        sendPacket(UpdatePfpPacket(childId, base64Pfp))
     }
 
     private fun sendPacket(packet: Packet) {
         viewModelScope.launch(Dispatchers.IO) {
             client?.let {
                 if (it.isOpen) {
-                    it.send(packet.encode())
+                    try {
+                        it.send(packet.encode())
+                    } catch (e: Exception) {
+                        Log.e("NeuroKey", "Failed to send packet: ${e.message}")
+                    }
                 } else {
-                    _errorFlow.emit("Not connected to server")
+                    _errorFlow.emit("Server disconnected. Retrying...")
                 }
             } ?: run {
-                _errorFlow.emit("Not connected to server")
+                _errorFlow.emit("Connecting to server...")
             }
         }
     }
@@ -226,9 +231,11 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
                     e.printStackTrace()
                 }
             }
+            connectionLostTimeout = 10 // Detect dead connections faster
         }
 
         override fun onOpen(handshakedata: ServerHandshake?) {
+            Log.d("NeuroKey", "Socket opened")
             _isConnected.value = true
             send(HandShakePacket("android_client").encode())
             
@@ -245,20 +252,25 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
                     val packet = Packet.construct(it, packetManager)
                     handlePacket(packet)
                 } catch (e: Exception) {
-                    viewModelScope.launch { _errorFlow.emit("Packet error: ${e.message}") }
+                    viewModelScope.launch { _errorFlow.emit("Data error: ${e.message}") }
                 }
             }
         }
 
         override fun onClose(code: Int, reason: String?, remote: Boolean) {
+            Log.d("NeuroKey", "Socket closed: $reason")
             _isConnected.value = false
             _isLoggedIn.value = false
         }
 
         override fun onError(ex: Exception?) {
-            ex?.printStackTrace()
-            val errorMessage = ex?.message ?: "Unknown socket error"
-            viewModelScope.launch { _errorFlow.emit("Socket error: $errorMessage") }
+            Log.e("NeuroKey", "Socket error: ${ex?.message}")
+            viewModelScope.launch { 
+                val msg = ex?.message ?: "Unknown error"
+                if (!msg.contains("Connection refused")) {
+                    _errorFlow.emit("Socket Error: $msg")
+                }
+            }
         }
     }
 
@@ -269,22 +281,22 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
                     _parentId.value = packet.parentId
                     _parentPfp.value = packet.parentPfp
                     _isLoggedIn.value = true
-                    viewModelScope.launch { _successFlow.emit("Logged in successfully") }
+                    viewModelScope.launch { _successFlow.emit("Welcome back!") }
                     fetchChildren()
                     fetchTasks()
                 } else {
-                    viewModelScope.launch { _errorFlow.emit("Auth failed: ${packet.message}") }
+                    viewModelScope.launch { _errorFlow.emit("Login failed: ${packet.message}") }
                 }
             }
             is ActionResponsePacket -> {
                 viewModelScope.launch {
                     if (packet.isSuccess) {
-                        _successFlow.emit(packet.message ?: "Action successful")
-                        if (packet.requestPacketId == 4 || packet.requestPacketId == 27) { // AddChild or RemoveChild
+                        _successFlow.emit(packet.message ?: "Success")
+                        if (packet.requestPacketId == 4 || packet.requestPacketId == 27 || packet.requestPacketId == 26) { 
                             fetchChildren()
                         }
                     } else {
-                        _errorFlow.emit("Action failed: ${packet.message}")
+                        _errorFlow.emit("Error: ${packet.message}")
                     }
                 }
             }
