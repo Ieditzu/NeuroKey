@@ -1,33 +1,29 @@
-package io.github.kawase.packet.impl;
+package io.github.kawase.packet.impl.game;
 
 import io.github.kawase.packet.Packet;
 import lombok.Getter;
 import java.nio.ByteBuffer;
 
 @Getter
-public class CompleteTaskPacket extends Packet {
+public class FetchCompletedTasksPacket extends Packet {
     private long childId;
-    private long taskId;
 
-    public CompleteTaskPacket(final long childId, final long taskId) {
-        super(0x08);
+    public FetchCompletedTasksPacket(final long childId) {
+        super(0x11);
         this.childId = childId;
-        this.taskId = taskId;
     }
 
-    public CompleteTaskPacket() {
-        super(0x08);
+    public FetchCompletedTasksPacket() {
+        super(0x11);
     }
 
     @Override
     protected void write(final ByteBuffer buffer) {
         buffer.putLong(childId);
-        buffer.putLong(taskId);
     }
 
     @Override
     protected void read(final ByteBuffer buffer) {
         this.childId = buffer.getLong();
-        this.taskId = buffer.getLong();
     }
 }

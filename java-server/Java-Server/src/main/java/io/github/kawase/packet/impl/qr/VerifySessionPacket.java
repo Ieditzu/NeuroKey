@@ -1,4 +1,4 @@
-package io.github.kawase.packet.impl;
+package io.github.kawase.packet.impl.qr;
 
 import io.github.kawase.packet.Packet;
 import lombok.Getter;
