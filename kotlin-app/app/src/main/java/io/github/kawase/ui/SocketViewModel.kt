@@ -197,8 +197,12 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
         sendPacket(RemoveChildPacket(childId))
     }
 
+    private var pendingPfp: String? = null
+    private var pendingPfpId: Long? = null
+
     fun updatePfp(childId: Long, base64Pfp: String) {
-        // Send directly to server
+        pendingPfp = base64Pfp
+        pendingPfpId = childId
         sendPacket(UpdatePfpPacket(childId, base64Pfp))
     }
 
@@ -292,7 +296,13 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
                 viewModelScope.launch {
                     if (packet.isSuccess) {
                         _successFlow.emit(packet.message ?: "Success")
-                        if (packet.requestPacketId == 4 || packet.requestPacketId == 27 || packet.requestPacketId == 26) { 
+                        if (packet.requestPacketId == 4 || packet.requestPacketId == 27) { 
+                            fetchChildren()
+                        }
+                        if (packet.requestPacketId == 26) { // UpdatePfp
+                            if (pendingPfpId == -1L) {
+                                _parentPfp.value = pendingPfp
+                            }
                             fetchChildren()
                         }
                     } else {

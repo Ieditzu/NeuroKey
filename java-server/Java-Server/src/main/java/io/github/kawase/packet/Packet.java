@@ -32,7 +32,8 @@ public abstract class Packet {
             final long dynamicSeed = System.nanoTime();
 
             final byte[] encryptedSeed = EncryptionUtility.encryptLong(dynamicSeed, Data.baseKey);
-            final ByteBuffer payloadBuffer = ByteBuffer.allocate(4096);
+            // Increased to 1MB to handle large payloads like PFPs and histories
+            final ByteBuffer payloadBuffer = ByteBuffer.allocate(1024 * 1024);
 
             payloadBuffer.putInt(id);
             this.write(payloadBuffer);
@@ -52,7 +53,8 @@ public abstract class Packet {
 
             return finalBuffer;
         } catch (Exception e) {
-            throw new PacketException("Failed to encrypt", e.getCause());
+            e.printStackTrace(); // Log full stack trace
+            throw new PacketException("Failed to encrypt: " + e.getMessage(), e);
         }
     }
 
