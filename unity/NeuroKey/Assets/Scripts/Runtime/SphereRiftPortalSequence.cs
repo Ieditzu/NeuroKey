@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -52,6 +53,8 @@ public class SphereRiftPortalSequence : MonoBehaviour
 
     private static Canvas overlayCanvas;
     private static Image whiteImage;
+    private static Image quizCardImage;
+    private static Image codeCardImage;
     private static Text centerText;
     private static Text quizTitleText;
     private static Text quizPromptText;
@@ -66,6 +69,8 @@ public class SphereRiftPortalSequence : MonoBehaviour
     private static Text previousButtonText;
     private static Button hintButton;
     private static Text hintButtonText;
+    private static Button hintBackButton;
+    private static Text hintBackButtonText;
     private static Button leaveButton;
     private static Text leaveButtonText;
     private static Button languageRoButton;
@@ -683,46 +688,58 @@ public class SphereRiftPortalSequence : MonoBehaviour
             canvasObject.AddComponent<GraphicRaycaster>();
         }
 
-        whiteImage = EnsureImage(canvasObject.transform, "WhiteImage", Color.white);
+        whiteImage = EnsureImage(canvasObject.transform, "WhiteImage", new Color(0.9f, 0.95f, 0.99f, 1f));
         Stretch(whiteImage.rectTransform);
+
+        quizCardImage = EnsureImage(canvasObject.transform, "QuizCardImage", new Color(0.95f, 0.98f, 1f, 0.97f));
+        SetRect(quizCardImage.rectTransform, new Vector2(0.5f, 0.52f), new Vector2(1040f, 560f));
+
+        codeCardImage = EnsureImage(canvasObject.transform, "CodeCardImage", new Color(0.15f, 0.21f, 0.3f, 0.97f));
+        SetRect(codeCardImage.rectTransform, new Vector2(0.5f, 0.61f), new Vector2(820f, 138f));
 
         centerText = EnsureText(canvasObject.transform, "CenterText", "test", 72, new Color(0.08f, 0.08f, 0.08f, 1f));
         Stretch(centerText.rectTransform);
 
-        quizTitleText = EnsureText(canvasObject.transform, "QuizTitleText", "Output prediction", 40, new Color(0.08f, 0.08f, 0.08f, 1f));
-        SetRect(quizTitleText.rectTransform, new Vector2(0.5f, 0.9f), new Vector2(820f, 70f));
+        quizTitleText = EnsureText(canvasObject.transform, "QuizTitleText", "Output prediction", 38, new Color(0.06f, 0.16f, 0.26f, 1f));
+        SetRect(quizTitleText.rectTransform, new Vector2(0.5f, 0.84f), new Vector2(860f, 56f));
 
-        quizPromptText = EnsureText(canvasObject.transform, "QuizPromptText", "Utilizatorul vede cod Python scurt si trebuie sa spuna ce afiseaza.", 22, new Color(0.12f, 0.12f, 0.12f, 1f));
-        SetRect(quizPromptText.rectTransform, new Vector2(0.5f, 0.81f), new Vector2(980f, 80f));
+        quizPromptText = EnsureText(canvasObject.transform, "QuizPromptText", "Utilizatorul vede cod Python scurt si trebuie sa spuna ce afiseaza.", 21, new Color(0.15f, 0.18f, 0.24f, 1f));
+        SetRect(quizPromptText.rectTransform, new Vector2(0.5f, 0.75f), new Vector2(860f, 70f));
+        quizPromptText.alignment = TextAnchor.UpperLeft;
 
-        quizCodeText = EnsureText(canvasObject.transform, "QuizCodeText", string.Empty, 28, new Color(0.06f, 0.08f, 0.14f, 1f));
-        SetRect(quizCodeText.rectTransform, new Vector2(0.5f, 0.63f), new Vector2(760f, 160f));
+        quizCodeText = EnsureText(canvasObject.transform, "QuizCodeText", string.Empty, 26, new Color(0.93f, 0.97f, 1f, 1f));
+        SetRect(quizCodeText.rectTransform, new Vector2(0.5f, 0.61f), new Vector2(760f, 104f));
+        quizCodeText.alignment = TextAnchor.UpperLeft;
 
-        quizHintText = EnsureText(canvasObject.transform, "QuizHintText", string.Empty, 20, new Color(0.12f, 0.18f, 0.24f, 1f));
-        SetRect(quizHintText.rectTransform, new Vector2(0.5f, 0.32f), new Vector2(880f, 70f));
+        quizHintText = EnsureText(canvasObject.transform, "QuizHintText", string.Empty, 19, new Color(0.18f, 0.31f, 0.4f, 1f));
+        SetRect(quizHintText.rectTransform, new Vector2(0.5f, 0.46f), new Vector2(760f, 200f));
+        quizHintText.alignment = TextAnchor.MiddleCenter;
 
-        quizFeedbackText = EnsureText(canvasObject.transform, "QuizFeedbackText", string.Empty, 22, new Color(0.1f, 0.1f, 0.1f, 1f));
-        SetRect(quizFeedbackText.rectTransform, new Vector2(0.5f, 0.24f), new Vector2(760f, 50f));
+        quizFeedbackText = EnsureText(canvasObject.transform, "QuizFeedbackText", string.Empty, 21, new Color(0.11f, 0.15f, 0.2f, 1f));
+        SetRect(quizFeedbackText.rectTransform, new Vector2(0.5f, 0.2f), new Vector2(860f, 40f));
+        quizFeedbackText.alignment = TextAnchor.MiddleLeft;
 
         optionButtons = new Button[3];
         optionButtonTexts = new Text[3];
         for (int i = 0; i < 3; i++)
         {
-            optionButtons[i] = EnsureButton(canvasObject.transform, "OptionButton" + i, new Vector2(0.5f, 0.49f - (i * 0.09f)), new Vector2(520f, 52f), new Color(0.14f, 0.16f, 0.2f, 0.95f), "A", 22);
+            optionButtons[i] = EnsureButton(canvasObject.transform, "OptionButton" + i, new Vector2(0.5f, 0.45f - (i * 0.082f)), new Vector2(620f, 50f), new Color(0.25f, 0.46f, 0.68f, 0.97f), "A", 21);
             optionButtonTexts[i] = optionButtons[i].GetComponentInChildren<Text>(true);
         }
 
-        previousButton = EnsureButton(canvasObject.transform, "PreviousButton", new Vector2(0.34f, 0.12f), new Vector2(180f, 52f), new Color(0.2f, 0.22f, 0.24f, 0.95f), "Previous", 22);
+        previousButton = EnsureButton(canvasObject.transform, "PreviousButton", new Vector2(0.35f, 0.1f), new Vector2(180f, 50f), new Color(0.36f, 0.49f, 0.64f, 0.96f), "Previous", 21);
         previousButtonText = previousButton.GetComponentInChildren<Text>(true);
-        hintButton = EnsureButton(canvasObject.transform, "HintButton", new Vector2(0.5f, 0.12f), new Vector2(160f, 52f), new Color(0.22f, 0.5f, 0.58f, 0.95f), "Hint", 22);
+        hintButton = EnsureButton(canvasObject.transform, "HintButton", new Vector2(0.51f, 0.1f), new Vector2(160f, 50f), new Color(0.31f, 0.67f, 0.71f, 0.96f), "Hint", 21);
         hintButtonText = hintButton.GetComponentInChildren<Text>(true);
-        nextButton = EnsureButton(canvasObject.transform, "NextButton", new Vector2(0.66f, 0.12f), new Vector2(180f, 52f), new Color(0.18f, 0.58f, 0.32f, 0.95f), "Next", 22);
+        hintBackButton = EnsureButton(canvasObject.transform, "HintBackButton", new Vector2(0.5f, 0.14f), new Vector2(220f, 50f), new Color(0.32f, 0.47f, 0.67f, 0.96f), "Back", 21);
+        hintBackButtonText = hintBackButton.GetComponentInChildren<Text>(true);
+        nextButton = EnsureButton(canvasObject.transform, "NextButton", new Vector2(0.67f, 0.1f), new Vector2(180f, 50f), new Color(0.29f, 0.66f, 0.41f, 0.96f), "Next", 21);
         nextButtonText = nextButton.GetComponentInChildren<Text>(true);
-        leaveButton = EnsureButton(canvasObject.transform, "LeaveButton", new Vector2(0.91f, 0.92f), new Vector2(150f, 48f), new Color(0.18f, 0.18f, 0.2f, 0.96f), "Leave", 20);
+        leaveButton = EnsureButton(canvasObject.transform, "LeaveButton", new Vector2(0.14f, 0.1f), new Vector2(150f, 50f), new Color(0.27f, 0.29f, 0.35f, 0.96f), "Leave", 20);
         leaveButtonText = leaveButton.GetComponentInChildren<Text>(true);
-        languageRoButton = EnsureButton(canvasObject.transform, "LanguageRoButton", new Vector2(0.39f, 0.72f), new Vector2(180f, 48f), new Color(0.28f, 0.56f, 0.8f, 0.95f), "Romana", 20);
+        languageRoButton = EnsureButton(canvasObject.transform, "LanguageRoButton", new Vector2(0.43f, 0.62f), new Vector2(180f, 48f), new Color(0.28f, 0.56f, 0.8f, 0.95f), "Romana", 20);
         languageRoButtonText = languageRoButton.GetComponentInChildren<Text>(true);
-        languageEnButton = EnsureButton(canvasObject.transform, "LanguageEnButton", new Vector2(0.61f, 0.72f), new Vector2(180f, 48f), new Color(0.18f, 0.44f, 0.68f, 0.95f), "English", 20);
+        languageEnButton = EnsureButton(canvasObject.transform, "LanguageEnButton", new Vector2(0.57f, 0.62f), new Vector2(180f, 48f), new Color(0.18f, 0.44f, 0.68f, 0.95f), "English", 20);
         languageEnButtonText = languageEnButton.GetComponentInChildren<Text>(true);
     }
 
@@ -735,6 +752,14 @@ public class SphereRiftPortalSequence : MonoBehaviour
 
         overlayCanvas.gameObject.SetActive(false);
         whiteImage.gameObject.SetActive(false);
+        if (quizCardImage != null)
+        {
+            quizCardImage.gameObject.SetActive(false);
+        }
+        if (codeCardImage != null)
+        {
+            codeCardImage.gameObject.SetActive(false);
+        }
         centerText.gameObject.SetActive(false);
         quizTitleText.gameObject.SetActive(false);
         quizPromptText.gameObject.SetActive(false);
@@ -762,6 +787,10 @@ public class SphereRiftPortalSequence : MonoBehaviour
         if (hintButton != null)
         {
             hintButton.gameObject.SetActive(false);
+        }
+        if (hintBackButton != null)
+        {
+            hintBackButton.gameObject.SetActive(false);
         }
         if (leaveButton != null)
         {
@@ -821,78 +850,110 @@ public class SphereRiftPortalSequence : MonoBehaviour
         quizCodeText.gameObject.SetActive(true);
         quizHintText.gameObject.SetActive(true);
         quizFeedbackText.gameObject.SetActive(true);
-        ShowLeaveButton(true);
-        int current = 0;
-        while (current < PythonQuestions.Length && !leaveRequested)
+        if (quizCardImage != null)
         {
-            PythonOutputQuestion question = PythonQuestions[current];
-            optionSelected = false;
-            answerCorrect = false;
-            nextRequested = false;
-            previousRequested = false;
-            hintRequested = false;
+            quizCardImage.gameObject.SetActive(true);
+        }
+        if (codeCardImage != null)
+        {
+            codeCardImage.gameObject.SetActive(true);
+        }
+        ShowLeaveButton(true);
+        bool[] wrongAnswers = new bool[PythonQuestions.Length];
+        List<int> activeQuestions = CreateQuestionIndexList(wrongAnswers, false);
+        bool firstRound = true;
 
-            ApplyQuizButtonLabels();
-            quizTitleText.text = Localize("Output prediction", "Output prediction");
-            quizPromptText.text = Localize("Utilizatorul vede cod Python scurt si trebuie sa spuna ce afiseaza.", "The player sees short Python code and must say what it prints.");
-            quizCodeText.text = question.Code;
-            quizHintText.text = string.Empty;
-            quizFeedbackText.text = string.Empty;
-            quizFeedbackText.color = new Color(0.1f, 0.1f, 0.1f, 1f);
-
-            for (int optionIndex = 0; optionIndex < optionButtons.Length; optionIndex++)
+        while (activeQuestions.Count > 0 && !leaveRequested)
+        {
+            for (int batchIndex = 0; batchIndex < activeQuestions.Count && !leaveRequested; batchIndex++)
             {
-                int capturedIndex = optionIndex;
-                optionButtons[optionIndex].onClick.RemoveAllListeners();
-                optionButtons[optionIndex].onClick.AddListener(() => SelectQuizOption(capturedIndex, question.CorrectIndex));
-                optionButtons[optionIndex].gameObject.SetActive(true);
-                optionButtons[optionIndex].interactable = true;
-                optionButtonTexts[optionIndex].text = selectedLanguage == QuizLanguage.Romanian ? question.OptionsRo[optionIndex] : question.OptionsEn[optionIndex];
-            }
+                int questionId = activeQuestions[batchIndex];
+                PythonOutputQuestion question = PythonQuestions[questionId];
+                optionSelected = false;
+                answerCorrect = false;
+                nextRequested = false;
+                previousRequested = false;
+                hintRequested = false;
+                bool hintScreenOpen = false;
 
-            previousButton.gameObject.SetActive(current > 0);
-            previousButton.onClick.RemoveAllListeners();
-            previousButton.onClick.AddListener(() => previousRequested = true);
-            hintButton.gameObject.SetActive(true);
-            hintButton.onClick.RemoveAllListeners();
-            hintButton.onClick.AddListener(() => hintRequested = true);
-            nextButton.gameObject.SetActive(false);
+                ApplyQuizButtonLabels();
+                quizTitleText.text = Localize("Ce va afisa codul?", "What will this code display?");
+                quizPromptText.text = Localize("Utilizatorul vede cod Python scurt si trebuie sa spuna ce afiseaza.", "The player sees short Python code and must say what it prints.");
+                quizPromptText.alignment = TextAnchor.UpperLeft;
+                quizCodeText.text = question.Code;
+                quizHintText.text = string.Empty;
+                quizFeedbackText.text = string.Empty;
+                quizFeedbackText.color = new Color(0.1f, 0.1f, 0.1f, 1f);
 
-            while (!optionSelected && !previousRequested && !leaveRequested)
-            {
-                if (hintRequested)
+                for (int optionIndex = 0; optionIndex < optionButtons.Length; optionIndex++)
                 {
-                    hintRequested = false;
-                    quizHintText.text = selectedLanguage == QuizLanguage.Romanian ? question.HintRo : question.HintEn;
+                    int capturedIndex = optionIndex;
+                    optionButtons[optionIndex].onClick.RemoveAllListeners();
+                    optionButtons[optionIndex].onClick.AddListener(() => SelectQuizOption(capturedIndex, question.CorrectIndex));
+                    optionButtons[optionIndex].gameObject.SetActive(true);
+                    optionButtons[optionIndex].interactable = true;
+                    optionButtonTexts[optionIndex].text = selectedLanguage == QuizLanguage.Romanian ? question.OptionsRo[optionIndex] : question.OptionsEn[optionIndex];
                 }
-                yield return null;
-            }
 
-            if (leaveRequested)
-            {
-                yield break;
-            }
+                previousButton.gameObject.SetActive(batchIndex > 0);
+                previousButton.onClick.RemoveAllListeners();
+                previousButton.onClick.AddListener(() => previousRequested = true);
+                hintButton.gameObject.SetActive(true);
+                hintButton.onClick.RemoveAllListeners();
+                hintButton.onClick.AddListener(() => hintRequested = true);
+                hintBackButton.gameObject.SetActive(false);
+                nextButton.gameObject.SetActive(false);
 
-            if (previousRequested)
-            {
-                current = Mathf.Max(0, current - 1);
-                continue;
-            }
-
-            if (answerCorrect)
-            {
-                quizFeedbackText.text = Localize("Corect.", "Correct.");
-                quizFeedbackText.color = new Color(0.18f, 0.58f, 0.32f, 1f);
-                nextButton.gameObject.SetActive(true);
-                nextButton.onClick.RemoveAllListeners();
-                nextButton.onClick.AddListener(() => nextRequested = true);
-
-                while (!nextRequested && !previousRequested && !leaveRequested)
+                while (!optionSelected && !previousRequested && !leaveRequested)
                 {
                     if (hintRequested)
                     {
                         hintRequested = false;
+                        hintScreenOpen = true;
+                        quizTitleText.text = Localize("Hint", "Hint");
+                        quizPromptText.text = string.Empty;
+                        quizCodeText.gameObject.SetActive(false);
+                        for (int i = 0; i < optionButtons.Length; i++)
+                        {
+                            optionButtons[i].gameObject.SetActive(false);
+                        }
+                        previousButton.gameObject.SetActive(false);
+                        hintButton.gameObject.SetActive(false);
+                        nextButton.gameObject.SetActive(false);
+                        if (codeCardImage != null)
+                        {
+                            codeCardImage.gameObject.SetActive(false);
+                        }
                         quizHintText.text = selectedLanguage == QuizLanguage.Romanian ? question.HintRo : question.HintEn;
+                        quizHintText.alignment = TextAnchor.MiddleCenter;
+                        hintBackButton.gameObject.SetActive(true);
+                        hintBackButton.onClick.RemoveAllListeners();
+                        hintBackButton.onClick.AddListener(() => hintScreenOpen = false);
+                    }
+
+                    if (hintScreenOpen)
+                    {
+                        yield return null;
+                        if (!hintScreenOpen)
+                        {
+                            quizTitleText.text = Localize("Ce va afisa codul?", "What will this code display?");
+                            quizPromptText.text = Localize("Utilizatorul vede cod Python scurt si trebuie sa spuna ce afiseaza.", "The player sees short Python code and must say what it prints.");
+                            quizPromptText.alignment = TextAnchor.UpperLeft;
+                            quizCodeText.gameObject.SetActive(true);
+                            if (codeCardImage != null)
+                            {
+                                codeCardImage.gameObject.SetActive(true);
+                            }
+                            for (int i = 0; i < optionButtons.Length; i++)
+                            {
+                                optionButtons[i].gameObject.SetActive(true);
+                            }
+                            previousButton.gameObject.SetActive(batchIndex > 0);
+                            hintButton.gameObject.SetActive(true);
+                            quizHintText.text = string.Empty;
+                            hintBackButton.gameObject.SetActive(false);
+                        }
+                        continue;
                     }
                     yield return null;
                 }
@@ -904,17 +965,175 @@ public class SphereRiftPortalSequence : MonoBehaviour
 
                 if (previousRequested)
                 {
-                    current = Mathf.Max(0, current - 1);
+                    batchIndex = Mathf.Max(-1, batchIndex - 2);
                     continue;
                 }
 
+                if (answerCorrect)
+                {
+                    wrongAnswers[questionId] = false;
+                    quizFeedbackText.text = Localize("Corect.", "Correct.");
+                    quizFeedbackText.color = new Color(0.18f, 0.58f, 0.32f, 1f);
+                    nextButton.gameObject.SetActive(true);
+                    nextButton.onClick.RemoveAllListeners();
+                    nextButton.onClick.AddListener(() => nextRequested = true);
+
+                    while (!nextRequested && !previousRequested && !leaveRequested)
+                    {
+                        if (hintRequested)
+                        {
+                            hintRequested = false;
+                            hintScreenOpen = true;
+                            quizTitleText.text = Localize("Hint", "Hint");
+                            quizPromptText.text = string.Empty;
+                            quizCodeText.gameObject.SetActive(false);
+                            nextButton.gameObject.SetActive(false);
+                            previousButton.gameObject.SetActive(false);
+                            hintButton.gameObject.SetActive(false);
+                            if (codeCardImage != null)
+                            {
+                                codeCardImage.gameObject.SetActive(false);
+                            }
+                            quizHintText.text = selectedLanguage == QuizLanguage.Romanian ? question.HintRo : question.HintEn;
+                            quizHintText.alignment = TextAnchor.MiddleCenter;
+                            hintBackButton.gameObject.SetActive(true);
+                            hintBackButton.onClick.RemoveAllListeners();
+                            hintBackButton.onClick.AddListener(() => hintScreenOpen = false);
+                        }
+                        if (hintScreenOpen)
+                        {
+                            yield return null;
+                            if (!hintScreenOpen)
+                            {
+                                quizTitleText.text = Localize("Ce va afisa codul?", "What will this code display?");
+                                quizPromptText.text = Localize("Utilizatorul vede cod Python scurt si trebuie sa spuna ce afiseaza.", "The player sees short Python code and must say what it prints.");
+                                quizPromptText.alignment = TextAnchor.UpperLeft;
+                                quizCodeText.gameObject.SetActive(true);
+                                if (codeCardImage != null)
+                                {
+                                    codeCardImage.gameObject.SetActive(true);
+                                }
+                                previousButton.gameObject.SetActive(batchIndex > 0);
+                                hintButton.gameObject.SetActive(true);
+                                nextButton.gameObject.SetActive(true);
+                                quizHintText.text = string.Empty;
+                                hintBackButton.gameObject.SetActive(false);
+                            }
+                            continue;
+                        }
+                        yield return null;
+                    }
+
+                    if (leaveRequested)
+                    {
+                        yield break;
+                    }
+
+                    if (previousRequested)
+                    {
+                        batchIndex = Mathf.Max(-1, batchIndex - 2);
+                        continue;
+                    }
+
+                    nextButton.gameObject.SetActive(false);
+                    continue;
+                }
+
+                wrongAnswers[questionId] = true;
+                quizFeedbackText.text = Localize("Nu este corect.", "That is not correct.");
+                quizFeedbackText.color = new Color(0.78f, 0.2f, 0.2f, 1f);
+                nextButton.gameObject.SetActive(true);
+                nextButton.onClick.RemoveAllListeners();
+                nextButton.onClick.AddListener(() => nextRequested = true);
+
+                while (!nextRequested && !leaveRequested)
+                {
+                    yield return null;
+                }
+
+                if (leaveRequested)
+                {
+                    yield break;
+                }
+
                 nextButton.gameObject.SetActive(false);
-                current++;
-                continue;
             }
 
-            quizFeedbackText.text = Localize("Incorect. Incearca alta varianta.", "Incorrect. Try another option.");
-            quizFeedbackText.color = new Color(0.78f, 0.2f, 0.2f, 1f);
+            int wrongCount = CountWrongAnswers(wrongAnswers);
+            int correctCount = PythonQuestions.Length - wrongCount;
+            centerText.fontSize = 30;
+            centerText.alignment = TextAnchor.MiddleCenter;
+            centerText.gameObject.SetActive(true);
+            nextButton.gameObject.SetActive(true);
+            nextButton.onClick.RemoveAllListeners();
+            nextButton.onClick.AddListener(() => nextRequested = true);
+
+            if (wrongCount > 0)
+            {
+                centerText.text = firstRound
+                    ? Localize(
+                        "Rezultat dupa 5 intrebari: " + correctCount + "/" + PythonQuestions.Length + ". Apasa butonul ca sa refaci doar intrebarile gresite.",
+                        "Result after 5 questions: " + correctCount + "/" + PythonQuestions.Length + ". Press the button to retry only the wrong questions.")
+                    : Localize(
+                        "Rezultat curent: " + correctCount + "/" + PythonQuestions.Length + ". Mai ai intrebari gresite. Apasa butonul ca sa le refaci.",
+                        "Current result: " + correctCount + "/" + PythonQuestions.Length + ". You still have wrong questions. Press the button to retry them.");
+                nextButtonText.text = Localize("Refa greselile", "Retry wrong");
+            }
+            else
+            {
+                for (int i = 0; i < optionButtons.Length; i++)
+                {
+                    optionButtons[i].gameObject.SetActive(false);
+                }
+                previousButton.gameObject.SetActive(false);
+                hintButton.gameObject.SetActive(false);
+                hintBackButton.gameObject.SetActive(false);
+                nextButton.gameObject.SetActive(false);
+                quizTitleText.gameObject.SetActive(false);
+                quizPromptText.gameObject.SetActive(false);
+                quizCodeText.gameObject.SetActive(false);
+                quizHintText.gameObject.SetActive(false);
+                quizFeedbackText.gameObject.SetActive(false);
+                if (codeCardImage != null)
+                {
+                    codeCardImage.gameObject.SetActive(false);
+                }
+
+                centerText.fontSize = 34;
+                centerText.text = Localize(
+                    "Ai rezolvat 5/5. Totul este corect.",
+                    "You solved 5/5. Everything is correct.");
+                centerText.gameObject.SetActive(true);
+
+                while (!leaveRequested)
+                {
+                    yield return null;
+                }
+
+                yield break;
+            }
+
+            SetRect(nextButton.GetComponent<RectTransform>(), new Vector2(0.5f, 0.16f), new Vector2(220f, 52f));
+
+            while (!nextRequested && !leaveRequested)
+            {
+                yield return null;
+            }
+
+            if (leaveRequested)
+            {
+                yield break;
+            }
+
+            centerText.gameObject.SetActive(false);
+            nextButton.gameObject.SetActive(false);
+            firstRound = false;
+
+            if (wrongCount <= 0)
+            {
+                break;
+            }
+            activeQuestions = CreateQuestionIndexList(wrongAnswers, true);
         }
 
         for (int i = 0; i < optionButtons.Length; i++)
@@ -924,19 +1143,46 @@ public class SphereRiftPortalSequence : MonoBehaviour
         nextButton.gameObject.SetActive(false);
         previousButton.gameObject.SetActive(false);
         hintButton.gameObject.SetActive(false);
+        hintBackButton.gameObject.SetActive(false);
         ShowLeaveButton(false);
         quizTitleText.gameObject.SetActive(false);
         quizPromptText.gameObject.SetActive(false);
         quizCodeText.gameObject.SetActive(false);
         quizHintText.gameObject.SetActive(false);
         quizFeedbackText.gameObject.SetActive(false);
-
-        if (!leaveRequested && centerText != null)
+        if (codeCardImage != null)
         {
-            centerText.text = "test";
-            centerText.gameObject.SetActive(true);
-            yield return new WaitForSeconds(0.5f);
+            codeCardImage.gameObject.SetActive(false);
         }
+
+    }
+
+    private static List<int> CreateQuestionIndexList(bool[] wrongAnswers, bool onlyWrong)
+    {
+        List<int> result = new List<int>();
+        for (int i = 0; i < PythonQuestions.Length; i++)
+        {
+            if (!onlyWrong || wrongAnswers[i])
+            {
+                result.Add(i);
+            }
+        }
+
+        return result;
+    }
+
+    private static int CountWrongAnswers(bool[] wrongAnswers)
+    {
+        int wrongCount = 0;
+        for (int i = 0; i < wrongAnswers.Length; i++)
+        {
+            if (wrongAnswers[i])
+            {
+                wrongCount++;
+            }
+        }
+
+        return wrongCount;
     }
 
     private IEnumerator FinishPortalSequence(BeanController sphere, FirstPersonControllerSimple fps)
@@ -970,12 +1216,21 @@ public class SphereRiftPortalSequence : MonoBehaviour
     {
         languageChosen = false;
         ShowLeaveButton(true);
+        if (quizCardImage != null)
+        {
+            quizCardImage.gameObject.SetActive(true);
+        }
+        if (codeCardImage != null)
+        {
+            codeCardImage.gameObject.SetActive(false);
+        }
         languageRoButton.gameObject.SetActive(true);
         languageEnButton.gameObject.SetActive(true);
         quizTitleText.gameObject.SetActive(true);
         quizPromptText.gameObject.SetActive(true);
-        quizTitleText.text = "Python Quiz";
-        quizPromptText.text = "Alege limba / Choose language";
+        quizTitleText.text = Localize("Alege limba", "Choose language");
+        quizPromptText.text = Localize("Selecteaza limba in care vrei sa vezi intrebarile.", "Select the language you want for the questions.");
+        quizPromptText.alignment = TextAnchor.MiddleCenter;
         languageRoButton.onClick.RemoveAllListeners();
         languageEnButton.onClick.RemoveAllListeners();
         languageRoButton.onClick.AddListener(() => SelectQuizLanguage(QuizLanguage.Romanian));
