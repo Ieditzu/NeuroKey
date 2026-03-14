@@ -53,33 +53,35 @@ namespace NeuroKey.Network
             }
         }
 
-        public async void SendPacket(Packet packet)
+        public async Task SendPacket(Packet packet)
         {
-            if (!IsConnected) return;
+            if (!IsConnected || socket == null) return;
 
-            byte[] data = packet.Encode();
-            await socket.SendAsync(new ArraySegment<byte>(data), WebSocketMessageType.Binary, true, cts.Token);
+            try {
+                byte[] data = packet.Encode();
+                await socket.SendAsync(new ArraySegment<byte>(data), WebSocketMessageType.Binary, true, cts.Token);
+            } catch (Exception e) {
+                Debug.LogError("Send error: " + e.Message);
+            }
         }
 
         private async Task ReceiveLoop()
         {
-            byte[] buffer = new byte[4096];
+            byte[] buffer = new byte[8192];
             try
             {
-                while (socket.State == WebSocketState.Open)
+                while (socket != null && socket.State == WebSocketState.Open && !cts.IsCancellationRequested)
                 {
                     var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cts.Token);
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
                         await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", cts.Token);
                     }
-                    else
+                    else if (result.Count > 0)
                     {
-                        // Handle binary packet
                         byte[] packetData = new byte[result.Count];
                         Buffer.BlockCopy(buffer, 0, packetData, 0, result.Count);
                         
-                        // We need to handle multiple segments if needed, but for simplicity assume one segment for now
                         try {
                             Packet packet = Packet.Decode(packetData, packetManager);
                             OnPacketReceived?.Invoke(packet);
@@ -89,17 +91,25 @@ namespace NeuroKey.Network
                     }
                 }
             }
+            catch (OperationCanceledException) {} 
             catch (Exception e)
             {
-                if (socket.State != WebSocketState.Closed)
+                if (socket != null && socket.State != WebSocketState.Closed)
                     Debug.LogError("Receive error: " + e.Message);
             }
         }
 
         private void OnDestroy()
         {
-            cts?.Cancel();
-            socket?.Dispose();
+            if (cts != null) {
+                cts.Cancel();
+                cts.Dispose();
+                cts = null;
+            }
+            if (socket != null) {
+                socket.Dispose();
+                socket = null;
+            }
         }
     }
 }

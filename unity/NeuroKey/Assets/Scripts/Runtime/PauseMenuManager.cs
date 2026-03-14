@@ -37,6 +37,8 @@ public class PauseMenuManager : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
+        UnityMainThreadDispatcher.Initialize(); // Initialize dispatcher first on main thread
+
         if (instance != null)
         {
             instance.RebuildIfNeeded();

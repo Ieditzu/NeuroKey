@@ -15,7 +15,18 @@ public class UnityMainThreadDispatcher : MonoBehaviour
         }
     }
 
+    public static bool IsInitialized => instance != null;
+
     public static UnityMainThreadDispatcher Instance()
+    {
+        if (instance == null)
+        {
+            throw new Exception("UnityMainThreadDispatcher not initialized. Call Initialize() from main thread first.");
+        }
+        return instance;
+    }
+
+    public static void Initialize()
     {
         if (instance == null)
         {
@@ -23,7 +34,15 @@ public class UnityMainThreadDispatcher : MonoBehaviour
             instance = go.AddComponent<UnityMainThreadDispatcher>();
             DontDestroyOnLoad(go);
         }
-        return instance;
+    }
+
+    private void Awake()
+    {
+        if (instance == null)
+        {
+            instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
     }
 
     private void Update()
@@ -35,5 +54,10 @@ public class UnityMainThreadDispatcher : MonoBehaviour
                 ExecutionQueue.Dequeue().Invoke();
             }
         }
+    }
+
+    private void OnDestroy()
+    {
+        if (instance == this) instance = null;
     }
 }
