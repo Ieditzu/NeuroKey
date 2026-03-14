@@ -114,8 +114,8 @@ public class PauseMenuManager : MonoBehaviour
                         Debug.LogError("Failed to save session: " + e.Message);
                     }
 
-                    GameClient.Instance.SendPacket(new FetchChildStatsPacket());
-                    GameClient.Instance.SendPacket(new FetchTasksPacket());
+                    _ = GameClient.Instance.SendPacket(new FetchChildStatsPacket());
+                    _ = GameClient.Instance.SendPacket(new FetchTasksPacket());
 
                     if (qrButton != null) qrButton.interactable = false;
                     if (qrCodeImage != null) qrCodeImage.gameObject.SetActive(false);
@@ -150,7 +150,7 @@ public class PauseMenuManager : MonoBehaviour
             if (actionResp.RequestPacketId == 8 && actionResp.Success) 
             {
                 UnityMainThreadDispatcher.Instance().Enqueue(() => {
-                    GameClient.Instance.SendPacket(new FetchChildStatsPacket()); 
+                    _ = GameClient.Instance.SendPacket(new FetchChildStatsPacket()); 
                 });
             }
         }
@@ -365,7 +365,7 @@ public class PauseMenuManager : MonoBehaviour
             long tid = task.Id;
             completeBtn.onClick.AddListener(() => {
                 if (loggedInChildId != -1)
-                    GameClient.Instance.SendPacket(new CompleteTaskPacket(loggedInChildId, tid));
+                    _ = GameClient.Instance.SendPacket(new CompleteTaskPacket(loggedInChildId, tid));
             });
             y -= 54;
         }
@@ -415,7 +415,7 @@ public class PauseMenuManager : MonoBehaviour
         if (GameClient.Instance != null && GameClient.Instance.IsConnected)
         {
             qrStatusText.text = "Generating...";
-            GameClient.Instance.SendPacket(new GenerateQRLoginPacket());
+            _ = GameClient.Instance.SendPacket(new GenerateQRLoginPacket());
         }
         else if (GameClient.Instance != null) { _ = ConnectAndTryAutoLogin(); }
     }

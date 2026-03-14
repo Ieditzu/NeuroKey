@@ -60895,9 +60895,8 @@ GameObject:
   - component: {fileID: 1799820321}
   - component: {fileID: 1799820320}
   - component: {fileID: 1799820319}
-  - component: {fileID: 1799820322}
   m_Layer: 0
-  m_Name: MediumQuestionPad
+  m_Name: Question2Pad
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -60989,88 +60988,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1799820317}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!114 &1799820322
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1799820317}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4a1405b41d70408a8eb055661dba707f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  blinkDuration: 1.1
-  blinkFrequency: 7.5
-  maxEmissionMultiplier: 4.8
-  whiteExplosionPrefab: {fileID: 0}
-  preExplosionMotionDuration: 1.25
-  liftHeight: 2.4
-  spinSpeed: 620
-  orbitRadius: 0.42
-  totalTurnsBeforeExplosion: 3
-  centerOnTurnIndex: 3
-  finalCameraDepth: 0.22
-  hardPortalOpenDuration: 0.85
-  hardPortalPullDuration: 1.25
-  hardPortalCollapseDuration: 0.35
-  hardPortalDistance: 2.4
-  hardPortalUpOffset: 1.1
-  hardPortalRadius: 1.05
-  hardPortalTwistSpeed: 240
-  fadeToWhiteDuration: 0.55
-  autoCreateOverlay: 1
-  overlayCanvas: {fileID: 0}
-  whiteImage: {fileID: 0}
-  startText: {fileID: 0}
-  mediumPromptTextContent: 'The following C++ code is supposed to increment the original
-    value, but it does not.
-
-    Fix the bug.'
-  mediumPromptText: {fileID: 0}
-  mediumPromptFadeDuration: 0.32
-  mediumPromptTypeDelay: 0.018
-  mediumCssInitialCode: "#include <iostream>\n\nvoid increment(int n) {\n    n++;\n}\n\nint
-    main() {\n    int value = 5;\n    increment(value);\n    std::cout << value <<
-    std::endl;\n}"
-  mediumCssCorrectCode: "#include <iostream>\n\nvoid increment(int& n) {\n    n++;\n}\n\nint
-    main() {\n    int value = 5;\n    increment(value);\n    std::cout << value <<
-    std::endl;\n}"
-  mediumCodePanel: {fileID: 0}
-  mediumCodeInputField: {fileID: 0}
-  mediumVerifyButton: {fileID: 0}
-  mediumVerifyResultText: {fileID: 0}
-  mediumLeaveButton: {fileID: 0}
-  mediumContinueButton: {fileID: 0}
-  mediumHintButton: {fileID: 0}
-  mediumTutorialPanel: {fileID: 0}
-  mediumTutorialTitleText: {fileID: 0}
-  mediumTutorialBodyText: {fileID: 0}
-  mediumBackToQuestionButton: {fileID: 0}
-  mediumTutorialContent: "Step by step:\n1) `increment(int n)` receives a copy, not
-    the original variable.\n2) Incrementing `n` changes only the local copy.\n3)
-    Use `int& n` to modify the caller's value.\n\nCorrect answer:\n#include <iostream>\n\nvoid
-    increment(int& n) {\n    n++;\n}\n\nint main() {\n    int value = 5;\n    increment(value);\n   
-    std::cout << value << std::endl;\n}"
-  mediumTutorialTypeDelay: 0.012
-  mediumResultPulseDuration: 0.28
-  mediumResultHoldDuration: 0.32
-  mediumReentryCooldownSeconds: 4
-  nextLevelSceneName: 
-  questionSetPreset: 0
-  isFollowupTestPad: 0
-  followupTestMessage: test
-  continueBuildsNextMediumPath: 1
-  nextPathRootName: MediumNextTestPath
-  mediumQuestionStage: 1
-  nextPathSegments: 6
-  nextPathSegmentLength: 2.6
-  nextPathStartOffset: 0
-  nextPathSegmentScale: {x: 2.2, y: 0.28, z: 2.6}
-  nextPadSegmentIndex: -1
-  nextPadScale: {x: 3.2, y: 0.2, z: 2.4}
-  freezeCameraDuringSequence: 1
 --- !u!1 &1799957270
 GameObject:
   m_ObjectHideFlags: 0
