@@ -387,6 +387,10 @@ public class PickupUIController : MonoBehaviour
                     boxPushable = parsed;
                     ApplyTargetBoxPhysics();
                 }
+                if (boxPushable && float.TryParse(jumpInput, out float currentJp) && currentJp > 0f)
+                {
+                    PauseMenuManager.CompleteTaskByTitle("Set Jump Power");
+                }
             }
 
             GUI.skin.label.fontSize = oldLabelSize;
@@ -420,6 +424,7 @@ public class PickupUIController : MonoBehaviour
                     SetBridgeRevealState(bridgeInput == "true");
                     if (bridgeRevealActive)
                     {
+                        PauseMenuManager.CompleteTaskByTitle("Reveal Bridge Path");
                         RestoreDefaults();
                         visible = false;
                         activeCoin = null;
