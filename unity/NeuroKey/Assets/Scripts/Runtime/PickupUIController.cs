@@ -367,6 +367,10 @@ public class PickupUIController : MonoBehaviour
                     boxPushable = parsed;
                     ApplyTargetBoxPhysics();
                 }
+                if (boxPushable && float.TryParse(jumpInput, out float currentJp) && currentJp > 0f)
+                {
+                    PauseMenuManager.CompleteTaskByTitle("Set Jump Power");
+                }
             }
         }
         else
@@ -390,12 +394,17 @@ public class PickupUIController : MonoBehaviour
                 if (activeMode == CoinRotator.CoinMode.IslandReveal)
                 {
                     SetRevealIslandState(islandInput == "true");
+                    if (revealIslandActive)
+                    {
+                        PauseMenuManager.CompleteTaskByTitle("Reveal Hidden Island");
+                    }
                 }
                 else
                 {
                     SetBridgeRevealState(bridgeInput == "true");
                     if (bridgeRevealActive)
                     {
+                        PauseMenuManager.CompleteTaskByTitle("Reveal Bridge Path");
                         RestoreDefaults();
                         visible = false;
                         activeCoin = null;

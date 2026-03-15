@@ -37,7 +37,8 @@ NeuroKey is a **three-part educational platform** built for a hackathon:
 
 **For Students (Unity Game)**
 - Explore a 3D island with coding challenge pads (C++ debugging, Python visuals, function writing)
-- 19 progressive tasks from beginner quizzes to writing factorial functions
+- 22 progressive tasks from beginner quizzes to writing factorial functions
+- **Interactive logic puzzles**: On Island 3, players collect coins that open a real-time variable editor — they must figure out the right values to set (e.g. `jumpVelocity = 5`, `boxRigidbody = true`, `islandVisible = true`) to manipulate the game world and progress through 3 stages: adjusting jump power and enabling physics, revealing a hidden island, and unlocking a bridge path
 - **Live code execution**: Students write C++ and Python code that gets sent to the server and executed in a sandboxed environment (Linux `unshare` with network isolation, memory/CPU/process limits via `ulimit`) — results come back in real time
 - **AI-verified submissions**: After code runs, the output is sent to the AI which evaluates whether the solution is correct ("CORRECT" / "INCORRECT") with a short explanation — no hardcoded answer checking
 - **AI hint chat**: Students can open a chat panel at any challenge and have a conversation with the AI mentor, which is aware of the current challenge context, the student's learning profile, and their language — responses are encouraging and concise

@@ -33,7 +33,12 @@ public enum DefaultTaskType {
     PY_HARD_PROGRESS("Python Visual: Build Progress Bar", 30),
     PY_HARD_SQUARE("Python Visual: Draw Square Grid", 30),
     PY_HARD_STAIRS("Python Visual: Draw Staircase", 30),
-    PY_HARD_ALTERNATING("Python Visual: Alternating Pattern", 35);
+    PY_HARD_ALTERNATING("Python Visual: Alternating Pattern", 35),
+
+    // Logic Puzzles - Island 3 (variable manipulation)
+    LOGIC_JUMP_AND_BOX("Logic Puzzle: Set Jump Power & Enable Physics", 20),
+    LOGIC_REVEAL_ISLAND("Logic Puzzle: Reveal Hidden Island", 20),
+    LOGIC_REVEAL_BRIDGE("Logic Puzzle: Reveal Bridge Path", 20);
 
     private final String title;
     private final int pointValue;
