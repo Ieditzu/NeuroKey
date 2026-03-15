@@ -19,6 +19,7 @@ import java.util.Map;
 public class LearningProfileService {
 
     private final ChildRepository childRepository;
+    private static final long SUMMARY_MIN_INTERVAL_SECONDS = 300;
 
     @Transactional
     public void recordLearningEvent(final Long childId, final String eventType, final String topic, final int correctness, final String details) {
@@ -242,6 +243,16 @@ public class LearningProfileService {
         if (!summaryUpdated.isEmpty() && !lastUpdated.isEmpty() && summaryUpdated.compareTo(lastUpdated) >= 0) {
             return;
         }
+        if (!summaryUpdated.isEmpty()) {
+            try {
+                Instant lastSummary = Instant.parse(summaryUpdated);
+                if (Instant.now().minusSeconds(SUMMARY_MIN_INTERVAL_SECONDS).isBefore(lastSummary)) {
+                    return;
+                }
+            } catch (Exception ignored) {
+                // If parsing fails, continue and regenerate.
+            }
+        }
 
         String prompt = buildSummaryPrompt(profile, label);
         io.github.kawase.utility.GeminiAI ai = new io.github.kawase.utility.GeminiAI();
@@ -266,9 +277,9 @@ public class LearningProfileService {
                 "Language: " + label + "\n" +
                 "Correct submissions: " + correct + "\n" +
                 "Incorrect submissions: " + incorrect + "\n" +
-                "Struggle concepts: " + String.join(\", \", struggles) + "\n" +
-                "Common mistakes: " + String.join(\", \", mistakes) + "\n" +
-                "AI help topics: " + String.join(\", \", helpTopics) + "\n" +
+                "Struggle concepts: " + String.join(", ", struggles) + "\n" +
+                "Common mistakes: " + String.join(", ", mistakes) + "\n" +
+                "AI help topics: " + String.join(", ", helpTopics) + "\n" +
                 "Write 2-3 short sentences. Keep it clear and parent-friendly.";
     }
 

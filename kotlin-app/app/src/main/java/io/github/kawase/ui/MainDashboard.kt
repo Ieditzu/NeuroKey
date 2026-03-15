@@ -972,7 +972,7 @@ fun GoalsScreen(viewModel: SocketViewModel, childId: Long) {
                     if (cppProfile != null) {
                         Text("C++", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = viewModel.primaryColor.value)
                         val summaryText = if (cppProfile.summaryText.isNotBlank()) cppProfile.summaryText else {
-                            if (cppProfile.struggleConcepts.isEmpty()) "No major struggles yet." else "Struggles: ${cppProfile.struggleConcepts.joinToString(\", \")}."
+                            if (cppProfile.struggleConcepts.isEmpty()) "No major struggles yet." else "Struggles: ${cppProfile.struggleConcepts.joinToString(", ")}."
                         }
                         Text("Summary: $summaryText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.75f) else Color.Black.copy(alpha = 0.55f))
                         if (insightsExpanded) {
@@ -997,7 +997,7 @@ fun GoalsScreen(viewModel: SocketViewModel, childId: Long) {
                     if (pythonProfile != null) {
                         Text("Python", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = viewModel.primaryColor.value)
                         val summaryText = if (pythonProfile.summaryText.isNotBlank()) pythonProfile.summaryText else {
-                            if (pythonProfile.struggleConcepts.isEmpty()) "No major struggles yet." else "Struggles: ${pythonProfile.struggleConcepts.joinToString(\", \")}."
+                            if (pythonProfile.struggleConcepts.isEmpty()) "No major struggles yet." else "Struggles: ${pythonProfile.struggleConcepts.joinToString(", ")}."
                         }
                         Text("Summary: $summaryText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.75f) else Color.Black.copy(alpha = 0.55f))
                         if (insightsExpanded) {
@@ -1022,7 +1022,7 @@ fun GoalsScreen(viewModel: SocketViewModel, childId: Long) {
                     if (generalProfile != null) {
                         Text("General", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = viewModel.primaryColor.value)
                         val summaryText = if (generalProfile.summaryText.isNotBlank()) generalProfile.summaryText else {
-                            if (generalProfile.struggleConcepts.isEmpty()) "No major struggles yet." else "Struggles: ${generalProfile.struggleConcepts.joinToString(\", \")}."
+                            if (generalProfile.struggleConcepts.isEmpty()) "No major struggles yet." else "Struggles: ${generalProfile.struggleConcepts.joinToString(", ")}."
                         }
                         Text("Summary: $summaryText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.75f) else Color.Black.copy(alpha = 0.55f))
                         if (insightsExpanded) {
