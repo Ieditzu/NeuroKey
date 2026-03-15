@@ -938,12 +938,51 @@ fun HistoryScreen(viewModel: SocketViewModel) {
 @Composable
 fun GoalsScreen(viewModel: SocketViewModel, childId: Long) {
     val goals = viewModel.goals
+    val profile = viewModel.aiProfiles[childId]
+
+    LaunchedEffect(childId) {
+        if (childId != -1L) {
+            viewModel.fetchChildProfile(childId)
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
         Text("Goals", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
         Text("Set goals and rewards", style = MaterialTheme.typography.bodyMedium, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
         
         Spacer(modifier = Modifier.height(32.dp))
+
+        if (childId != -1L) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().border(1.dp, if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), RoundedCornerShape(24.dp)),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text("AI Insights", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (profile == null) {
+                        Text("Building profile from recent activity...", style = MaterialTheme.typography.bodyMedium, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.5f))
+                    } else {
+                        Text("Level: ${profile.level}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                        Text("Correct: ${profile.correctCount}  Incorrect: ${profile.incorrectCount}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                        Text("Hints used: ${profile.hintsUsed}  AI chats: ${profile.chatTurns}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        val strengthsText = if (profile.strengths.isEmpty()) "None yet" else profile.strengths.joinToString(", ")
+                        val needsHelpText = if (profile.needsHelp.isEmpty()) "None yet" else profile.needsHelp.joinToString(", ")
+                        val mistakesText = if (profile.recentMistakes.isEmpty()) "No recent mistakes" else profile.recentMistakes.joinToString(", ")
+
+                        Text("Strengths: $strengthsText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                        Text("Needs help: $needsHelpText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                        Text("Recent mistakes: $mistakesText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+        }
         
         if (goals.isEmpty()) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {

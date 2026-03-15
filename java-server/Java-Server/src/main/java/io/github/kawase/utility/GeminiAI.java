@@ -11,15 +11,25 @@ public class GeminiAI {
     private final String apiKey = System.getenv("GEMINI_API_KEY");
 
     public String ask(String question, String context) {
+        return ask(question, context, "");
+    }
+
+    public String ask(String question, String context, String profileSummary) {
         try {
             if (apiKey == null || apiKey.isBlank()) {
                 return "AI Error: GEMINI_API_KEY is not set on the server.";
             }
-            final String prompt = "You are an educational AI mentor for a student learning C++ in a game called NeuroKey. " +
-                    "Context: " + context + "\n" +
-                    "Student's Question: " + question + "\n" +
-                    "Please provide a helpful, encouraging, and easy-to-understand response for a student. " +
-                    "Keep it concise (1-3 sentences).";
+            StringBuilder promptBuilder = new StringBuilder();
+            promptBuilder.append("You are an educational AI mentor for a student learning C++ in a game called NeuroKey. ");
+            if (profileSummary != null && !profileSummary.isBlank()) {
+                promptBuilder.append("Student profile: ").append(profileSummary).append("\n");
+            }
+            promptBuilder.append("Context: ").append(context).append("\n")
+                    .append("Student's Question: ").append(question).append("\n")
+                    .append("Please provide a helpful, encouraging, and easy-to-understand response for a student. ")
+                    .append("Keep it concise (1-3 sentences).");
+
+            final String prompt = promptBuilder.toString();
 
             JSONObject requestBody = new JSONObject();
             JSONArray contents = new JSONArray();

@@ -25,6 +25,7 @@ namespace NeuroKey.Network
                 29 => new ExecuteCPPCodeResponsePacket(),
                 30 => new AskAiPacket(),
                 31 => new AiResponsePacket(),
+                33 => new RecordLearningEventPacket(),
                 _ => throw new Exception("Unknown packet ID: " + id),
             };
         }
@@ -250,5 +251,38 @@ namespace NeuroKey.Network
         public AiResponsePacket() : base(31) { }
         protected override void Write(BinaryWriter writer) { PutString(writer, Response ?? string.Empty); }
         protected override void Read(BinaryReader reader) { Response = ReadString(reader); }
+    }
+
+    public class RecordLearningEventPacket : Packet
+    {
+        public string EventType;
+        public string Topic;
+        public int Correctness;
+        public string Details;
+
+        public RecordLearningEventPacket() : base(33) { }
+        public RecordLearningEventPacket(string eventType, string topic, int correctness, string details) : base(33)
+        {
+            EventType = eventType;
+            Topic = topic;
+            Correctness = correctness;
+            Details = details;
+        }
+
+        protected override void Write(BinaryWriter writer)
+        {
+            PutString(writer, EventType ?? string.Empty);
+            PutString(writer, Topic ?? string.Empty);
+            WriteInt32BigEndian(writer, Correctness);
+            PutString(writer, Details ?? string.Empty);
+        }
+
+        protected override void Read(BinaryReader reader)
+        {
+            EventType = ReadString(reader);
+            Topic = ReadString(reader);
+            Correctness = ReadInt32BigEndian(reader);
+            Details = ReadString(reader);
+        }
     }
 }

@@ -24,8 +24,10 @@ public class PacketManager {
             case 17: return new FetchCompletedTasksPacket();
             case 18: return new FetchCompletedTasksResponsePacket();
             case 21: return new ClaimQRLoginPacket();
+            case 24: return new FetchChildStatsResponsePacket();
             case 26: return new UpdatePfpPacket();
             case 27: return new RemoveChildPacket();
+            case 32: return new FetchChildStatsByParentPacket();
             case 30: return new AskAiPacket();
             case 31: return new AiResponsePacket();
         }

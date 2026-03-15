@@ -43,6 +43,8 @@ public class PacketManager {
             case 29 -> new ExecuteCPPCodeResponsePacket();
             case 30 -> new AskAiPacket();
             case 31 -> new AiResponsePacket();
+            case 32 -> new FetchChildStatsByParentPacket();
+            case 33 -> new RecordLearningEventPacket();
 
             default -> throw new PacketException("Unknown packet ID: " + id);
         };

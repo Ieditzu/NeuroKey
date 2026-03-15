@@ -790,7 +790,9 @@ public class CodeChallengePadCinematic : MonoBehaviour
     {
         if (mode != ChallengeMode.Medium)
         {
-            onResult?.Invoke(IsChallengeCorrect(challenge, submittedCode));
+            bool localResult = IsChallengeCorrect(challenge, submittedCode);
+            RecordLearningEvent("code_verify", ResolveChallengeTopic(challenge), localResult ? 1 : 0, mode.ToString().ToLowerInvariant());
+            onResult?.Invoke(localResult);
             yield break;
         }
 
@@ -882,6 +884,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
             feedbackText.color = textColor;
         }
 
+        RecordLearningEvent("code_verify", ResolveChallengeTopic(challenge), finalCorrect ? 1 : 0, "medium");
         onResult?.Invoke(finalCorrect);
     }
 
@@ -1237,6 +1240,32 @@ public class CodeChallengePadCinematic : MonoBehaviour
         string code = codeInput != null ? codeInput.text : string.Empty;
         return "Task:\\n" + prompt + "\\n\\nStudent code:\\n" + code + "\\n\\nQuestion:\\n" + userMessage
             + "\\n\\nGive a helpful hint without giving away the full solution.";
+    }
+
+    private void RecordLearningEvent(string eventType, string topic, int correctness, string details)
+    {
+        if (GameClient.Instance == null)
+        {
+            return;
+        }
+
+        StartCoroutine(SendPacketWithConnect(new RecordLearningEventPacket(eventType, topic, correctness, details), null));
+    }
+
+    private string ResolveChallengeTopic(CodeChallenge challenge)
+    {
+        if (!string.IsNullOrWhiteSpace(challenge.ValidationId))
+        {
+            return challenge.ValidationId;
+        }
+
+        if (!string.IsNullOrWhiteSpace(challenge.Prompt))
+        {
+            string[] lines = challenge.Prompt.Split('\n');
+            return lines.Length > 0 ? lines[0].Trim() : "cpp_challenge";
+        }
+
+        return "cpp_challenge";
     }
 
     private void ShowMainUi(bool visible)

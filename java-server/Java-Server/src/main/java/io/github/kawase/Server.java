@@ -4,6 +4,7 @@ import io.github.kawase.client.Client;
 import io.github.kawase.client.ClientHandler;
 import io.github.kawase.database.services.ChildService;
 import io.github.kawase.database.services.GoalService;
+import io.github.kawase.database.services.LearningProfileService;
 import io.github.kawase.database.services.ParentService;
 import io.github.kawase.database.services.TaskService;
 import io.github.kawase.packet.PacketManager;
@@ -36,6 +37,7 @@ public class Server {
     private ChildService childService;
     private GoalService goalService;
     private io.github.kawase.database.services.GameSessionService gameSessionService;
+    private LearningProfileService learningProfileService;
 
     public void init(final int port,  final ApplicationContext applicationContext) {
         this.packetManager = new PacketManager();
@@ -49,6 +51,7 @@ public class Server {
         this.childService = context.getBean(ChildService.class);
         this.goalService = context.getBean(GoalService.class);
         this.gameSessionService = context.getBean(io.github.kawase.database.services.GameSessionService.class);
+        this.learningProfileService = context.getBean(LearningProfileService.class);
 
         this.socket = new ServerSocket(port);
 
