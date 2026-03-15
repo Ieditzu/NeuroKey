@@ -207,13 +207,7 @@ public class CoinRotator : MonoBehaviour
 
     private Transform ResolvePlayerTransform()
     {
-        var bean = FindObjectOfType<BeanController>();
-        if (bean != null) return bean.transform;
-
-        var fps = FindObjectOfType<FirstPersonControllerSimple>();
-        if (fps != null) return fps.transform;
-
-        return null;
+        return PlayerCache.ResolvePlayerTransform();
     }
 
     private void EnsureTrigger()

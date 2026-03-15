@@ -38,6 +38,7 @@ public class BeanController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true; // Make it a bean, do not roll
+        PlayerCache.Register(this);
 
         var sphereCol = GetComponent<SphereCollider>();
         if (sphereCol != null)
@@ -144,6 +145,21 @@ public class BeanController : MonoBehaviour
         if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) z -= 1f;
 
         input = new Vector3(x, 0f, z).normalized;
+    }
+
+    private void OnEnable()
+    {
+        PlayerCache.Register(this);
+    }
+
+    private void OnDisable()
+    {
+        PlayerCache.Unregister(this);
+    }
+
+    private void OnDestroy()
+    {
+        PlayerCache.Unregister(this);
     }
 
     private void FixedUpdate()
