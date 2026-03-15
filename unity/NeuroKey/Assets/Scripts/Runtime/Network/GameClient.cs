@@ -98,7 +98,7 @@ namespace NeuroKey.Network
 
         private async Task ReceiveLoop()
         {
-            byte[] buffer = new byte[8192];
+            byte[] buffer = new byte[16384];
             try
             {
                 while (socket != null && socket.State == WebSocketState.Open && !cts.IsCancellationRequested)
@@ -107,22 +107,50 @@ namespace NeuroKey.Network
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
                         await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", cts.Token);
+                        continue;
                     }
-                    else if (result.Count > 0)
+
+                    if (result.Count <= 0)
                     {
-                        byte[] packetData = new byte[result.Count];
-                        Buffer.BlockCopy(buffer, 0, packetData, 0, result.Count);
-                        
-                        try {
+                        continue;
+                    }
+
+                    using (var ms = new MemoryStream())
+                    {
+                        ms.Write(buffer, 0, result.Count);
+                        while (!result.EndOfMessage)
+                        {
+                            result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cts.Token);
+                            if (result.MessageType == WebSocketMessageType.Close)
+                            {
+                                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", cts.Token);
+                                break;
+                            }
+                            if (result.Count > 0)
+                            {
+                                ms.Write(buffer, 0, result.Count);
+                            }
+                        }
+
+                        if (ms.Length == 0)
+                        {
+                            continue;
+                        }
+
+                        byte[] packetData = ms.ToArray();
+                        try
+                        {
                             Packet packet = Packet.Decode(packetData, packetManager);
                             OnPacketReceived?.Invoke(packet);
-                        } catch (Exception e) {
+                        }
+                        catch (Exception e)
+                        {
                             Debug.LogError("Failed to decode packet: " + e.Message);
                         }
                     }
                 }
             }
-            catch (OperationCanceledException) {} 
+            catch (OperationCanceledException) {}
             catch (Exception e)
             {
                 if (socket != null && socket.State != WebSocketState.Closed)
