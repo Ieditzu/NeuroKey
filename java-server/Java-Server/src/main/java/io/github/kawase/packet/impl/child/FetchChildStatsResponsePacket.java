@@ -9,12 +9,19 @@ public class FetchChildStatsResponsePacket extends Packet {
     private String name;
     private int totalPoints;
     private String gameStatsJson;
+    private int streak;
+    private int completedTaskCount;
+    private int totalTaskCount;
 
-    public FetchChildStatsResponsePacket(final String name, final int totalPoints, final String gameStatsJson) {
+    public FetchChildStatsResponsePacket(final String name, final int totalPoints, final String gameStatsJson,
+                                          final int streak, final int completedTaskCount, final int totalTaskCount) {
         super(24);
         this.name = name;
         this.totalPoints = totalPoints;
         this.gameStatsJson = gameStatsJson;
+        this.streak = streak;
+        this.completedTaskCount = completedTaskCount;
+        this.totalTaskCount = totalTaskCount;
     }
 
     public FetchChildStatsResponsePacket() {
@@ -26,6 +33,9 @@ public class FetchChildStatsResponsePacket extends Packet {
         putString(name == null ? "" : name, buffer);
         buffer.putInt(totalPoints);
         putString(gameStatsJson == null ? "{}" : gameStatsJson, buffer);
+        buffer.putInt(streak);
+        buffer.putInt(completedTaskCount);
+        buffer.putInt(totalTaskCount);
     }
 
     @Override
@@ -33,5 +43,8 @@ public class FetchChildStatsResponsePacket extends Packet {
         this.name = readString(buffer);
         this.totalPoints = buffer.getInt();
         this.gameStatsJson = readString(buffer);
+        this.streak = buffer.getInt();
+        this.completedTaskCount = buffer.getInt();
+        this.totalTaskCount = buffer.getInt();
     }
 }

@@ -56,6 +56,11 @@ public class CoinRotator : MonoBehaviour
             if (ui != null)
             {
                 ui.Show(this, mode);
+                if (string.Equals(gameObject.name, "CoinCatva", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    PauseMenuManager.CompleteTaskByTitle("logic");
+                    ui.HideOverlayOnly();
+                }
             }
 
             SpawnNextCoinIfNeeded();
@@ -207,13 +212,7 @@ public class CoinRotator : MonoBehaviour
 
     private Transform ResolvePlayerTransform()
     {
-        var bean = FindObjectOfType<BeanController>();
-        if (bean != null) return bean.transform;
-
-        var fps = FindObjectOfType<FirstPersonControllerSimple>();
-        if (fps != null) return fps.transform;
-
-        return null;
+        return PlayerCache.ResolvePlayerTransform();
     }
 
     private void EnsureTrigger()

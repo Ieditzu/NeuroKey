@@ -46,6 +46,14 @@ public class PauseMenuManager : MonoBehaviour
 
     private HashSet<string> completedTaskTitles = new HashSet<string>();
 
+    private Text progressText;
+    private Image progressBarFill;
+    private Text streakText;
+
+    private int serverStreak;
+    private int serverCompletedTaskCount;
+    private int serverTotalTaskCount;
+
     private string SessionFilePath => Path.Combine(Application.persistentDataPath, "session.json");
 
     public static void CompleteTaskByTitle(string titleSubstring)
@@ -164,8 +172,13 @@ public class PauseMenuManager : MonoBehaviour
         {
             UnityMainThreadDispatcher.Instance().Enqueue(() => {
                 loggedInChildPoints = statsResp.TotalPoints;
+                serverStreak = statsResp.Streak;
+                serverCompletedTaskCount = statsResp.CompletedTaskCount;
+                serverTotalTaskCount = statsResp.TotalTaskCount;
                 if (qrStatusText != null)
                     qrStatusText.text = statsResp.Name + " | " + statsResp.TotalPoints + " pts";
+                UpdateProgressBar();
+                UpdateStreakDisplay();
             });
         }
         else if (packet is FetchTasksResponsePacket tasksResp)
@@ -173,6 +186,7 @@ public class PauseMenuManager : MonoBehaviour
             UnityMainThreadDispatcher.Instance().Enqueue(() => {
                 availableTasks = tasksResp.Tasks;
                 RebuildTaskList();
+                UpdateProgressBar();
             });
         }
         else if (packet is FetchGoalsResponsePacket goalsResp)
@@ -190,6 +204,7 @@ public class PauseMenuManager : MonoBehaviour
                     _ = GameClient.Instance.SendPacket(new FetchChildStatsPacket());
                     if (loggedInChildId != -1)
                         _ = GameClient.Instance.SendPacket(new FetchGoalsPacket(-1));
+                    UpdateProgressBar();
                 });
             }
         }
@@ -302,7 +317,7 @@ public class PauseMenuManager : MonoBehaviour
         // MAIN PANEL
         mainPanel = CreateUiObject("MainPanel", canvas.transform);
         RectTransform mainRect = mainPanel.GetComponent<RectTransform>();
-        mainRect.sizeDelta = new Vector2(720f, 520f);
+        mainRect.sizeDelta = new Vector2(720f, 560f);
         mainRect.anchoredPosition = Vector2.zero;
         mainPanel.AddComponent<Image>().color = new Color(0.09f, 0.12f, 0.18f, 0.96f);
         mainPanel.AddComponent<Outline>().effectColor = new Color(0.0f, 0.7f, 1f, 0.4f);
@@ -353,6 +368,43 @@ public class PauseMenuManager : MonoBehaviour
         Button logoutButton = CreateButton(qrSection.transform, "LogoutButton", "Log Out", new Vector2(0f, -140f), new Color(0.65f, 0.22f, 0.22f, 1f));
         logoutButton.GetComponent<RectTransform>().sizeDelta = new Vector2(220f, 36f);
         logoutButton.onClick.AddListener(LogoutAccount);
+
+        // Progress bar + streak row (bottom of main panel)
+        GameObject bottomBar = CreateUiObject("BottomBar", mainPanel.transform);
+        RectTransform bottomRect = bottomBar.GetComponent<RectTransform>();
+        bottomRect.sizeDelta = new Vector2(680f, 44f);
+        bottomRect.anchoredPosition = new Vector2(0f, -230f);
+        bottomBar.AddComponent<Image>().color = new Color(0.10f, 0.14f, 0.22f, 0.95f);
+
+        // Streak text (left side)
+        streakText = CreateText("StreakText", bottomBar.transform, "", 14, FontStyle.Bold, TextAnchor.MiddleLeft,
+            new Color(1f, 0.85f, 0.3f), new Vector2(-230f, 0f), new Vector2(180f, 34f));
+
+        // Progress text (right side)
+        progressText = CreateText("ProgressText", bottomBar.transform, "0 / 0 tasks", 13, FontStyle.Normal, TextAnchor.MiddleRight,
+            new Color(0.8f, 0.9f, 1f), new Vector2(230f, 0f), new Vector2(180f, 34f));
+
+        // Progress bar background
+        GameObject barBg = CreateUiObject("BarBg", bottomBar.transform);
+        RectTransform barBgRect = barBg.GetComponent<RectTransform>();
+        barBgRect.sizeDelta = new Vector2(260f, 12f);
+        barBgRect.anchoredPosition = new Vector2(50f, 0f);
+        barBg.AddComponent<Image>().color = new Color(0.2f, 0.2f, 0.3f, 0.8f);
+
+        // Progress bar fill
+        GameObject barFill = CreateUiObject("BarFill", barBg.transform);
+        progressBarFill = barFill.AddComponent<Image>();
+        progressBarFill.color = new Color(0.2f, 0.8f, 0.5f, 1f);
+        RectTransform fillRect = barFill.GetComponent<RectTransform>();
+        fillRect.anchorMin = new Vector2(0, 0);
+        fillRect.anchorMax = new Vector2(0, 1);
+        fillRect.pivot = new Vector2(0, 0.5f);
+        fillRect.offsetMin = Vector2.zero;
+        fillRect.offsetMax = Vector2.zero;
+        fillRect.sizeDelta = new Vector2(0f, 0f);
+
+        UpdateProgressBar();
+        UpdateStreakDisplay();
 
         // Actions stack
         GameObject actions = CreateUiObject("Actions", body.transform);
@@ -542,6 +594,30 @@ public class PauseMenuManager : MonoBehaviour
         }
     }
 
+    private void UpdateProgressBar()
+    {
+        if (progressText == null || progressBarFill == null) return;
+        int total = serverTotalTaskCount;
+        int done = serverCompletedTaskCount;
+        progressText.text = done + " / " + total + " tasks";
+
+        float ratio = total > 0 ? (float)done / total : 0f;
+        RectTransform fillRect = progressBarFill.GetComponent<RectTransform>();
+        fillRect.anchorMin = new Vector2(0, 0);
+        fillRect.anchorMax = new Vector2(ratio, 1);
+        fillRect.offsetMin = Vector2.zero;
+        fillRect.offsetMax = Vector2.zero;
+
+        // Color shifts green→gold as progress increases
+        progressBarFill.color = Color.Lerp(new Color(0.2f, 0.7f, 0.4f), new Color(1f, 0.85f, 0.2f), ratio);
+    }
+
+    private void UpdateStreakDisplay()
+    {
+        if (streakText != null)
+            streakText.text = serverStreak > 0 ? serverStreak + " day streak" : "";
+    }
+
     private void CreateSensitivitySection(Transform parent)
     {
         GameObject card = CreateUiObject("SensitivityCard", parent);
@@ -685,6 +761,8 @@ public class PauseMenuManager : MonoBehaviour
         UpdateSensitivityLabel(val);
     }
 
+    public static string GetLoggedInChildName() => instance != null ? instance.loggedInChildName : string.Empty;
+
     private void QuitGame()
     {
         SaveSettings();
@@ -728,7 +806,7 @@ public class PauseMenuManager : MonoBehaviour
 
     private void UpdateSensitivityLabel(float v) { if (sensitivityValueText != null) sensitivityValueText.text = v.ToString("0.00"); }
 
-    private void ReacquireControllerIfNeeded() { if (fpsController == null) fpsController = FindObjectOfType<FirstPersonControllerSimple>(); }
+    private void ReacquireControllerIfNeeded() { if (fpsController == null) fpsController = PlayerCache.GetFps(); }
 
     private void ApplySavedSensitivity()
     {

@@ -115,6 +115,26 @@ public class ClientHandler {
                         );
                     }
                     connection.send(new ActionResponsePacket(packet.getId(), true, "Goal added successfully", goal.getId()).encode());
+
+                    // Push updated goals to the child if they're online
+                    for (var entry : Server.getInstance().getActiveConnections().entrySet()) {
+                        if (entry.getKey().getChildId() != null && entry.getKey().getChildId() == addGoalPacket.getChildId()) {
+                            final var goals = Server.getInstance().getChildService().getGoals(addGoalPacket.getChildId());
+                            final var goalDtos = new java.util.ArrayList<FetchGoalsResponsePacket.GoalDto>();
+                            for (final var g : goals) {
+                                goalDtos.add(new FetchGoalsResponsePacket.GoalDto(
+                                        g.getId(), g.getTitle(), g.getReward(), g.getIsCompleted(),
+                                        g.getRequiredPoints() != null ? g.getRequiredPoints() : 0,
+                                        g.getRequiredTask() != null ? g.getRequiredTask().getId() : -1L
+                                ));
+                            }
+                            try {
+                                entry.getValue().getConnection().send(new FetchGoalsResponsePacket(goalDtos).encode());
+                                System.out.println("Pushed updated goals to child " + addGoalPacket.getChildId());
+                            } catch (Exception ignored) {}
+                            break;
+                        }
+                    }
                 }
 
                 case CompleteTaskPacket completeTaskPacket -> {
@@ -139,6 +159,25 @@ public class ClientHandler {
                     );
 
                     connection.send(new ActionResponsePacket(packet.getId(), true, "Task completed", -1).encode());
+
+                    // Notify the child's parent if they're online
+                    final var completedChild = Server.getInstance().getChildService().findById(completeTaskPacket.getChildId()).orElse(null);
+                    if (completedChild != null) {
+                        final Long parentIdToNotify = completedChild.getParent().getId();
+                        for (var entry : Server.getInstance().getActiveConnections().entrySet()) {
+                            if (parentIdToNotify.equals(entry.getKey().getParentId()) && entry.getKey().getChildId() == null) {
+                                try {
+                                    final var task = Server.getInstance().getTaskService().getAllTasks().stream()
+                                            .filter(t -> t.getId().equals(completeTaskPacket.getTaskId())).findFirst().orElse(null);
+                                    String taskName = task != null ? task.getTitle() : "a task";
+                                    entry.getValue().getConnection().send(
+                                            new ActionResponsePacket(8, true, completedChild.getName() + " completed: " + taskName, completeTaskPacket.getChildId()).encode()
+                                    );
+                                } catch (Exception ignored) {}
+                                break;
+                            }
+                        }
+                    }
                 }
 
                 case FetchTasksPacket fetchTasksPacket -> {
@@ -159,15 +198,19 @@ public class ClientHandler {
                             .orElseThrow(() -> new RuntimeException("Child not found"));
 
                     Server.getInstance().getLearningProfileService().ensureAiSummaries(child.getId());
-                    
+
                     String json = "{}";
                     try {
                         json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(child.getGameStats());
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
-                    
-                    connection.send(new FetchChildStatsResponsePacket(child.getName(), child.getTotalPoints(), json).encode());
+
+                    int streak = Server.getInstance().getChildService().updateStreak(client.getChildId());
+                    int completedCount = Server.getInstance().getChildService().getCompletedTasks(client.getChildId()).size();
+                    int totalTasks = Server.getInstance().getTaskService().getAllTasks().size();
+
+                    connection.send(new FetchChildStatsResponsePacket(child.getName(), child.getTotalPoints(), json, streak, completedCount, totalTasks).encode());
                 }
 
                 case FetchChildStatsByParentPacket fetchChildStatsByParentPacket -> {
@@ -191,7 +234,11 @@ public class ClientHandler {
                         e.printStackTrace();
                     }
 
-                    connection.send(new FetchChildStatsResponsePacket(child.getName(), child.getTotalPoints(), json).encode());
+                    int streak = child.getStreak() != null ? child.getStreak() : 0;
+                    int completedCount = Server.getInstance().getChildService().getCompletedTasks(child.getId()).size();
+                    int totalTasks = Server.getInstance().getTaskService().getAllTasks().size();
+
+                    connection.send(new FetchChildStatsResponsePacket(child.getName(), child.getTotalPoints(), json, streak, completedCount, totalTasks).encode());
                 }
 
                 case FetchChildrenPacket fetchChildrenPacket -> {

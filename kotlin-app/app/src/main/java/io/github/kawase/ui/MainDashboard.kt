@@ -891,48 +891,109 @@ fun SettingsScreen(viewModel: SocketViewModel) {
 @Composable
 fun HistoryScreen(viewModel: SocketViewModel) {
     val history = viewModel.completedTasks
+    val isDark = viewModel.isDarkMode.value
+    val subtextColor = if (isDark) Color.White.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.5f)
+
+    // Group by date (extract date part from completedAt string)
+    val grouped = remember(history) {
+        history.groupBy { task ->
+            task.completedAt.substringBefore(" ").substringBefore("T").ifBlank { task.completedAt }
+        }.toSortedMap(compareByDescending { it })
+    }
+    val totalPoints = remember(history) { history.sumOf { it.pointValue } }
 
     Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
         Text("Task History", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
-        Text("Completed tasks from the game", style = MaterialTheme.typography.bodyMedium, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f) )
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
+        Text("Completed tasks from the game", style = MaterialTheme.typography.bodyMedium, color = subtextColor)
+
+        if (history.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            // Summary stats row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                StatChip(label = "Total", value = "${history.size}", color = viewModel.primaryColor.value, isDark = isDark, modifier = Modifier.weight(1f))
+                StatChip(label = "Points", value = "$totalPoints", color = Color(0xFF4CAF50), isDark = isDark, modifier = Modifier.weight(1f))
+                StatChip(label = "Days", value = "${grouped.size}", color = Color(0xFFFF9800), isDark = isDark, modifier = Modifier.weight(1f))
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
         if (history.isEmpty()) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("No tasks completed yet.", color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.3f))
+                Text("No tasks completed yet.", color = if (isDark) Color.White.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.3f))
             }
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(history) { task ->
-                    Surface(
-                        modifier = Modifier.fillMaxWidth().border(1.dp, if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), RoundedCornerShape(20.dp)),
-                        shape = RoundedCornerShape(20.dp),
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
-                    ) {
-                        Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Surface(modifier = Modifier.size(40.dp), shape = CircleShape, color = viewModel.primaryColor.value.copy(alpha = 0.15f)) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp), tint = viewModel.primaryColor.value)
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                grouped.forEach { (date, tasks) ->
+                    val dayPoints = tasks.sumOf { it.pointValue }
+
+                    item(key = "header_$date") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                date,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = viewModel.primaryColor.value
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(modifier = Modifier.weight(1f).height(1.dp).background(if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.06f)))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "${tasks.size} tasks  +$dayPoints pts",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = subtextColor
+                            )
+                        }
+                    }
+
+                    items(tasks, key = { it.id }) { task ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().border(1.dp, if (isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), RoundedCornerShape(16.dp)),
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+                        ) {
+                            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Surface(modifier = Modifier.size(36.dp), shape = CircleShape, color = viewModel.primaryColor.value.copy(alpha = 0.15f)) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp), tint = viewModel.primaryColor.value)
+                                    }
                                 }
-                            }
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(task.taskTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("${task.pointValue} Points", style = MaterialTheme.typography.bodySmall, color = viewModel.primaryColor.value, fontWeight = FontWeight.Black)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Box(modifier = Modifier.size(2.dp).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f), CircleShape))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(task.completedAt, style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.5f))
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(task.taskTitle, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("${task.pointValue} pts", style = MaterialTheme.typography.bodySmall, color = viewModel.primaryColor.value, fontWeight = FontWeight.Black)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(task.completedAt.substringAfter(" ").substringAfter("T").take(5), style = MaterialTheme.typography.bodySmall, color = subtextColor)
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                item { Spacer(modifier = Modifier.height(100.dp)) }
             }
         }
-        Spacer(modifier = Modifier.height(100.dp))
+    }
+}
+
+@Composable
+private fun StatChip(label: String, value: String, color: Color, isDark: Boolean, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = color.copy(alpha = 0.1f)
+    ) {
+        Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = color)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = if (isDark) Color.White.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.5f))
+        }
     }
 }
 
@@ -1127,101 +1188,106 @@ fun GoalsScreen(viewModel: SocketViewModel, childId: Long) {
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-        Text("Goals", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
-        Text("Set goals and rewards", style = MaterialTheme.typography.bodyMedium, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-        
-        Spacer(modifier = Modifier.height(32.dp))
+    var detailPopupProfile by remember { mutableStateOf<Pair<String, AiProfile>?>(null) }
+
+    val profiles = remember(cppProfile, pythonProfile, generalProfile) {
+        listOf(
+            Triple("C++", cppProfile, Color(0xFF2196F3)),
+            Triple("Python", pythonProfile, Color(0xFF4CAF50)),
+            Triple("General", generalProfile, Color(0xFFFF9800))
+        ).filter { it.second != null }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        item {
+            Text("Goals", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+            Text("Set goals and rewards", style = MaterialTheme.typography.bodyMedium, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+            Spacer(modifier = Modifier.height(24.dp))
+        }
 
         if (childId != -1L) {
-            var detailPopupProfile by remember { mutableStateOf<Pair<String, AiProfile>?>(null) }
-
-            Text("AI Insights", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
-            Spacer(modifier = Modifier.height(4.dp))
-
-            if (cppProfile == null && pythonProfile == null && generalProfile == null) {
-                Text("Building profile from recent activity...", style = MaterialTheme.typography.bodyMedium, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.5f))
-            }
-
-            val profiles = listOf(
-                Triple("C++", cppProfile, Color(0xFF2196F3)),
-                Triple("Python", pythonProfile, Color(0xFF4CAF50)),
-                Triple("General", generalProfile, Color(0xFFFF9800))
-            )
-
-            profiles.forEach { (label, profile, accentColor) ->
-                if (profile != null) {
-                    ProfileInsightCard(
-                        label = label,
-                        profile = profile,
-                        accentColor = accentColor,
-                        isDarkMode = viewModel.isDarkMode.value,
-                        onDetailClick = { detailPopupProfile = label to profile }
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
+            item {
+                Text("AI Insights", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+                Spacer(modifier = Modifier.height(4.dp))
+                if (profiles.isEmpty()) {
+                    Text("Building profile from recent activity...", style = MaterialTheme.typography.bodyMedium, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.5f))
                 }
             }
 
-            if (detailPopupProfile != null) {
-                val (label, profile) = detailPopupProfile!!
-                ProfileDetailDialog(
+            items(profiles, key = { it.first }) { (label, profile, accentColor) ->
+                ProfileInsightCard(
                     label = label,
-                    profile = profile,
+                    profile = profile!!,
+                    accentColor = accentColor,
                     isDarkMode = viewModel.isDarkMode.value,
-                    primaryColor = viewModel.primaryColor.value,
-                    onDismiss = { detailPopupProfile = null }
+                    onDetailClick = { detailPopupProfile = label to profile }
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            item { Spacer(modifier = Modifier.height(14.dp)) }
         }
-        
+
         if (goals.isEmpty()) {
-            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("No goals set yet.", color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.3f))
+            item {
+                Box(modifier = Modifier.fillParentMaxHeight(0.4f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text("No goals set yet.", color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.3f))
+                }
             }
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                items(goals) { goal ->
-                    Surface(
-                        modifier = Modifier.fillMaxWidth().border(1.dp, if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), RoundedCornerShape(24.dp)),
-                        shape = RoundedCornerShape(24.dp),
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
-                    ) {
-                        Row(modifier = Modifier.padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    goal.title,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = if (goal.completed) viewModel.primaryColor.value else MaterialTheme.colorScheme.onSurface
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(14.dp), tint = viewModel.primaryColor.value)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Reward: ${goal.reward}", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                                }
+            items(goals, key = { it.id }) { goal ->
+                Surface(
+                    modifier = Modifier.fillMaxWidth().border(1.dp, if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), RoundedCornerShape(24.dp)),
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+                ) {
+                    Row(modifier = Modifier.padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                goal.title,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = if (goal.completed) viewModel.primaryColor.value else MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(14.dp), tint = viewModel.primaryColor.value)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Reward: ${goal.reward}", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
                             }
-                            
-                            Surface(
-                                shape = CircleShape,
-                                color = if (goal.completed) viewModel.primaryColor.value else Color.Transparent,
-                                border = if (goal.completed) null else androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-                            ) {
-                                Icon(
-                                    if (goal.completed) Icons.Default.Check else Icons.Default.Lock, 
-                                    contentDescription = null, 
-                                    modifier = Modifier.padding(8.dp).size(20.dp), 
-                                    tint = if (goal.completed) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                                )
-                            }
+                        }
+
+                        Surface(
+                            shape = CircleShape,
+                            color = if (goal.completed) viewModel.primaryColor.value else Color.Transparent,
+                            border = if (goal.completed) null else androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                        ) {
+                            Icon(
+                                if (goal.completed) Icons.Default.Check else Icons.Default.Lock,
+                                contentDescription = null,
+                                modifier = Modifier.padding(8.dp).size(20.dp),
+                                tint = if (goal.completed) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            )
                         }
                     }
                 }
             }
         }
-        Spacer(modifier = Modifier.height(100.dp))
+
+        item { Spacer(modifier = Modifier.height(100.dp)) }
+    }
+
+    if (detailPopupProfile != null) {
+        val (label, profile) = detailPopupProfile!!
+        ProfileDetailDialog(
+            label = label,
+            profile = profile,
+            isDarkMode = viewModel.isDarkMode.value,
+            primaryColor = viewModel.primaryColor.value,
+            onDismiss = { detailPopupProfile = null }
+        )
     }
 }
 

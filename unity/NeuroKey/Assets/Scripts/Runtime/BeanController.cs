@@ -38,6 +38,7 @@ public class BeanController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true; // Make it a bean, do not roll
+        PlayerCache.Register(this);
 
         var sphereCol = GetComponent<SphereCollider>();
         if (sphereCol != null)
@@ -146,6 +147,21 @@ public class BeanController : MonoBehaviour
         input = new Vector3(x, 0f, z).normalized;
     }
 
+    private void OnEnable()
+    {
+        PlayerCache.Register(this);
+    }
+
+    private void OnDisable()
+    {
+        PlayerCache.Unregister(this);
+    }
+
+    private void OnDestroy()
+    {
+        PlayerCache.Unregister(this);
+    }
+
     private void FixedUpdate()
     {
         isGrounded = CheckGrounded();
@@ -213,7 +229,7 @@ public class BeanController : MonoBehaviour
         }
     }
 
-    private void RespawnNow()
+    public void RespawnNow()
     {
         jumpQueued = false;
         rb.velocity = Vector3.zero;

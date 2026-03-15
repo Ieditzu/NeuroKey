@@ -27,12 +27,6 @@ public class RobotLookAt : MonoBehaviour
 
     private Transform ResolvePlayer()
     {
-        var bean = FindObjectOfType<BeanController>();
-        if (bean != null) return bean.transform;
-
-        var fps = FindObjectOfType<FirstPersonControllerSimple>();
-        if (fps != null) return fps.transform;
-
-        return null;
+        return PlayerCache.ResolvePlayerTransform();
     }
 }
