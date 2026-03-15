@@ -54,7 +54,9 @@ data class AiProfile(
     val commonMistakes: List<String>,
     val helpTopics: List<String>,
     val lastUpdated: String,
-    val summaryText: String
+    val summaryText: String,
+    val summaryOneLine: String,
+    val summaryThreeLine: String
 )
 
 class SocketViewModel(application: Application) : AndroidViewModel(application) {
@@ -456,6 +458,22 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
             }
             val commonMistakeList = commonMistakes.sortedByDescending { it.second }.filter { it.second > 0 }.map { it.first }.take(3)
 
+            val rawOneLine = profile.optString("summaryOneLine", "")
+            val rawThreeLine = profile.optString("summaryThreeLine", "")
+            val rawSummary = profile.optString("summaryText", "")
+
+            val summaryOneLine = rawOneLine.ifBlank {
+                if (total == 0) "No activity yet."
+                else "${level.replaceFirstChar { it.uppercase() }} level - ${String.format("%.0f", accuracy * 100)}% accuracy across $total attempts."
+            }
+            val summaryThreeLine = rawThreeLine.ifBlank {
+                buildString {
+                    append(summaryOneLine)
+                    if (strengths.isNotEmpty()) append(" Strengths: ${strengths.joinToString(", ")}.")
+                    if (needsHelp.isNotEmpty()) append(" Needs work on: ${needsHelp.joinToString(", ")}.")
+                }
+            }
+
             AiProfile(
                 level = level,
                 totalInteractions = profile.optInt("totalInteractions", 0),
@@ -470,7 +488,9 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
                 commonMistakes = commonMistakeList,
                 helpTopics = helpTopics,
                 lastUpdated = profile.optString("lastUpdated", ""),
-                summaryText = profile.optString("summaryText", "")
+                summaryText = rawSummary,
+                summaryOneLine = summaryOneLine,
+                summaryThreeLine = summaryThreeLine
             )
         } catch (e: Exception) {
             null

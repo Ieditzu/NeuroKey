@@ -54,6 +54,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -936,13 +937,190 @@ fun HistoryScreen(viewModel: SocketViewModel) {
 }
 
 @Composable
+fun ProfileInsightCard(
+    label: String,
+    profile: AiProfile,
+    accentColor: Color,
+    isDarkMode: Boolean,
+    onDetailClick: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val subtextColor = if (isDarkMode) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.55f)
+    val total = profile.correctCount + profile.incorrectCount
+    val accuracy = if (total == 0) 0f else profile.correctCount.toFloat() / total
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, if (isDarkMode) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.06f), RoundedCornerShape(16.dp))
+            .clickable { expanded = !expanded },
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = accentColor.copy(alpha = 0.15f),
+                    modifier = Modifier.padding(end = 10.dp)
+                ) {
+                    Text(
+                        label,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = accentColor
+                    )
+                }
+                Text(
+                    profile.level.replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = subtextColor
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                if (total > 0) {
+                    Text(
+                        "${String.format("%.0f", accuracy * 100)}%",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = when {
+                            accuracy >= 0.8f -> Color(0xFF4CAF50)
+                            accuracy >= 0.5f -> Color(0xFFFF9800)
+                            else -> Color(0xFFF44336)
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Default: one-line summary
+            Text(
+                profile.summaryOneLine,
+                style = MaterialTheme.typography.bodySmall,
+                color = subtextColor,
+                maxLines = if (expanded) Int.MAX_VALUE else 1
+            )
+
+            // Expanded: three-line summary
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        profile.summaryThreeLine,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isDarkMode) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.65f)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Stats row
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Column {
+                            Text("${profile.correctCount}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, color = Color(0xFF4CAF50))
+                            Text("Correct", style = MaterialTheme.typography.labelSmall, color = subtextColor)
+                        }
+                        Column {
+                            Text("${profile.incorrectCount}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, color = Color(0xFFF44336))
+                            Text("Wrong", style = MaterialTheme.typography.labelSmall, color = subtextColor)
+                        }
+                        Column {
+                            Text("${profile.hintsUsed}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, color = Color(0xFFFF9800))
+                            Text("Hints", style = MaterialTheme.typography.labelSmall, color = subtextColor)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        color = accentColor.copy(alpha = 0.1f),
+                        onClick = onDetailClick
+                    ) {
+                        Text(
+                            "View full details",
+                            modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth(),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = accentColor,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ProfileDetailDialog(
+    label: String,
+    profile: AiProfile,
+    isDarkMode: Boolean,
+    primaryColor: Color,
+    onDismiss: () -> Unit
+) {
+    val subtextColor = if (isDarkMode) Color.White.copy(alpha = 0.75f) else Color.Black.copy(alpha = 0.6f)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        },
+        title = {
+            Text("$label Profile", fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                // Summary
+                Text(profile.summaryThreeLine, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Stats
+                ProfileDetailSection("Level", profile.level.replaceFirstChar { it.uppercase() }, subtextColor)
+                ProfileDetailSection("Total Interactions", "${profile.totalInteractions}", subtextColor)
+                ProfileDetailSection("Correct / Incorrect", "${profile.correctCount} / ${profile.incorrectCount}", subtextColor)
+                ProfileDetailSection("Hints Used", "${profile.hintsUsed}", subtextColor)
+                ProfileDetailSection("AI Chat Turns", "${profile.chatTurns}", subtextColor)
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Strengths
+                ProfileDetailList("Strengths", profile.strengths, Color(0xFF4CAF50), subtextColor)
+                ProfileDetailList("Needs Help With", profile.needsHelp, Color(0xFFF44336), subtextColor)
+                ProfileDetailList("Struggle Concepts", profile.struggleConcepts, Color(0xFFFF9800), subtextColor)
+                ProfileDetailList("Common Mistakes", profile.commonMistakes, Color(0xFFF44336), subtextColor)
+                ProfileDetailList("Asked AI About", profile.helpTopics, primaryColor, subtextColor)
+                ProfileDetailList("Recent Mistakes", profile.recentMistakes, Color(0xFFFF9800), subtextColor)
+            }
+        }
+    )
+}
+
+@Composable
+private fun ProfileDetailSection(label: String, value: String, subtextColor: Color) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+        Text("$label: ", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = subtextColor)
+        Text(value, style = MaterialTheme.typography.bodySmall, color = subtextColor)
+    }
+}
+
+@Composable
+private fun ProfileDetailList(label: String, items: List<String>, accentColor: Color, subtextColor: Color) {
+    if (items.isEmpty()) return
+    Spacer(modifier = Modifier.height(6.dp))
+    Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = accentColor)
+    items.forEach { item ->
+        Text("  - $item", style = MaterialTheme.typography.bodySmall, color = subtextColor)
+    }
+}
+
+@Composable
 fun GoalsScreen(viewModel: SocketViewModel, childId: Long) {
     val goals = viewModel.goals
     val cppProfile = viewModel.aiProfilesCpp[childId]
     val pythonProfile = viewModel.aiProfilesPython[childId]
     val generalProfile = viewModel.aiProfilesGeneral[childId]
-    var insightsExpanded by remember { mutableStateOf(false) }
-
     LaunchedEffect(childId) {
         if (childId != -1L) {
             viewModel.fetchChildProfile(childId)
@@ -956,93 +1134,43 @@ fun GoalsScreen(viewModel: SocketViewModel, childId: Long) {
         Spacer(modifier = Modifier.height(32.dp))
 
         if (childId != -1L) {
-            Surface(
-                modifier = Modifier.fillMaxWidth().border(1.dp, if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.08f), RoundedCornerShape(24.dp)),
-                shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
-            ) {
-                Column(modifier = Modifier.padding(20.dp).clickable { insightsExpanded = !insightsExpanded }) {
-                    Text("AI Insights", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
-                    Spacer(modifier = Modifier.height(8.dp))
+            var detailPopupProfile by remember { mutableStateOf<Pair<String, AiProfile>?>(null) }
 
-                    if (cppProfile == null && pythonProfile == null && generalProfile == null) {
-                        Text("Building profile from recent activity...", style = MaterialTheme.typography.bodyMedium, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.5f))
-                    }
+            Text("AI Insights", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+            Spacer(modifier = Modifier.height(4.dp))
 
-                    if (cppProfile != null) {
-                        Text("C++", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = viewModel.primaryColor.value)
-                        val summaryText = if (cppProfile.summaryText.isNotBlank()) cppProfile.summaryText else {
-                            if (cppProfile.struggleConcepts.isEmpty()) "No major struggles yet." else "Struggles: ${cppProfile.struggleConcepts.joinToString(", ")}."
-                        }
-                        Text("Summary: $summaryText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.75f) else Color.Black.copy(alpha = 0.55f))
-                        if (insightsExpanded) {
-                            Text("Level: ${cppProfile.level}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                            Text("Correct: ${cppProfile.correctCount}  Incorrect: ${cppProfile.incorrectCount}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                            Text("Hints used: ${cppProfile.hintsUsed}  AI chats: ${cppProfile.chatTurns}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                            Spacer(modifier = Modifier.height(6.dp))
-                            val strengthsText = if (cppProfile.strengths.isEmpty()) "None yet" else cppProfile.strengths.joinToString(", ")
-                            val needsHelpText = if (cppProfile.needsHelp.isEmpty()) "None yet" else cppProfile.needsHelp.joinToString(", ")
-                            val struggleText = if (cppProfile.struggleConcepts.isEmpty()) "None yet" else cppProfile.struggleConcepts.joinToString(", ")
-                            val mistakesText = if (cppProfile.commonMistakes.isEmpty()) "No common mistakes yet" else cppProfile.commonMistakes.joinToString(", ")
-                            val helpText = if (cppProfile.helpTopics.isEmpty()) "No frequent help topics yet" else cppProfile.helpTopics.joinToString(", ")
-                            Text("Strengths: $strengthsText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                            Text("Needs help: $needsHelpText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                            Text("Struggles: $struggleText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                            Text("Common mistakes: $mistakesText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                            Text("Asked AI about: $helpText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                            Spacer(modifier = Modifier.height(10.dp))
-                        }
-                    }
+            if (cppProfile == null && pythonProfile == null && generalProfile == null) {
+                Text("Building profile from recent activity...", style = MaterialTheme.typography.bodyMedium, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.5f))
+            }
 
-                    if (pythonProfile != null) {
-                        Text("Python", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = viewModel.primaryColor.value)
-                        val summaryText = if (pythonProfile.summaryText.isNotBlank()) pythonProfile.summaryText else {
-                            if (pythonProfile.struggleConcepts.isEmpty()) "No major struggles yet." else "Struggles: ${pythonProfile.struggleConcepts.joinToString(", ")}."
-                        }
-                        Text("Summary: $summaryText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.75f) else Color.Black.copy(alpha = 0.55f))
-                        if (insightsExpanded) {
-                            Text("Level: ${pythonProfile.level}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                            Text("Correct: ${pythonProfile.correctCount}  Incorrect: ${pythonProfile.incorrectCount}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                            Text("Hints used: ${pythonProfile.hintsUsed}  AI chats: ${pythonProfile.chatTurns}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                            Spacer(modifier = Modifier.height(6.dp))
-                            val strengthsText = if (pythonProfile.strengths.isEmpty()) "None yet" else pythonProfile.strengths.joinToString(", ")
-                            val needsHelpText = if (pythonProfile.needsHelp.isEmpty()) "None yet" else pythonProfile.needsHelp.joinToString(", ")
-                            val struggleText = if (pythonProfile.struggleConcepts.isEmpty()) "None yet" else pythonProfile.struggleConcepts.joinToString(", ")
-                            val mistakesText = if (pythonProfile.commonMistakes.isEmpty()) "No common mistakes yet" else pythonProfile.commonMistakes.joinToString(", ")
-                            val helpText = if (pythonProfile.helpTopics.isEmpty()) "No frequent help topics yet" else pythonProfile.helpTopics.joinToString(", ")
-                            Text("Strengths: $strengthsText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                            Text("Needs help: $needsHelpText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                            Text("Struggles: $struggleText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                            Text("Common mistakes: $mistakesText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                            Text("Asked AI about: $helpText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                            Spacer(modifier = Modifier.height(10.dp))
-                        }
-                    }
+            val profiles = listOf(
+                Triple("C++", cppProfile, Color(0xFF2196F3)),
+                Triple("Python", pythonProfile, Color(0xFF4CAF50)),
+                Triple("General", generalProfile, Color(0xFFFF9800))
+            )
 
-                    if (generalProfile != null) {
-                        Text("General", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = viewModel.primaryColor.value)
-                        val summaryText = if (generalProfile.summaryText.isNotBlank()) generalProfile.summaryText else {
-                            if (generalProfile.struggleConcepts.isEmpty()) "No major struggles yet." else "Struggles: ${generalProfile.struggleConcepts.joinToString(", ")}."
-                        }
-                        Text("Summary: $summaryText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.75f) else Color.Black.copy(alpha = 0.55f))
-                        if (insightsExpanded) {
-                            Text("Level: ${generalProfile.level}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                            Text("Correct: ${generalProfile.correctCount}  Incorrect: ${generalProfile.incorrectCount}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                            Text("Hints used: ${generalProfile.hintsUsed}  AI chats: ${generalProfile.chatTurns}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                            Spacer(modifier = Modifier.height(6.dp))
-                            val strengthsText = if (generalProfile.strengths.isEmpty()) "None yet" else generalProfile.strengths.joinToString(", ")
-                            val needsHelpText = if (generalProfile.needsHelp.isEmpty()) "None yet" else generalProfile.needsHelp.joinToString(", ")
-                            val struggleText = if (generalProfile.struggleConcepts.isEmpty()) "None yet" else generalProfile.struggleConcepts.joinToString(", ")
-                            val mistakesText = if (generalProfile.commonMistakes.isEmpty()) "No common mistakes yet" else generalProfile.commonMistakes.joinToString(", ")
-                            val helpText = if (generalProfile.helpTopics.isEmpty()) "No frequent help topics yet" else generalProfile.helpTopics.joinToString(", ")
-                            Text("Strengths: $strengthsText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                            Text("Needs help: $needsHelpText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                            Text("Struggles: $struggleText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                            Text("Common mistakes: $mistakesText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                            Text("Asked AI about: $helpText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                        }
-                    }
+            profiles.forEach { (label, profile, accentColor) ->
+                if (profile != null) {
+                    ProfileInsightCard(
+                        label = label,
+                        profile = profile,
+                        accentColor = accentColor,
+                        isDarkMode = viewModel.isDarkMode.value,
+                        onDetailClick = { detailPopupProfile = label to profile }
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
                 }
+            }
+
+            if (detailPopupProfile != null) {
+                val (label, profile) = detailPopupProfile!!
+                ProfileDetailDialog(
+                    label = label,
+                    profile = profile,
+                    isDarkMode = viewModel.isDarkMode.value,
+                    primaryColor = viewModel.primaryColor.value,
+                    onDismiss = { detailPopupProfile = null }
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))

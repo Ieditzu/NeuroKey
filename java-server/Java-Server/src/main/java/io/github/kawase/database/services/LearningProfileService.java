@@ -201,13 +201,13 @@ public class LearningProfileService {
             Map<String, Object> stats = safeMap(entry.getValue());
             int correct = getInt(stats.get("correct"));
             int incorrect = getInt(stats.get("incorrect"));
-            int score = incorrect - correct;
+            int score = struggles ? (incorrect - correct) : (correct - incorrect);
             scored.add(Map.entry(entry.getKey(), score));
         }
         scored.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
         List<String> results = new ArrayList<>();
         for (Map.Entry<String, Integer> entry : scored) {
-            if (struggles && entry.getValue() <= 0) {
+            if (entry.getValue() <= 0) {
                 continue;
             }
             results.add(entry.getKey());
@@ -261,7 +261,20 @@ public class LearningProfileService {
             return;
         }
 
-        profile.put("summaryText", summary.trim());
+        String trimmed = summary.trim();
+        String oneLine = trimmed;
+        String threeLine = trimmed;
+
+        int oneIdx = trimmed.indexOf("ONE:");
+        int threeIdx = trimmed.indexOf("THREE:");
+        if (oneIdx != -1 && threeIdx != -1) {
+            oneLine = trimmed.substring(oneIdx + 4, threeIdx).trim();
+            threeLine = trimmed.substring(threeIdx + 6).trim();
+        }
+
+        profile.put("summaryText", trimmed);
+        profile.put("summaryOneLine", oneLine);
+        profile.put("summaryThreeLine", threeLine);
         profile.put("summaryUpdated", Instant.now().toString());
         gameStats.put(profileKey, profile);
     }
@@ -269,18 +282,27 @@ public class LearningProfileService {
     private String buildSummaryPrompt(final Map<String, Object> profile, final String label) {
         int correct = getInt(profile.get("correctCount"));
         int incorrect = getInt(profile.get("incorrectCount"));
+        int total = correct + incorrect;
+        int hintsUsed = getInt(profile.get("hintsUsed"));
+        int chatTurns = getInt(profile.get("chatTurns"));
+        double accuracy = total == 0 ? 0.0 : (double) correct / Math.max(1, total);
+        List<String> strengths = topConcepts(profile, false);
         List<String> struggles = topConcepts(profile, true);
         List<String> mistakes = topMistakes(profile);
         List<String> helpTopics = topHelpTopics(profile);
 
-        return "You are summarizing a student's learning profile for a parent.\n" +
-                "Language: " + label + "\n" +
-                "Correct submissions: " + correct + "\n" +
-                "Incorrect submissions: " + incorrect + "\n" +
-                "Struggle concepts: " + String.join(", ", struggles) + "\n" +
-                "Common mistakes: " + String.join(", ", mistakes) + "\n" +
-                "AI help topics: " + String.join(", ", helpTopics) + "\n" +
-                "Write 2-3 short sentences. Keep it clear and parent-friendly.";
+        return "You are summarizing a student's " + label + " learning profile for their parent.\n" +
+                "Data:\n" +
+                "- Correct: " + correct + ", Incorrect: " + incorrect + ", Accuracy: " + String.format("%.0f%%", accuracy * 100) + "\n" +
+                "- Hints used: " + hintsUsed + ", AI chat turns: " + chatTurns + "\n" +
+                "- Strengths: " + (strengths.isEmpty() ? "none yet" : String.join(", ", strengths)) + "\n" +
+                "- Struggles: " + (struggles.isEmpty() ? "none yet" : String.join(", ", struggles)) + "\n" +
+                "- Common mistakes: " + (mistakes.isEmpty() ? "none" : String.join(", ", mistakes)) + "\n" +
+                "- Asked AI about: " + (helpTopics.isEmpty() ? "nothing yet" : String.join(", ", helpTopics)) + "\n\n" +
+                "Reply in EXACTLY this format (no extra text):\n" +
+                "ONE: <one sentence overall assessment>\n" +
+                "THREE: <three sentence detailed summary covering strengths, weaknesses, and recommendation>\n" +
+                "Keep it parent-friendly, encouraging, and actionable.";
     }
 
     private List<String> topHelpTopics(final Map<String, Object> profile) {
