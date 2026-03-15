@@ -772,7 +772,8 @@ public class CppQuestionPadCinematic : MonoBehaviour
         }
 
         string[] lines = prompt.Split('\n');
-        return lines.Length > 0 ? lines[0].Trim() : "cpp_quiz";
+        string title = lines.Length > 0 ? lines[0].Trim() : "quiz";
+        return "cpp:" + title;
     }
 
     private void OnNextClicked()

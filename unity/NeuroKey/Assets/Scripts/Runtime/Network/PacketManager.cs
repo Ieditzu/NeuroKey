@@ -26,6 +26,8 @@ namespace NeuroKey.Network
                 30 => new AskAiPacket(),
                 31 => new AiResponsePacket(),
                 33 => new RecordLearningEventPacket(),
+                34 => new ExecutePythonCodePacket(),
+                35 => new ExecutePythonCodeResponsePacket(),
                 _ => throw new Exception("Unknown packet ID: " + id),
             };
         }
@@ -214,6 +216,33 @@ namespace NeuroKey.Network
         public string Error;
         public ExecuteCPPCodeResponsePacket(string output, string error) : base(29) { Output = output; Error = error; }
         public ExecuteCPPCodeResponsePacket() : base(29) { }
+        protected override void Write(BinaryWriter writer)
+        {
+            PutString(writer, Output ?? string.Empty);
+            PutString(writer, Error ?? string.Empty);
+        }
+        protected override void Read(BinaryReader reader)
+        {
+            Output = ReadString(reader);
+            Error = ReadString(reader);
+        }
+    }
+
+    public class ExecutePythonCodePacket : Packet
+    {
+        public string Code;
+        public ExecutePythonCodePacket(string code) : base(34) { Code = code; }
+        public ExecutePythonCodePacket() : base(34) { }
+        protected override void Write(BinaryWriter writer) { PutString(writer, Code ?? string.Empty); }
+        protected override void Read(BinaryReader reader) { Code = ReadString(reader); }
+    }
+
+    public class ExecutePythonCodeResponsePacket : Packet
+    {
+        public string Output;
+        public string Error;
+        public ExecutePythonCodeResponsePacket(string output, string error) : base(35) { Output = output; Error = error; }
+        public ExecutePythonCodeResponsePacket() : base(35) { }
         protected override void Write(BinaryWriter writer)
         {
             PutString(writer, Output ?? string.Empty);

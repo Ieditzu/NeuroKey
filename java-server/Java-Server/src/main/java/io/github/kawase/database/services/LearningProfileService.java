@@ -34,50 +34,16 @@ public class LearningProfileService {
             gameStats = new HashMap<>();
         }
 
-        Map<String, Object> aiProfile = ensureMap(gameStats, "aiProfile");
-        Map<String, Object> topics = ensureMap(aiProfile, "topics");
+        String language = deriveLanguage(topic, details);
+        String resolvedTopic = (topic == null || topic.isBlank()) ? "general" : topic.trim();
 
-        String resolvedTopic = (topic == null || topic.isBlank()) ? "cpp_general" : topic.trim();
-        Map<String, Object> topicStats = ensureMap(topics, resolvedTopic);
-
-        int totalInteractions = getInt(aiProfile.get("totalInteractions")) + 1;
-        aiProfile.put("totalInteractions", totalInteractions);
-
-        if ("ai_chat".equals(eventType)) {
-            aiProfile.put("chatTurns", getInt(aiProfile.get("chatTurns")) + 1);
-        } else if ("ai_hint".equals(eventType) || "hint".equals(eventType)) {
-            aiProfile.put("hintsUsed", getInt(aiProfile.get("hintsUsed")) + 1);
+        if (language == null) {
+            updateProfile(gameStats, "aiProfileGeneral", eventType, resolvedTopic, correctness, details);
+        } else {
+            updateProfile(gameStats, language.equals("cpp") ? "aiProfileCpp" : "aiProfilePython", eventType, resolvedTopic, correctness, details);
+            updateProfile(gameStats, "aiProfileGeneral", eventType, resolvedTopic, correctness, details);
         }
 
-        if (correctness == 1) {
-            aiProfile.put("correctCount", getInt(aiProfile.get("correctCount")) + 1);
-            topicStats.put("correct", getInt(topicStats.get("correct")) + 1);
-        } else if (correctness == 0) {
-            aiProfile.put("incorrectCount", getInt(aiProfile.get("incorrectCount")) + 1);
-            topicStats.put("incorrect", getInt(topicStats.get("incorrect")) + 1);
-        }
-
-        topicStats.put("attempts", getInt(topicStats.get("attempts")) + 1);
-        topicStats.put("lastResult", correctness == 1 ? "correct" : correctness == 0 ? "incorrect" : "unknown");
-        topicStats.put("lastSeen", Instant.now().toString());
-        topics.put(resolvedTopic, topicStats);
-        aiProfile.put("topics", topics);
-        aiProfile.put("lastUpdated", Instant.now().toString());
-
-        List<Map<String, Object>> recentEvents = ensureList(aiProfile, "recentEvents");
-        Map<String, Object> event = new LinkedHashMap<>();
-        event.put("ts", Instant.now().toString());
-        event.put("type", eventType == null ? "unknown" : eventType);
-        event.put("topic", resolvedTopic);
-        event.put("correctness", correctness == 1 ? "correct" : correctness == 0 ? "incorrect" : "unknown");
-        event.put("detail", truncate(details, 180));
-        recentEvents.add(event);
-        if (recentEvents.size() > 10) {
-            recentEvents.remove(0);
-        }
-        aiProfile.put("recentEvents", recentEvents);
-
-        gameStats.put("aiProfile", aiProfile);
         child.setGameStats(gameStats);
         childRepository.save(child);
     }
@@ -99,6 +65,11 @@ public class LearningProfileService {
 
     @Transactional(readOnly = true)
     public String buildProfileSummary(final Long childId) {
+        return buildProfileSummary(childId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public String buildProfileSummary(final Long childId, final String language) {
         if (childId == null) {
             return "";
         }
@@ -109,11 +80,18 @@ public class LearningProfileService {
         }
 
         Map<String, Object> gameStats = child.getGameStats();
-        if (gameStats == null || !gameStats.containsKey("aiProfile")) {
+        if (gameStats == null) {
             return "No prior learning profile yet.";
         }
 
-        Map<String, Object> aiProfile = safeMap(gameStats.get("aiProfile"));
+        String profileKey = null;
+        if (language != null) {
+            profileKey = language.equals("cpp") ? "aiProfileCpp" : language.equals("python") ? "aiProfilePython" : null;
+        }
+
+        Map<String, Object> aiProfile = profileKey != null ? safeMap(gameStats.get(profileKey)) : Collections.emptyMap();
+        Map<String, Object> generalProfile = safeMap(gameStats.get("aiProfileGeneral"));
+
         int correct = getInt(aiProfile.get("correctCount"));
         int incorrect = getInt(aiProfile.get("incorrectCount"));
         int total = correct + incorrect;
@@ -165,6 +143,9 @@ public class LearningProfileService {
         }
 
         StringBuilder summary = new StringBuilder();
+        if (language != null) {
+            summary.append("Language: ").append(language).append(". ");
+        }
         summary.append("Student level: ").append(level).append(". ");
         if (!strengths.isEmpty()) {
             summary.append("Strengths: ").append(String.join(", ", strengths)).append(". ");
@@ -172,7 +153,13 @@ public class LearningProfileService {
         if (!needsHelp.isEmpty()) {
             summary.append("Needs help with: ").append(String.join(", ", needsHelp)).append(". ");
         }
-        summary.append("Accuracy: ").append(correct).append(" correct out of ").append(total).append(".");
+        summary.append("Accuracy: ").append(correct).append(" correct out of ").append(total).append(". ");
+        int genCorrect = getInt(generalProfile.get("correctCount"));
+        int genIncorrect = getInt(generalProfile.get("incorrectCount"));
+        int genTotal = genCorrect + genIncorrect;
+        if (genTotal > 0) {
+            summary.append("Overall programming accuracy: ").append(genCorrect).append(" correct out of ").append(genTotal).append(".");
+        }
         return summary.toString();
     }
 
@@ -204,7 +191,72 @@ public class LearningProfileService {
         if (context != null && !context.isBlank()) {
             return context;
         }
-        return "cpp_general";
+        return "general";
+    }
+
+    private String deriveLanguage(final String topic, final String details) {
+        String text = (topic == null ? "" : topic) + " " + (details == null ? "" : details);
+        String normalized = text.toLowerCase();
+        if (normalized.contains("cpp") || normalized.contains("c++")) {
+            return "cpp";
+        }
+        if (normalized.contains("python") || normalized.startsWith("py_") || normalized.contains("py_")) {
+            return "python";
+        }
+        if (normalized.startsWith("cpp:")) {
+            return "cpp";
+        }
+        if (normalized.startsWith("python:") || normalized.startsWith("py:")) {
+            return "python";
+        }
+        return null;
+    }
+
+    private void updateProfile(final Map<String, Object> gameStats, final String profileKey, final String eventType, final String topic, final int correctness, final String details) {
+        Map<String, Object> aiProfile = ensureMap(gameStats, profileKey);
+        Map<String, Object> topics = ensureMap(aiProfile, "topics");
+
+        String resolvedTopic = (topic == null || topic.isBlank()) ? "general" : topic.trim();
+        Map<String, Object> topicStats = ensureMap(topics, resolvedTopic);
+
+        int totalInteractions = getInt(aiProfile.get("totalInteractions")) + 1;
+        aiProfile.put("totalInteractions", totalInteractions);
+
+        if ("ai_chat".equals(eventType)) {
+            aiProfile.put("chatTurns", getInt(aiProfile.get("chatTurns")) + 1);
+        } else if ("ai_hint".equals(eventType) || "hint".equals(eventType)) {
+            aiProfile.put("hintsUsed", getInt(aiProfile.get("hintsUsed")) + 1);
+        }
+
+        if (correctness == 1) {
+            aiProfile.put("correctCount", getInt(aiProfile.get("correctCount")) + 1);
+            topicStats.put("correct", getInt(topicStats.get("correct")) + 1);
+        } else if (correctness == 0) {
+            aiProfile.put("incorrectCount", getInt(aiProfile.get("incorrectCount")) + 1);
+            topicStats.put("incorrect", getInt(topicStats.get("incorrect")) + 1);
+        }
+
+        topicStats.put("attempts", getInt(topicStats.get("attempts")) + 1);
+        topicStats.put("lastResult", correctness == 1 ? "correct" : correctness == 0 ? "incorrect" : "unknown");
+        topicStats.put("lastSeen", Instant.now().toString());
+        topics.put(resolvedTopic, topicStats);
+        aiProfile.put("topics", topics);
+        aiProfile.put("lastUpdated", Instant.now().toString());
+
+        List<Map<String, Object>> recentEvents = ensureList(aiProfile, "recentEvents");
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put("ts", Instant.now().toString());
+        event.put("type", eventType == null ? "unknown" : eventType);
+        event.put("topic", resolvedTopic);
+        event.put("correctness", correctness == 1 ? "correct" : correctness == 0 ? "incorrect" : "unknown");
+        event.put("detail", truncate(details, 180));
+        recentEvents.add(event);
+        if (recentEvents.size() > 10) {
+            recentEvents.remove(0);
+        }
+        aiProfile.put("recentEvents", recentEvents);
+
+        gameStats.put(profileKey, aiProfile);
     }
 
     @SuppressWarnings("unchecked")

@@ -117,8 +117,12 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
     private val _completedTasks = mutableStateListOf<CompletedTask>()
     val completedTasks: List<CompletedTask> = _completedTasks
 
-    private val _aiProfiles = mutableStateMapOf<Long, AiProfile>()
-    val aiProfiles: Map<Long, AiProfile> = _aiProfiles
+    private val _aiProfilesCpp = mutableStateMapOf<Long, AiProfile>()
+    val aiProfilesCpp: Map<Long, AiProfile> = _aiProfilesCpp
+    private val _aiProfilesPython = mutableStateMapOf<Long, AiProfile>()
+    val aiProfilesPython: Map<Long, AiProfile> = _aiProfilesPython
+    private val _aiProfilesGeneral = mutableStateMapOf<Long, AiProfile>()
+    val aiProfilesGeneral: Map<Long, AiProfile> = _aiProfilesGeneral
     private var pendingChildStatsId: Long? = null
 
     private val _errorFlow = MutableSharedFlow<String>()
@@ -360,8 +364,14 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
             is FetchChildStatsResponsePacket -> {
                 val targetId = pendingChildStatsId
                 if (targetId != null) {
-                    parseAiProfile(packet.gameStatsJson)?.let { profile ->
-                        _aiProfiles[targetId] = profile
+                    parseAiProfile(packet.gameStatsJson, "aiProfileCpp")?.let { profile ->
+                        _aiProfilesCpp[targetId] = profile
+                    }
+                    parseAiProfile(packet.gameStatsJson, "aiProfilePython")?.let { profile ->
+                        _aiProfilesPython[targetId] = profile
+                    }
+                    parseAiProfile(packet.gameStatsJson, "aiProfileGeneral")?.let { profile ->
+                        _aiProfilesGeneral[targetId] = profile
                     }
                     pendingChildStatsId = null
                 }
@@ -369,11 +379,11 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun parseAiProfile(gameStatsJson: String): AiProfile? {
+    private fun parseAiProfile(gameStatsJson: String, key: String): AiProfile? {
         return try {
             val stats = JSONObject(gameStatsJson)
-            if (!stats.has("aiProfile")) return null
-            val profile = stats.getJSONObject("aiProfile")
+            if (!stats.has(key)) return null
+            val profile = stats.getJSONObject(key)
             val correct = profile.optInt("correctCount", 0)
             val incorrect = profile.optInt("incorrectCount", 0)
             val total = correct + incorrect
@@ -394,7 +404,7 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
                     val t = topicsJson.optJSONObject(key) ?: continue
                     val tCorrect = t.optInt("correct", 0)
                     val tIncorrect = t.optInt("incorrect", 0)
-                    scores.add(key to (tCorrect - tIncorrect))
+                    scores.add(normalizeTopic(key) to (tCorrect - tIncorrect))
                 }
             }
 
@@ -407,7 +417,7 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
                 for (i in 0 until recentEvents.length()) {
                     val ev = recentEvents.optJSONObject(i) ?: continue
                     if (ev.optString("correctness") == "incorrect") {
-                        mistakes.add(ev.optString("topic", "unknown"))
+                        mistakes.add(normalizeTopic(ev.optString("topic", "unknown")))
                     }
                 }
             }
@@ -427,5 +437,17 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
         } catch (e: Exception) {
             null
         }
+    }
+
+    private fun normalizeTopic(topic: String): String {
+        var t = topic
+        if (t.startsWith("cpp:", true)) {
+            t = t.substring(4)
+        } else if (t.startsWith("python:", true)) {
+            t = t.substring(7)
+        } else if (t.startsWith("py:", true)) {
+            t = t.substring(3)
+        }
+        return t.trim().ifEmpty { "general" }
     }
 }

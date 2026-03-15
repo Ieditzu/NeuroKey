@@ -11,6 +11,8 @@ import io.github.kawase.packet.impl.core.*;
 import io.github.kawase.packet.impl.game.*;
 import io.github.kawase.packet.impl.language.ExecuteCPPCodePacket;
 import io.github.kawase.packet.impl.language.ExecuteCPPCodeResponsePacket;
+import io.github.kawase.packet.impl.language.ExecutePythonCodePacket;
+import io.github.kawase.packet.impl.language.ExecutePythonCodeResponsePacket;
 import io.github.kawase.packet.impl.qr.*;
 import io.github.kawase.socket.ServerSocket;
 import lombok.Getter;
@@ -355,6 +357,13 @@ public class ClientHandler {
                     connection.send(new ExecuteCPPCodeResponsePacket(executionResult.getOutput(), executionResult.getError()).encode());
                 }
 
+                case ExecutePythonCodePacket executePythonCodePacket -> {
+                    final io.github.kawase.python.PythonExecutor.ExecutionResult executionResult =
+                            io.github.kawase.python.PythonExecutor.execute(executePythonCodePacket.getCode(), 120);
+
+                    connection.send(new ExecutePythonCodeResponsePacket(executionResult.getOutput(), executionResult.getError()).encode());
+                }
+
                 case AskAiPacket askAiPacket -> {
                     System.out.println("AI Question from " + (client.getChildId() != null ? "child " + client.getChildId() : "parent " + client.getParentId()) + ": " + askAiPacket.getQuestion());
                     
@@ -362,7 +371,16 @@ public class ClientHandler {
                     String profileSummary = "";
                     if (client.getChildId() != null) {
                         Server.getInstance().getLearningProfileService().recordAiInteraction(client.getChildId(), askAiPacket.getContext(), askAiPacket.getQuestion());
-                        profileSummary = Server.getInstance().getLearningProfileService().buildProfileSummary(client.getChildId());
+                        String language = null;
+                        if (askAiPacket.getContext() != null) {
+                            String ctx = askAiPacket.getContext().toLowerCase();
+                            if (ctx.contains("cpp")) {
+                                language = "cpp";
+                            } else if (ctx.contains("python") || ctx.contains("py")) {
+                                language = "python";
+                            }
+                        }
+                        profileSummary = Server.getInstance().getLearningProfileService().buildProfileSummary(client.getChildId(), language);
                     }
 
                     String response = ai.ask(

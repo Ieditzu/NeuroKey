@@ -1256,16 +1256,17 @@ public class CodeChallengePadCinematic : MonoBehaviour
     {
         if (!string.IsNullOrWhiteSpace(challenge.ValidationId))
         {
-            return challenge.ValidationId;
+            return "cpp:" + challenge.ValidationId;
         }
 
         if (!string.IsNullOrWhiteSpace(challenge.Prompt))
         {
             string[] lines = challenge.Prompt.Split('\n');
-            return lines.Length > 0 ? lines[0].Trim() : "cpp_challenge";
+            string title = lines.Length > 0 ? lines[0].Trim() : "challenge";
+            return "cpp:" + title;
         }
 
-        return "cpp_challenge";
+        return "cpp:challenge";
     }
 
     private void ShowMainUi(bool visible)
