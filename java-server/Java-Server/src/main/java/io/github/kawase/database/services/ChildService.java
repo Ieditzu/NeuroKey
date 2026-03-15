@@ -7,6 +7,7 @@ import io.github.kawase.database.repository.ParentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDate;
 
 @Service
 @RequiredArgsConstructor
@@ -56,6 +57,27 @@ public class ChildService {
     @Transactional
     public void deleteChild(final Long childId) {
         childRepository.deleteById(childId);
+    }
+
+    @Transactional
+    public int updateStreak(final Long childId) {
+        return childRepository.findById(childId).map(child -> {
+            LocalDate today = LocalDate.now();
+            LocalDate lastLogin = child.getLastLoginDate();
+
+            if (today.equals(lastLogin)) {
+                return child.getStreak();
+            }
+
+            if (lastLogin != null && lastLogin.plusDays(1).equals(today)) {
+                child.setStreak(child.getStreak() + 1);
+            } else {
+                child.setStreak(1);
+            }
+            child.setLastLoginDate(today);
+            childRepository.save(child);
+            return child.getStreak();
+        }).orElse(0);
     }
 
     @Transactional(readOnly = true)

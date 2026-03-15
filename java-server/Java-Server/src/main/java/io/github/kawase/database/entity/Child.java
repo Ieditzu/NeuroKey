@@ -4,6 +4,7 @@ import io.hypersistence.utils.hibernate.type.json.JsonType;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.Type;
+import java.time.LocalDate;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
@@ -32,6 +33,12 @@ public class Child {
 
     @Column(name = "total_points", nullable = false)
     private Integer totalPoints = 0;
+
+    @Column(name = "streak", nullable = false)
+    private Integer streak = 0;
+
+    @Column(name = "last_login_date")
+    private LocalDate lastLoginDate;
 
     @OneToMany(mappedBy = "child", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CompletedTask> completedTasks;
