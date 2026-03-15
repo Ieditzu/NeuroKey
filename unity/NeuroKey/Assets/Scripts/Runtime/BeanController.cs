@@ -3,11 +3,13 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public class BeanController : MonoBehaviour
 {
+    private const float MaxJumpValue = 10f;
+
     [SerializeField] private float moveSpeed = 7f;
     [SerializeField] private float sprintMultiplier = 2f;
     [SerializeField] private float gravityMultiplier = 3f;
     [SerializeField] private float fallYThreshold = -6f;
-    [SerializeField] private float jumpVelocity = 14f;
+    [SerializeField] private float jumpVelocity = 10f;
     [SerializeField] private float groundCheckDistance = 0.45f;
     [SerializeField] private float coyoteTime = 0.12f;
     [SerializeField] private float mouseSensitivity = 18f;
@@ -284,5 +286,19 @@ public class BeanController : MonoBehaviour
         }
     }
 
-    public void SetJumpForce(float newJump) => jumpVelocity = Mathf.Max(0f, newJump);
+    public void SetJumpForce(float newJump)
+    {
+        if (newJump > MaxJumpValue)
+        {
+            Debug.LogWarning("max value 10");
+            return;
+        }
+
+        jumpVelocity = Mathf.Max(0f, newJump);
+    }
+
+    public float GetJumpForce()
+    {
+        return jumpVelocity;
+    }
 }
