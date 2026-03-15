@@ -38,10 +38,13 @@ NeuroKey is a **three-part educational platform** built for a hackathon:
 **For Students (Unity Game)**
 - Explore a 3D island with coding challenge pads (C++ debugging, Python visuals, function writing)
 - 19 progressive tasks from beginner quizzes to writing factorial functions
-- AI mentor that answers questions with context-aware, encouraging responses
+- **Live code execution**: Students write C++ and Python code that gets sent to the server and executed in a sandboxed environment (Linux `unshare` with network isolation, memory/CPU/process limits via `ulimit`) — results come back in real time
+- **AI-verified submissions**: After code runs, the output is sent to the AI which evaluates whether the solution is correct ("CORRECT" / "INCORRECT") with a short explanation — no hardcoded answer checking
+- **AI hint chat**: Students can open a chat panel at any challenge and have a conversation with the AI mentor, which is aware of the current challenge context, the student's learning profile, and their language — responses are encouraging and concise
 - Daily login streak tracked server-side
 - Real-time progress bar showing task completion
-- Optional g.tec EEG/BCI hooks for neurofeedback-driven gameplay
+- **Cross-platform**: runs on PC, Android, and VR
+- **Brain-Computer Interface (optional)**: connects to a g.tec Unicorn Hybrid Black EEG headset to measure real-time concentration via beta/alpha brainwave ratio — displayed as a live focus meter in-game (see BCI section below)
 
 **For Parents (Android App)**
 - QR code scan to link with your child's game session
@@ -52,9 +55,12 @@ NeuroKey is a **three-part educational platform** built for a hackathon:
 - Dark mode and color theme customization
 
 **Server**
+- **Sandboxed code execution**: Compiles and runs student C++ (`g++`) and Python (`python3`) code in isolated environments using Linux `unshare` (network dropped, separate user namespace) with strict `ulimit` constraints (256MB memory, capped CPU time, 64 max processes to prevent fork bombs, 2MB file size limit)
+- **AI-powered code verification**: Student output is sent to the AI to determine correctness — no hardcoded expected outputs, so creative solutions that produce the right result are accepted
 - Custom binary WebSocket protocol shared across all three platforms
 - Multi-model AI fallback: Gemini 2.5 Flash -> Gemini 2.0 Flash -> Groq Llama 3.3 70B
 - Per-topic learning profile generation (C++, Python, General) with strength/weakness analysis
+- Context-aware AI chat: the mentor receives the student's learning profile summary so responses are tailored to their skill level and past struggles
 - Response caching and per-model rate limit cooldowns
 - QR-based authentication flow with session persistence
 - Real-time goal push to connected game clients
@@ -81,6 +87,36 @@ NeuroKey is a **three-part educational platform** built for a hackathon:
 - **AI Learning Profiles**: The server builds a per-child, per-language (C++, Python, General) learning profile by aggregating every quiz answer, code submission, hint request, and AI chat turn. It tracks correct/incorrect counts per concept, identifies top strengths and struggle areas, catalogs common mistake patterns, and feeds all of this into Gemini/Groq to generate human-readable summaries at two detail levels (one-line and three-line). The profile is stored as JSONB and refreshed as new events arrive.
 - **Database**: PostgreSQL with Hibernate auto-schema, JSONB columns for game stats and AI profiles
 - **AI Fallback**: Cascading multi-provider system (Gemini 2.5 Flash -> 2.0 Flash -> Groq Llama 3.3 70B) with LRU cache (200 entries, 5 min TTL) and independent 60s cooldown timers per model after rate limits
+
+---
+
+## Brain-Computer Interface (BCI)
+
+NeuroKey optionally integrates with the **g.tec Unicorn Hybrid Black** — a research-grade EEG headset — to add real-time neurofeedback to the learning experience. This is entirely optional; the game works fully without it.
+
+**How it works:**
+1. The `UnicornCompatibility` module auto-detects at startup whether the g.tec managed assemblies (`UnicornDotNet`, `Gtec.UnityInterface`) and native plugins are present — if not, BCI features are silently disabled
+2. When a headset is connected, `EEGDataPipeline` streams raw brainwave samples at 250 Hz
+3. The `FocusMeter` computes a **beta/alpha power ratio** using the **Goertzel algorithm** (efficient single-frequency DFT) over a ~1 second sliding window — beta waves (~20 Hz) indicate active concentration while alpha waves (~10 Hz) indicate relaxation
+4. The ratio is scaled to a 0-100% focus percentage and displayed as a live overlay in the top-right corner of the screen
+
+**What this enables:**
+- Parents and teachers can see how focused a child actually is while solving challenges — not just whether they got the right answer
+- The focus data can correlate with learning performance (e.g., did focus drop right before a wrong answer?)
+- Cross-platform native plugin support: Windows DLL, macOS dylib, and Android .so are all handled
+
+> The BCI integration works on PC and Android. The headset communicates via Bluetooth, and the Unity plugin handles device discovery and data streaming automatically.
+
+---
+
+## Cross-Platform
+
+The Unity game is built to run on **PC, Android, and VR** from a single codebase:
+- Desktop (Windows/macOS/Linux) with keyboard + mouse
+- Android with touch controls (mobile UI helpers included via Starter Assets)
+- VR headsets with standard Unity XR support
+
+All platforms connect to the same server and use the same encrypted WebSocket protocol — a student can start a challenge on PC and their parent sees the progress on the Android app instantly.
 
 ---
 
@@ -205,8 +241,12 @@ The server is **live 24/7** at `wss://neuro.serenityutils.club`, hosted on a VPS
 
 - **Real-time triad**: Game, parent app, and server communicate over a single binary protocol — changes appear instantly across all clients
 - **Custom encryption layer**: AES-256-CBC with a per-packet dynamic seed system — every message uses a unique key derived from a nanoTime seed that is itself encrypted with a shared base key, so no two packets share the same encryption key
+- **Live sandboxed code execution**: Students write real C++ and Python in-game, code is compiled and run on the server in isolated Linux namespaces (`unshare --net`) with strict resource limits — fork bombs, infinite loops, and network access are all blocked at the OS level
+- **AI-verified submissions**: No hardcoded answers — the AI reads the task, the student's code, and the program output to judge correctness, so creative solutions that produce the right result are accepted
 - **AI learning profiles**: Not just tracking scores — the server aggregates every interaction (quiz answers, code submissions, hints, chat turns) into per-language profiles that identify specific concept strengths, struggle areas, and common mistake patterns, then generates human-readable AI summaries
-- **BCI integration**: Hooks for g.tec EEG hardware alongside standard controls, enabling neurofeedback-driven gameplay research
+- **Context-aware AI chat**: Students can ask the AI for help at any challenge — the mentor knows the current task, the student's code, and their learning profile, so hints are tailored rather than generic
+- **Cross-platform game**: The Unity game builds for PC, Android, and VR from a single codebase — same coding challenges and server connection on every platform
+- **Brain-Computer Interface**: Optional g.tec Unicorn Hybrid Black EEG integration that reads real brainwave data, computes a beta/alpha power ratio using the Goertzel algorithm, and displays a live focus percentage overlay — giving parents and teachers real-time insight into how concentrated a child is while learning
 - **Privacy by design**: Credentials hashed client-side before transmission, all traffic AES-encrypted, WebSocket-only communication, no third-party analytics
 - **Production touches**: Multi-model AI fallback with rate limiting, session persistence, auto-reconnection, system notifications, daily streaks
 
