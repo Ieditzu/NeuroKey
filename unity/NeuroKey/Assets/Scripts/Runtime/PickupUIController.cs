@@ -208,6 +208,7 @@ public class PickupUIController : MonoBehaviour
     {
         activeCoin = coin;
         activeMode = mode;
+        showHint = false;
         RestoreDefaults();
         if (activeMode == CoinRotator.CoinMode.JumpAndBox)
         {
