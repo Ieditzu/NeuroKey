@@ -311,9 +311,9 @@ public class PickupUIController : MonoBehaviour
             return;
         }
 
-        const float width = 240f;
-        const float height = 150f;
-        Rect rect = new Rect(Screen.width - width - 16f, Screen.height - height - 16f, width, height);
+        const float width = 320f;
+        const float height = 200f;
+        Rect rect = new Rect(Screen.width - width - 16f, 16f, width, height);
         GUI.Box(rect, GUIContent.none);
 
         GUILayout.BeginArea(new Rect(rect.x + 10f, rect.y + 10f, rect.width - 20f, rect.height - 20f));
@@ -354,8 +354,6 @@ public class PickupUIController : MonoBehaviour
             {
                 GUILayout.Label(jumpValidationMessage);
             }
-
-            GUILayout.Space(6f);
             GUI.SetNextControlName("BoxField");
             GUILayout.BeginHorizontal();
             GUILayout.Label("boxRigidbody =", GUILayout.Width(100f));
@@ -405,6 +403,10 @@ public class PickupUIController : MonoBehaviour
                 }
             }
         }
+
+        GUILayout.FlexibleSpace();
+        GUILayout.Label("Press L to hide this");
+        GUILayout.Label("Press H for hint");
 
         GUILayout.EndArea();
 
