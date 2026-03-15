@@ -38,6 +38,7 @@ public class PickupUIController : MonoBehaviour
     // Default hidden: "!islandVisible = true"
     private string islandInput = "true";
     private string jumpValidationMessage = string.Empty;
+    private bool showHint;
     private CoinRotator activeCoin;
     private CoinRotator.CoinMode activeMode = CoinRotator.CoinMode.JumpAndBox;
     private Vector3 targetBoxSpawnPosition;
@@ -141,6 +142,11 @@ public class PickupUIController : MonoBehaviour
         if (visible && Input.GetKeyDown(KeyCode.L))
         {
             ExitMode();
+        }
+
+        if (visible && Input.GetKeyDown(KeyCode.H))
+        {
+            showHint = !showHint;
         }
     }
 
@@ -304,6 +310,7 @@ public class PickupUIController : MonoBehaviour
     {
         RestoreDefaults();
         visible = false;
+        showHint = false;
 
         if (activeCoin != null)
         {
@@ -316,6 +323,7 @@ public class PickupUIController : MonoBehaviour
     {
         RestoreDefaults();
         visible = false;
+        showHint = false;
     }
 
     private void OnGUI()
@@ -436,6 +444,18 @@ public class PickupUIController : MonoBehaviour
         GUILayout.FlexibleSpace();
         GUILayout.Label("Press L to hide this");
         GUILayout.Label("Press H for hint");
+        if (showHint)
+        {
+            GUILayout.Space(4f);
+            string hint = activeMode switch
+            {
+                CoinRotator.CoinMode.JumpAndBox => "Hint: jumpVelocity 0-10; set boxRigidbody = true to push the box, false to lock it.",
+                CoinRotator.CoinMode.IslandReveal => "Hint: !islandVisible uses inverse logic. true keeps the island hidden, false reveals it.",
+                CoinRotator.CoinMode.BridgeReveal => "Hint: viewPod controls the bridge. true shows it, false hides it.",
+                _ => "Hint unavailable for this mode."
+            };
+            GUILayout.Label(hint);
+        }
 
         GUILayout.EndArea();
 
