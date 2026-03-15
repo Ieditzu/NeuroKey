@@ -1330,8 +1330,8 @@ public class CodeChallengePadCinematic : MonoBehaviour
     {
         ApplyLocalizedStaticTexts();
         titleText.text = mode == ChallengeMode.Medium
-            ? Localize("Medium C++ Debugging", "Medium C++ Debugging")
-            : Localize("Hard C++ Coding", "Hard C++ Coding");
+            ? Localize("Debugging C++ Medium", "Medium C++ Debugging")
+            : Localize("Programare C++ Hard", "Hard C++ Coding");
         counterText.text = Localize("Intrebarea ", "Question ") + (currentIndex + 1) + " / " + total;
         promptText.text = challenge.Prompt;
         codeInput.text = currentAnswer;
@@ -2404,7 +2404,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         languageChosen = false;
         ShowMainUi(false);
         ShowChallengeButtons(false, false, false, false, false, false);
-        languagePromptText.text = "Alege limba / Choose language";
+        languagePromptText.text = Localize("Alege limba", "Choose language");
         languagePromptText.gameObject.SetActive(true);
         languageRoButton.gameObject.SetActive(true);
         languageEnButton.gameObject.SetActive(true);
@@ -2433,12 +2433,12 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
     private void ApplyLocalizedStaticTexts()
     {
-        if (leaveButtonText != null) leaveButtonText.text = "Leave";
+        if (leaveButtonText != null) leaveButtonText.text = Localize("Iesire", "Leave");
         if (hintScreenBackButtonText != null) hintScreenBackButtonText.text = Localize("Inapoi", "Back");
         if (verifyButtonText != null) verifyButtonText.text = Localize("Verificare", "Verify");
         if (runButtonText != null) runButtonText.text = Localize("Ruleaza", "Run");
         if (backButtonText != null) backButtonText.text = Localize("Inapoi", "Back");
-        if (hintButtonText != null) hintButtonText.text = "Hint";
+        if (hintButtonText != null) hintButtonText.text = Localize("Indiciu", "Hint");
         if (aiButtonText != null) aiButtonText.text = "AI";
         if (continueButtonText != null) continueButtonText.text = Localize("Urmatoarea", "Next");
         if (retryWrongButtonText != null) retryWrongButtonText.text = Localize("Refa gresite", "Retry wrong");

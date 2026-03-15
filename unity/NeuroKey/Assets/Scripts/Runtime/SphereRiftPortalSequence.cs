@@ -1533,10 +1533,10 @@ public class SphereRiftPortalSequence : MonoBehaviour
     {
         if (nextButtonText != null) nextButtonText.text = Localize("Urmatoarea", "Next");
         if (previousButtonText != null) previousButtonText.text = Localize("Precedenta", "Previous");
-        if (hintButtonText != null) hintButtonText.text = "Hint";
+        if (hintButtonText != null) hintButtonText.text = Localize("Indiciu", "Hint");
         if (hintBackButtonText != null) hintBackButtonText.text = Localize("Inapoi", "Back");
         if (verifyButtonText != null) verifyButtonText.text = Localize("Verifica", "Verify");
-        if (leaveButtonText != null) leaveButtonText.text = "Leave";
+        if (leaveButtonText != null) leaveButtonText.text = Localize("Iesire", "Leave");
         if (languageRoButtonText != null) languageRoButtonText.text = "Romana";
         if (languageEnButtonText != null) languageEnButtonText.text = "English";
     }

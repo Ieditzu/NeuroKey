@@ -2406,7 +2406,7 @@ public class PythonDebugPadCinematic : MonoBehaviour
         languageChosen = false;
         ShowMainUi(false);
         ShowChallengeButtons(false, false, false, false, false, false);
-        languagePromptText.text = "Alege limba / Choose language";
+        languagePromptText.text = Localize("Alege limba", "Choose language");
         languagePromptText.gameObject.SetActive(true);
         languageRoButton.gameObject.SetActive(true);
         languageEnButton.gameObject.SetActive(true);
@@ -2435,12 +2435,12 @@ public class PythonDebugPadCinematic : MonoBehaviour
 
     private void ApplyLocalizedStaticTexts()
     {
-        if (leaveButtonText != null) leaveButtonText.text = "Leave";
+        if (leaveButtonText != null) leaveButtonText.text = Localize("Iesire", "Leave");
         if (hintScreenBackButtonText != null) hintScreenBackButtonText.text = Localize("Inapoi", "Back");
         if (verifyButtonText != null) verifyButtonText.text = Localize("Verificare", "Verify");
         if (runButtonText != null) runButtonText.text = Localize("Ruleaza", "Run");
         if (backButtonText != null) backButtonText.text = Localize("Inapoi", "Back");
-        if (hintButtonText != null) hintButtonText.text = "Hint";
+        if (hintButtonText != null) hintButtonText.text = Localize("Indiciu", "Hint");
         if (aiButtonText != null) aiButtonText.text = "AI";
         if (continueButtonText != null) continueButtonText.text = Localize("Urmatoarea", "Next");
         if (retryWrongButtonText != null) retryWrongButtonText.text = Localize("Refa gresite", "Retry wrong");

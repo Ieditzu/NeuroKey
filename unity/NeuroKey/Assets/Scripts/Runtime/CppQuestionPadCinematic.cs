@@ -449,12 +449,12 @@ public class CppQuestionPadCinematic : MonoBehaviour
     private IEnumerator RunQuiz()
     {
         answeredCorrectly = new bool[Questions.Length];
-        titleText.text = selectedLanguage == QuizLanguage.Romanian ? "C++ Starter Quiz" : "C++ Starter Quiz";
+        titleText.text = selectedLanguage == QuizLanguage.Romanian ? "Quiz C++ pentru incepatori" : "C++ Starter Quiz";
         feedbackText.text = string.Empty;
-        leaveButtonText.text = "Leave";
+        leaveButtonText.text = selectedLanguage == QuizLanguage.Romanian ? "Iesire" : "Leave";
         nextButtonText.text = selectedLanguage == QuizLanguage.Romanian ? "Inainte" : "Next";
         backButtonText.text = selectedLanguage == QuizLanguage.Romanian ? "Inapoi" : "Back";
-        hintButtonText.text = selectedLanguage == QuizLanguage.Romanian ? "Hint" : "Hint";
+        hintButtonText.text = selectedLanguage == QuizLanguage.Romanian ? "Indiciu" : "Hint";
         aiButtonText.text = "AI";
         retryWrongButtonText.text = selectedLanguage == QuizLanguage.Romanian ? "Refa intrebarile gresite" : "Retry wrong questions";
         nextButton.gameObject.SetActive(false);
@@ -1242,11 +1242,11 @@ public class CppQuestionPadCinematic : MonoBehaviour
         nextButton.gameObject.SetActive(false);
         aiButton.gameObject.SetActive(false);
         languageChosen = false;
-        titleText.text = "C++ Starter Quiz";
+        titleText.text = selectedLanguage == QuizLanguage.Romanian ? "Quiz C++ pentru incepatori" : "C++ Starter Quiz";
         counterText.text = string.Empty;
         questionText.text = string.Empty;
         feedbackText.text = string.Empty;
-        languagePromptText.text = "Alege limba / Choose language";
+        languagePromptText.text = selectedLanguage == QuizLanguage.Romanian ? "Alege limba" : "Choose language";
         languagePromptText.gameObject.SetActive(true);
         languageRoButton.gameObject.SetActive(true);
         languageEnButton.gameObject.SetActive(true);
@@ -2022,7 +2022,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
         whiteImage.enabled = false;
         menuCard.color = new Color(cardColor.r, cardColor.g, cardColor.b, 0f);
         menuCard.rectTransform.localScale = new Vector3(0.94f, 0.94f, 1f);
-        titleText.text = "C++ Starter Quiz";
+        titleText.text = selectedLanguage == QuizLanguage.Romanian ? "Quiz C++ pentru incepatori" : "C++ Starter Quiz";
         counterText.text = string.Empty;
         questionText.text = string.Empty;
         feedbackText.text = string.Empty;
