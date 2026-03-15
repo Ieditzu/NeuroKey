@@ -267,20 +267,31 @@ public class SphereRiftPortalSequence : MonoBehaviour
         {
             return;
         }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        TryStartSequenceFromTrigger(other);
+    }
+
+    private void OnTriggerStay(Collider other)
+    {
+        TryStartSequenceFromTrigger(other);
+    }
+
+    private void TryStartSequenceFromTrigger(Collider other)
+    {
+        if (!Application.isPlaying || running || other == null || !IsPlayerCollider(other))
+        {
+            return;
+        }
 
         if (!TryGetPlayer(out BeanController sphere, out FirstPersonControllerSimple fps, out Transform playerRoot))
         {
             return;
         }
 
-        Vector3 stationPosition = GetStationInteractionPoint();
-        Vector3 flatPlayer = new Vector3(playerRoot.position.x, 0f, playerRoot.position.z);
-        Vector3 flatStation = new Vector3(stationPosition.x, 0f, stationPosition.z);
-        float distance = Vector3.Distance(flatPlayer, flatStation);
-        if (distance <= triggerRadius)
-        {
-            StartCoroutine(PlaySequence(sphere, fps, playerRoot, stationPosition));
-        }
+        StartCoroutine(PlaySequence(sphere, fps, playerRoot, GetStationInteractionPoint()));
     }
 
     private IEnumerator PlaySequence(BeanController sphere, FirstPersonControllerSimple fps, Transform playerRoot, Vector3 stationPosition)
@@ -374,6 +385,10 @@ public class SphereRiftPortalSequence : MonoBehaviour
         stationMarker.localPosition = new Vector3(0f, 0.5f, 0f);
         stationMarker.localRotation = Quaternion.Euler(90f, 0f, 0f);
         stationMarker.localScale = new Vector3(0.11525f, 0.324f, 0.5f);
+        if (stationMarker.GetComponent<PythonLogoFloatSpin>() == null)
+        {
+            stationMarker.gameObject.AddComponent<PythonLogoFloatSpin>();
+        }
 
         GameObject lightRoot = new GameObject("StationLight");
         lightRoot.transform.SetParent(stationRoot, false);
@@ -512,10 +527,8 @@ public class SphereRiftPortalSequence : MonoBehaviour
         stationRoot.localPosition = new Vector3(0f, stationHeightOffset, 0f);
         if (stationMarker != null)
         {
-            float bob = Mathf.Sin(time * 2.1f) * 0.05f;
-            float pulse = 1f + Mathf.Sin(time * 3f) * 0.08f;
-            stationMarker.localPosition = new Vector3(0f, 0.5f + bob, 0f);
-            stationMarker.localScale = new Vector3(0.11525f, 0.324f, 0.5f) * pulse;
+            stationMarker.localPosition = new Vector3(0f, 0.5f, 0f);
+            stationMarker.localScale = new Vector3(0.11525f, 0.324f, 0.5f);
         }
 
         if (stationScreen != null)
@@ -646,8 +659,8 @@ public class SphereRiftPortalSequence : MonoBehaviour
 
         portalTrigger.isTrigger = true;
         portalTrigger.enabled = true;
-        portalTrigger.radius = triggerRadius;
-        portalTrigger.center = new Vector3(0f, stationHeightOffset + 0.12f, 0f);
+        portalTrigger.radius = Mathf.Clamp(triggerRadius, 0.04f, 0.06f);
+        portalTrigger.center = new Vector3(0f, stationHeightOffset + 0.5f, 0f);
     }
 
     private static bool TryGetPlayer(out BeanController sphere, out FirstPersonControllerSimple fps, out Transform playerRoot)
@@ -656,6 +669,22 @@ public class SphereRiftPortalSequence : MonoBehaviour
         fps = Object.FindObjectOfType<FirstPersonControllerSimple>();
         playerRoot = fps != null ? fps.transform : sphere != null ? sphere.transform : null;
         return playerRoot != null;
+    }
+
+    private static bool IsPlayerCollider(Collider other)
+    {
+        if (other.GetComponentInParent<BeanController>() != null)
+        {
+            return true;
+        }
+
+        if (other.GetComponentInParent<FirstPersonControllerSimple>() != null)
+        {
+            return true;
+        }
+
+        return other.GetComponent<CharacterController>() != null
+            || other.GetComponentInParent<CharacterController>() != null;
     }
 
     private static void SetPlayerLockState(BeanController sphere, FirstPersonControllerSimple fps, bool movementLocked, bool hardFreeze)
