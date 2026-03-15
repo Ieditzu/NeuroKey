@@ -215,15 +215,27 @@ public class ClientHandler {
                 }
 
                 case FetchGoalsPacket fetchGoalsPacket -> {
-                    System.out.println("Fetch Goals for Child ID: " + fetchGoalsPacket.getChildId());
-                    final var child = Server.getInstance().getChildService().findById(fetchGoalsPacket.getChildId())
+                    long targetChildId = fetchGoalsPacket.getChildId();
+
+                    // If childId is -1 or 0, use the logged-in child's own ID
+                    if (targetChildId <= 0 && client.getChildId() != null) {
+                        targetChildId = client.getChildId();
+                    }
+
+                    System.out.println("Fetch Goals for Child ID: " + targetChildId);
+                    final var child = Server.getInstance().getChildService().findById(targetChildId)
                             .orElseThrow(() -> new RuntimeException("Child not found"));
 
-                    if (!child.getParent().getId().equals(client.getParentId())) {
+                    // Allow if: parent owns this child OR child is fetching their own goals
+                    if (client.getChildId() != null) {
+                        if (!client.getChildId().equals(targetChildId)) {
+                            throw new RuntimeException("Access denied: You can only view your own goals.");
+                        }
+                    } else if (!child.getParent().getId().equals(client.getParentId())) {
                         throw new RuntimeException("Access denied.");
                     }
 
-                    final var goals = Server.getInstance().getChildService().getGoals(fetchGoalsPacket.getChildId());
+                    final var goals = Server.getInstance().getChildService().getGoals(targetChildId);
                     final var dtos = new java.util.ArrayList<FetchGoalsResponsePacket.GoalDto>();
                     for (final var goal : goals) {
                         dtos.add(new FetchGoalsResponsePacket.GoalDto(

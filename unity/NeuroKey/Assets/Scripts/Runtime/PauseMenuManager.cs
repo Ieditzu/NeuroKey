@@ -18,11 +18,12 @@ public class PauseMenuManager : MonoBehaviour
     private Canvas canvas;
     private GameObject mainPanel;
     private GameObject tasksPanel;
+    private GameObject goalsPanel;
 
     private CanvasGroup menuGroup;
     private Coroutine menuAnim;
     private const float menuAnimDuration = 0.18f;
-    
+
     private Slider sensitivitySlider; // legacy, keep null
     private InputField sensitivityInput;
     private Text sensitivityValueText;
@@ -39,6 +40,9 @@ public class PauseMenuManager : MonoBehaviour
 
     private GameObject taskListContainer;
     private List<FetchTasksResponsePacket.TaskDto> availableTasks = new List<FetchTasksResponsePacket.TaskDto>();
+
+    private GameObject goalListContainer;
+    private List<FetchGoalsResponsePacket.GoalDto> childGoals = new List<FetchGoalsResponsePacket.GoalDto>();
 
     private string SessionFilePath => Path.Combine(Application.persistentDataPath, "session.json");
 
@@ -121,6 +125,7 @@ public class PauseMenuManager : MonoBehaviour
 
                     _ = GameClient.Instance.SendPacket(new FetchChildStatsPacket());
                     _ = GameClient.Instance.SendPacket(new FetchTasksPacket());
+                    _ = GameClient.Instance.SendPacket(new FetchGoalsPacket(-1));
 
                     if (qrButton != null) qrButton.interactable = false;
                     if (qrCodeImage != null) qrCodeImage.gameObject.SetActive(false);
@@ -150,12 +155,21 @@ public class PauseMenuManager : MonoBehaviour
                 RebuildTaskList();
             });
         }
+        else if (packet is FetchGoalsResponsePacket goalsResp)
+        {
+            UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                childGoals = goalsResp.Goals;
+                RebuildGoalList();
+            });
+        }
         else if (packet is ActionResponsePacket actionResp)
         {
-            if (actionResp.RequestPacketId == 8 && actionResp.Success) 
+            if (actionResp.RequestPacketId == 8 && actionResp.Success)
             {
                 UnityMainThreadDispatcher.Instance().Enqueue(() => {
-                    _ = GameClient.Instance.SendPacket(new FetchChildStatsPacket()); 
+                    _ = GameClient.Instance.SendPacket(new FetchChildStatsPacket());
+                    if (loggedInChildId != -1)
+                        _ = GameClient.Instance.SendPacket(new FetchGoalsPacket(-1));
                 });
             }
         }
@@ -341,7 +355,16 @@ public class PauseMenuManager : MonoBehaviour
             ShowPanel(tasksPanel);
         });
 
-        Button quitButton = CreateButton(actions.transform, "QuitButton", "Quit Game", new Vector2(0f, -55f), new Color(0.72f, 0.24f, 0.26f, 1f));
+        Button goalsBtn = CreateButton(actions.transform, "GoalsBtn", "View Goals", new Vector2(0f, -55f), new Color(0.6f, 0.4f, 0.8f, 1f));
+        goalsBtn.GetComponent<RectTransform>().sizeDelta = new Vector2(200f, 44f);
+        goalsBtn.onClick.AddListener(() => {
+            if (qrCodeImage != null) qrCodeImage.gameObject.SetActive(false);
+            if (loggedInChildId != -1)
+                _ = GameClient.Instance.SendPacket(new FetchGoalsPacket(-1));
+            ShowPanel(goalsPanel);
+        });
+
+        Button quitButton = CreateButton(actions.transform, "QuitButton", "Quit Game", new Vector2(0f, -110f), new Color(0.72f, 0.24f, 0.26f, 1f));
         quitButton.GetComponent<RectTransform>().sizeDelta = new Vector2(200f, 44f);
         quitButton.onClick.AddListener(QuitGame);
 
@@ -368,15 +391,42 @@ public class PauseMenuManager : MonoBehaviour
         });
 
         tasksPanel.SetActive(false);
+
+        // GOALS PANEL
+        goalsPanel = CreateUiObject("GoalsPanel", canvas.transform);
+        RectTransform goalsRect = goalsPanel.GetComponent<RectTransform>();
+        goalsRect.sizeDelta = new Vector2(620f, 460f);
+        goalsRect.anchoredPosition = Vector2.zero;
+        goalsPanel.AddComponent<Image>().color = new Color(0.06f, 0.05f, 0.15f, 0.98f);
+        goalsPanel.AddComponent<Outline>().effectColor = new Color(0.7f, 0.4f, 1f, 0.8f);
+
+        CreateText("GoalsTitle", goalsPanel.transform, "PARENT GOALS", 26, FontStyle.Bold, TextAnchor.MiddleCenter, new Color(0.7f, 0.5f, 1f), new Vector2(0, 170), new Vector2(360, 48));
+
+        goalListContainer = CreateUiObject("GoalList", goalsPanel.transform);
+        RectTransform glRect = goalListContainer.GetComponent<RectTransform>();
+        glRect.sizeDelta = new Vector2(540, 280);
+        glRect.anchoredPosition = new Vector2(0, -10);
+
+        Button goalsBackBtn = CreateButton(goalsPanel.transform, "GoalsBackBtn", "Back", new Vector2(0, -170), new Color(0.4f, 0.4f, 0.4f));
+        goalsBackBtn.GetComponent<RectTransform>().sizeDelta = new Vector2(180, 38);
+        goalsBackBtn.onClick.AddListener(() => {
+            ShowPanel(mainPanel);
+            if (qrCodeImage != null && qrCodeImage.texture != null && loggedInChildId == -1) qrCodeImage.gameObject.SetActive(true);
+        });
+
+        goalsPanel.SetActive(false);
+
         canvasObject.SetActive(false);
         ApplySavedSensitivity();
         RebuildTaskList();
+        RebuildGoalList();
     }
 
     private void ShowPanel(GameObject panel)
     {
         if (mainPanel != null) mainPanel.SetActive(false);
         if (tasksPanel != null) tasksPanel.SetActive(false);
+        if (goalsPanel != null) goalsPanel.SetActive(false);
         if (panel != null) panel.SetActive(true);
     }
 
@@ -405,6 +455,45 @@ public class PauseMenuManager : MonoBehaviour
                     _ = GameClient.Instance.SendPacket(new CompleteTaskPacket(loggedInChildId, tid));
             });
             y -= 54;
+        }
+    }
+
+    private void RebuildGoalList()
+    {
+        if (goalListContainer == null) return;
+        foreach (Transform child in goalListContainer.transform) Destroy(child.gameObject);
+
+        if (childGoals.Count == 0)
+        {
+            CreateText("NoGoals", goalListContainer.transform, loggedInChildId == -1 ? "Log in to see goals" : "No goals set by parent yet",
+                16, FontStyle.Italic, TextAnchor.MiddleCenter, new Color(1f, 1f, 1f, 0.5f), new Vector2(0, 40), new Vector2(400, 40));
+            return;
+        }
+
+        float y = 120;
+        foreach (var goal in childGoals)
+        {
+            GameObject item = CreateUiObject("GoalItem_" + goal.Id, goalListContainer.transform);
+            RectTransform iRect = item.GetComponent<RectTransform>();
+            iRect.sizeDelta = new Vector2(520, 56);
+            iRect.anchoredPosition = new Vector2(0, y);
+            item.AddComponent<Image>().color = goal.IsCompleted
+                ? new Color(0.15f, 0.35f, 0.15f, 0.4f)
+                : new Color(1f, 1f, 1f, 0.05f);
+
+            string statusIcon = goal.IsCompleted ? "[DONE] " : "";
+            string requirement = goal.RequiredPoints > 0
+                ? " (need " + goal.RequiredPoints + " pts)"
+                : goal.RequiredTaskId > 0 ? " (complete task)" : "";
+
+            CreateText("GoalTitle", item.transform, statusIcon + goal.Title + requirement,
+                14, FontStyle.Normal, TextAnchor.MiddleLeft, Color.white, new Vector2(-30, 10), new Vector2(460, 28));
+
+            Color rewardColor = goal.IsCompleted ? new Color(0.5f, 1f, 0.5f) : new Color(1f, 0.85f, 0.4f);
+            CreateText("GoalReward", item.transform, "Reward: " + goal.Reward,
+                12, FontStyle.Italic, TextAnchor.MiddleLeft, rewardColor, new Vector2(-30, -10), new Vector2(460, 24));
+
+            y -= 64;
         }
     }
 
@@ -457,6 +546,8 @@ public class PauseMenuManager : MonoBehaviour
         loggedInChildId = -1;
         loggedInChildName = "";
         loggedInChildPoints = 0;
+        childGoals.Clear();
+        RebuildGoalList();
         if (qrStatusText != null) qrStatusText.text = "Not logged in";
         if (qrCodeImage != null)
         {
