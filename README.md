@@ -25,7 +25,7 @@ NeuroKey is a **three-part educational platform** built for a hackathon:
 
 | Component | Tech | What it does |
 |-----------|------|-------------|
-| **Game** | Unity 2022.3 (URP) | First-person island adventure with C++ and Python coding challenges, quizzes, and optional BCI (brain-computer interface) integration |
+| **Game** | Unity 2022.3 (URP) | First-person island adventure with C++ and Python coding challenges, quizzes, optional BCI (g.tec Unicorn Hybrid Black EEG) integration, and VR support (Meta Quest) |
 | **Server** | Spring Boot 3.2 / Java 21 | WebSocket hub that syncs everything in real time — tasks, goals, AI profiles, code execution, and QR auth |
 | **Parent App** | Kotlin / Jetpack Compose | Android app where parents track progress, set goals with rewards, view AI learning insights, and get notified when their child completes tasks |
 
@@ -113,11 +113,11 @@ NeuroKey optionally integrates with the **g.tec Unicorn Hybrid Black** — a res
 ## Cross-Platform
 
 The Unity game is built to run on **PC, Android, and VR** from a single codebase:
-- Desktop (Windows/macOS/Linux) with keyboard + mouse
-- Android with touch controls (mobile UI helpers included via Starter Assets)
-- VR headsets with standard Unity XR support
+- **Desktop** (Windows/macOS/Linux) with keyboard + mouse
+- **Android phones/tablets** with touch controls (mobile UI helpers included via Starter Assets)
+- **Meta Quest** (Quest 2/3/Pro) via Unity XR Management — the `AndroidXrGuard` module auto-detects whether the device is a Quest/Pico headset or a regular phone at startup, enabling XR loaders only on actual headsets and silently disabling them on phones so the same APK runs on both without crashing
 
-All platforms connect to the same server and use the same encrypted WebSocket protocol — a student can start a challenge on PC and their parent sees the progress on the Android app instantly.
+All platforms connect to the same server and use the same encrypted WebSocket protocol — a student can play in VR on a Meta Quest and their parent sees the progress on the Android app instantly.
 
 ---
 
@@ -246,7 +246,7 @@ The server is **live 24/7** at `wss://neuro.serenityutils.club`, hosted on a VPS
 - **AI-verified submissions**: No hardcoded answers — the AI reads the task, the student's code, and the program output to judge correctness, so creative solutions that produce the right result are accepted
 - **AI learning profiles**: Not just tracking scores — the server aggregates every interaction (quiz answers, code submissions, hints, chat turns) into per-language profiles that identify specific concept strengths, struggle areas, and common mistake patterns, then generates human-readable AI summaries
 - **Context-aware AI chat**: Students can ask the AI for help at any challenge — the mentor knows the current task, the student's code, and their learning profile, so hints are tailored rather than generic
-- **Cross-platform game**: The Unity game builds for PC, Android, and VR from a single codebase — same coding challenges and server connection on every platform
+- **Cross-platform game**: The Unity game builds for PC, Android, and Meta Quest VR from a single codebase and APK — an `AndroidXrGuard` auto-detects the device type at startup so the same build runs on phones and headsets without crashing
 - **Brain-Computer Interface**: Optional g.tec Unicorn Hybrid Black EEG integration that reads real brainwave data, computes a beta/alpha power ratio using the Goertzel algorithm, and displays a live focus percentage overlay — giving parents and teachers real-time insight into how concentrated a child is while learning
 - **Privacy by design**: Credentials hashed client-side before transmission, all traffic AES-encrypted, WebSocket-only communication, no third-party analytics
 - **Production touches**: Multi-model AI fallback with rate limiting, session persistence, auto-reconnection, system notifications, daily streaks
