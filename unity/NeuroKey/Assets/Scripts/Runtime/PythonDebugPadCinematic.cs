@@ -878,7 +878,7 @@ public class PythonDebugPadCinematic : MonoBehaviour
             feedbackText.color = textColor;
         }
 
-        RecordLearningEvent("code_verify", ResolveChallengeTopic(challenge), finalCorrect ? 1 : 0, modeLabel);
+        RecordLearningEvent("code_verify", ResolveChallengeTopic(challenge), finalCorrect ? 1 : 0, BuildEventDetails(modeLabel, lastExecutionOutput, lastExecutionError));
         onResult?.Invoke(finalCorrect);
     }
 
@@ -1253,6 +1253,16 @@ public class PythonDebugPadCinematic : MonoBehaviour
         }
 
         return "python:challenge";
+    }
+
+    private string BuildEventDetails(string modeLabel, string output, string error)
+    {
+        string cleanError = string.IsNullOrWhiteSpace(error) ? "" : error.Trim();
+        if (cleanError.Length > 140)
+        {
+            cleanError = cleanError.Substring(0, 140);
+        }
+        return "mode=" + modeLabel + ";error=" + cleanError;
     }
 
     private void ShowMainUi(bool visible)

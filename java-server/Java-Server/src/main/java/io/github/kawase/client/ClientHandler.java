@@ -157,6 +157,8 @@ public class ClientHandler {
                     }
                     final var child = Server.getInstance().getChildService().findById(client.getChildId())
                             .orElseThrow(() -> new RuntimeException("Child not found"));
+
+                    Server.getInstance().getLearningProfileService().ensureAiSummaries(child.getId());
                     
                     String json = "{}";
                     try {
@@ -179,6 +181,8 @@ public class ClientHandler {
                     if (!child.getParent().getId().equals(client.getParentId())) {
                         throw new RuntimeException("Access denied: This child does not belong to you.");
                     }
+
+                    Server.getInstance().getLearningProfileService().ensureAiSummaries(child.getId());
 
                     String json = "{}";
                     try {

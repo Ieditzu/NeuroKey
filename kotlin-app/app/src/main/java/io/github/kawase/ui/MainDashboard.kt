@@ -941,6 +941,7 @@ fun GoalsScreen(viewModel: SocketViewModel, childId: Long) {
     val cppProfile = viewModel.aiProfilesCpp[childId]
     val pythonProfile = viewModel.aiProfilesPython[childId]
     val generalProfile = viewModel.aiProfilesGeneral[childId]
+    var insightsExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(childId) {
         if (childId != -1L) {
@@ -960,7 +961,7 @@ fun GoalsScreen(viewModel: SocketViewModel, childId: Long) {
                 shape = RoundedCornerShape(24.dp),
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
+                Column(modifier = Modifier.padding(20.dp).clickable { insightsExpanded = !insightsExpanded }) {
                     Text("AI Insights", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -970,46 +971,76 @@ fun GoalsScreen(viewModel: SocketViewModel, childId: Long) {
 
                     if (cppProfile != null) {
                         Text("C++", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = viewModel.primaryColor.value)
-                        Text("Level: ${cppProfile.level}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                        Text("Correct: ${cppProfile.correctCount}  Incorrect: ${cppProfile.incorrectCount}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                        Text("Hints used: ${cppProfile.hintsUsed}  AI chats: ${cppProfile.chatTurns}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                        Spacer(modifier = Modifier.height(6.dp))
-                        val strengthsText = if (cppProfile.strengths.isEmpty()) "None yet" else cppProfile.strengths.joinToString(", ")
-                        val needsHelpText = if (cppProfile.needsHelp.isEmpty()) "None yet" else cppProfile.needsHelp.joinToString(", ")
-                        val mistakesText = if (cppProfile.recentMistakes.isEmpty()) "No recent mistakes" else cppProfile.recentMistakes.joinToString(", ")
-                        Text("Strengths: $strengthsText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                        Text("Needs help: $needsHelpText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                        Text("Recent mistakes: $mistakesText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                        Spacer(modifier = Modifier.height(10.dp))
+                        val summaryText = if (cppProfile.summaryText.isNotBlank()) cppProfile.summaryText else {
+                            if (cppProfile.struggleConcepts.isEmpty()) "No major struggles yet." else "Struggles: ${cppProfile.struggleConcepts.joinToString(\", \")}."
+                        }
+                        Text("Summary: $summaryText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.75f) else Color.Black.copy(alpha = 0.55f))
+                        if (insightsExpanded) {
+                            Text("Level: ${cppProfile.level}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Correct: ${cppProfile.correctCount}  Incorrect: ${cppProfile.incorrectCount}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Hints used: ${cppProfile.hintsUsed}  AI chats: ${cppProfile.chatTurns}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            val strengthsText = if (cppProfile.strengths.isEmpty()) "None yet" else cppProfile.strengths.joinToString(", ")
+                            val needsHelpText = if (cppProfile.needsHelp.isEmpty()) "None yet" else cppProfile.needsHelp.joinToString(", ")
+                            val struggleText = if (cppProfile.struggleConcepts.isEmpty()) "None yet" else cppProfile.struggleConcepts.joinToString(", ")
+                            val mistakesText = if (cppProfile.commonMistakes.isEmpty()) "No common mistakes yet" else cppProfile.commonMistakes.joinToString(", ")
+                            val helpText = if (cppProfile.helpTopics.isEmpty()) "No frequent help topics yet" else cppProfile.helpTopics.joinToString(", ")
+                            Text("Strengths: $strengthsText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                            Text("Needs help: $needsHelpText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                            Text("Struggles: $struggleText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                            Text("Common mistakes: $mistakesText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                            Text("Asked AI about: $helpText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                            Spacer(modifier = Modifier.height(10.dp))
+                        }
                     }
 
                     if (pythonProfile != null) {
                         Text("Python", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = viewModel.primaryColor.value)
-                        Text("Level: ${pythonProfile.level}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                        Text("Correct: ${pythonProfile.correctCount}  Incorrect: ${pythonProfile.incorrectCount}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                        Text("Hints used: ${pythonProfile.hintsUsed}  AI chats: ${pythonProfile.chatTurns}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                        Spacer(modifier = Modifier.height(6.dp))
-                        val strengthsText = if (pythonProfile.strengths.isEmpty()) "None yet" else pythonProfile.strengths.joinToString(", ")
-                        val needsHelpText = if (pythonProfile.needsHelp.isEmpty()) "None yet" else pythonProfile.needsHelp.joinToString(", ")
-                        val mistakesText = if (pythonProfile.recentMistakes.isEmpty()) "No recent mistakes" else pythonProfile.recentMistakes.joinToString(", ")
-                        Text("Strengths: $strengthsText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                        Text("Needs help: $needsHelpText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                        Text("Recent mistakes: $mistakesText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                        Spacer(modifier = Modifier.height(10.dp))
+                        val summaryText = if (pythonProfile.summaryText.isNotBlank()) pythonProfile.summaryText else {
+                            if (pythonProfile.struggleConcepts.isEmpty()) "No major struggles yet." else "Struggles: ${pythonProfile.struggleConcepts.joinToString(\", \")}."
+                        }
+                        Text("Summary: $summaryText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.75f) else Color.Black.copy(alpha = 0.55f))
+                        if (insightsExpanded) {
+                            Text("Level: ${pythonProfile.level}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Correct: ${pythonProfile.correctCount}  Incorrect: ${pythonProfile.incorrectCount}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Hints used: ${pythonProfile.hintsUsed}  AI chats: ${pythonProfile.chatTurns}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            val strengthsText = if (pythonProfile.strengths.isEmpty()) "None yet" else pythonProfile.strengths.joinToString(", ")
+                            val needsHelpText = if (pythonProfile.needsHelp.isEmpty()) "None yet" else pythonProfile.needsHelp.joinToString(", ")
+                            val struggleText = if (pythonProfile.struggleConcepts.isEmpty()) "None yet" else pythonProfile.struggleConcepts.joinToString(", ")
+                            val mistakesText = if (pythonProfile.commonMistakes.isEmpty()) "No common mistakes yet" else pythonProfile.commonMistakes.joinToString(", ")
+                            val helpText = if (pythonProfile.helpTopics.isEmpty()) "No frequent help topics yet" else pythonProfile.helpTopics.joinToString(", ")
+                            Text("Strengths: $strengthsText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                            Text("Needs help: $needsHelpText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                            Text("Struggles: $struggleText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                            Text("Common mistakes: $mistakesText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                            Text("Asked AI about: $helpText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                            Spacer(modifier = Modifier.height(10.dp))
+                        }
                     }
 
                     if (generalProfile != null) {
                         Text("General", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = viewModel.primaryColor.value)
-                        Text("Level: ${generalProfile.level}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                        Text("Correct: ${generalProfile.correctCount}  Incorrect: ${generalProfile.incorrectCount}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                        Text("Hints used: ${generalProfile.hintsUsed}  AI chats: ${generalProfile.chatTurns}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                        Spacer(modifier = Modifier.height(6.dp))
-                        val strengthsText = if (generalProfile.strengths.isEmpty()) "None yet" else generalProfile.strengths.joinToString(", ")
-                        val needsHelpText = if (generalProfile.needsHelp.isEmpty()) "None yet" else generalProfile.needsHelp.joinToString(", ")
-                        val mistakesText = if (generalProfile.recentMistakes.isEmpty()) "No recent mistakes" else generalProfile.recentMistakes.joinToString(", ")
-                        Text("Strengths: $strengthsText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                        Text("Needs help: $needsHelpText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
-                        Text("Recent mistakes: $mistakesText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                        val summaryText = if (generalProfile.summaryText.isNotBlank()) generalProfile.summaryText else {
+                            if (generalProfile.struggleConcepts.isEmpty()) "No major struggles yet." else "Struggles: ${generalProfile.struggleConcepts.joinToString(\", \")}."
+                        }
+                        Text("Summary: $summaryText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.75f) else Color.Black.copy(alpha = 0.55f))
+                        if (insightsExpanded) {
+                            Text("Level: ${generalProfile.level}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Correct: ${generalProfile.correctCount}  Incorrect: ${generalProfile.incorrectCount}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Hints used: ${generalProfile.hintsUsed}  AI chats: ${generalProfile.chatTurns}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            val strengthsText = if (generalProfile.strengths.isEmpty()) "None yet" else generalProfile.strengths.joinToString(", ")
+                            val needsHelpText = if (generalProfile.needsHelp.isEmpty()) "None yet" else generalProfile.needsHelp.joinToString(", ")
+                            val struggleText = if (generalProfile.struggleConcepts.isEmpty()) "None yet" else generalProfile.struggleConcepts.joinToString(", ")
+                            val mistakesText = if (generalProfile.commonMistakes.isEmpty()) "No common mistakes yet" else generalProfile.commonMistakes.joinToString(", ")
+                            val helpText = if (generalProfile.helpTopics.isEmpty()) "No frequent help topics yet" else generalProfile.helpTopics.joinToString(", ")
+                            Text("Strengths: $strengthsText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                            Text("Needs help: $needsHelpText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                            Text("Struggles: $struggleText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                            Text("Common mistakes: $mistakesText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                            Text("Asked AI about: $helpText", style = MaterialTheme.typography.bodySmall, color = if (viewModel.isDarkMode.value) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.6f))
+                        }
                     }
                 }
             }

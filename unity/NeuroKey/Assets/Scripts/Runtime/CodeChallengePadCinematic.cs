@@ -791,7 +791,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
         if (mode != ChallengeMode.Medium)
         {
             bool localResult = IsChallengeCorrect(challenge, submittedCode);
-            RecordLearningEvent("code_verify", ResolveChallengeTopic(challenge), localResult ? 1 : 0, mode.ToString().ToLowerInvariant());
+            RecordLearningEvent("code_verify", ResolveChallengeTopic(challenge), localResult ? 1 : 0, BuildEventDetails(mode.ToString().ToLowerInvariant(), string.Empty, string.Empty));
             onResult?.Invoke(localResult);
             yield break;
         }
@@ -884,7 +884,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
             feedbackText.color = textColor;
         }
 
-        RecordLearningEvent("code_verify", ResolveChallengeTopic(challenge), finalCorrect ? 1 : 0, "medium");
+        RecordLearningEvent("code_verify", ResolveChallengeTopic(challenge), finalCorrect ? 1 : 0, BuildEventDetails("medium", lastExecutionOutput, lastExecutionError));
         onResult?.Invoke(finalCorrect);
     }
 
@@ -1267,6 +1267,16 @@ public class CodeChallengePadCinematic : MonoBehaviour
         }
 
         return "cpp:challenge";
+    }
+
+    private string BuildEventDetails(string modeLabel, string output, string error)
+    {
+        string cleanError = string.IsNullOrWhiteSpace(error) ? "" : error.Trim();
+        if (cleanError.Length > 140)
+        {
+            cleanError = cleanError.Substring(0, 140);
+        }
+        return "mode=" + modeLabel + ";error=" + cleanError;
     }
 
     private void ShowMainUi(bool visible)
