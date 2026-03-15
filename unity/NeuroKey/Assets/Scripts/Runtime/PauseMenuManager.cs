@@ -49,6 +49,8 @@ public class PauseMenuManager : MonoBehaviour
     private Text progressText;
     private Image progressBarFill;
     private Text streakText;
+    private Button bciHudButton;
+    private Text bciHudButtonText;
 
     private int serverStreak;
     private int serverCompletedTaskCount;
@@ -436,7 +438,12 @@ public class PauseMenuManager : MonoBehaviour
             ShowPanel(goalsPanel);
         });
 
-        Button quitButton = CreateButton(actions.transform, "QuitButton", "Quit Game", new Vector2(0f, -110f), new Color(0.72f, 0.24f, 0.26f, 1f));
+        bciHudButton = CreateButton(actions.transform, "BciHudButton", GetBciHudLabel(FocusMeter.IsHudEnabled), new Vector2(0f, -110f), new Color(0.18f, 0.48f, 0.72f, 1f));
+        bciHudButton.GetComponent<RectTransform>().sizeDelta = new Vector2(200f, 40f);
+        bciHudButtonText = bciHudButton.GetComponentInChildren<Text>();
+        bciHudButton.onClick.AddListener(ToggleBciHud);
+
+        Button quitButton = CreateButton(actions.transform, "QuitButton", "Quit Game", new Vector2(0f, -160f), new Color(0.72f, 0.24f, 0.26f, 1f));
         quitButton.GetComponent<RectTransform>().sizeDelta = new Vector2(200f, 44f);
         quitButton.onClick.AddListener(QuitGame);
 
@@ -616,6 +623,24 @@ public class PauseMenuManager : MonoBehaviour
     {
         if (streakText != null)
             streakText.text = serverStreak > 0 ? serverStreak + " day streak" : "";
+    }
+
+    private void ToggleBciHud()
+    {
+        bool next = !FocusMeter.IsHudEnabled;
+        FocusMeter.SetHudEnabled(next);
+        UpdateBciHudButtonLabel(next);
+    }
+
+    private void UpdateBciHudButtonLabel(bool enabled)
+    {
+        if (bciHudButtonText != null)
+            bciHudButtonText.text = GetBciHudLabel(enabled);
+    }
+
+    private static string GetBciHudLabel(bool enabled)
+    {
+        return enabled ? "BCI HUD: ON" : "BCI HUD: OFF";
     }
 
     private void CreateSensitivitySection(Transform parent)

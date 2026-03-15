@@ -13,8 +13,11 @@ using Gtec.UnityInterface; // EEGDataPipeline
 /// </summary>
 public class FocusMeter : MonoBehaviour
 {
+    private const string BciHudPrefKey = "BciHudEnabled";
     public static FocusMeter Instance { get; private set; }
     private static float? s_lastSimulatedAverageFocus01;
+    private static bool s_hudEnabled = true;
+    private static bool s_hudInitialized;
 
     [Header("Data source")]
     [SerializeField] private EEGDataPipeline pipeline;
@@ -24,6 +27,8 @@ public class FocusMeter : MonoBehaviour
 
     [Header("UI (optional)")]
     [SerializeField] private TMP_Text focusText;
+
+    private Canvas _focusCanvas;
 
     private readonly List<float> _buffer = new List<float>(1024);
     private float _latestFocus01;
@@ -39,6 +44,7 @@ public class FocusMeter : MonoBehaviour
     private void Awake()
     {
         Instance = this;
+        EnsureHudInitialized();
     }
 
     private void OnEnable()
@@ -68,11 +74,15 @@ public class FocusMeter : MonoBehaviour
     private void Start()
     {
         EnsureLabel();
+        UpdateHudVisibility();
         UpdateLabel("--", "--");
     }
 
     private void EnsureLabel()
     {
+        if (!IsHudEnabled)
+            return;
+
         if (focusText != null)
             return;
 
@@ -85,6 +95,7 @@ public class FocusMeter : MonoBehaviour
         canvasGO.GetComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         canvasGO.GetComponent<CanvasScaler>().referenceResolution = new Vector2(1920, 1080);
         var targetCanvas = c;
+        _focusCanvas = c;
 
         var go = new GameObject("FocusLabel", typeof(RectTransform), typeof(TextMeshProUGUI));
         go.transform.SetParent(targetCanvas.transform, false);
@@ -145,6 +156,9 @@ public class FocusMeter : MonoBehaviour
 
     private void UpdateLabel(string focusPercent, string ratio)
     {
+        if (!IsHudEnabled)
+            return;
+
         if (focusText == null)
             return;
 
@@ -203,6 +217,48 @@ public class FocusMeter : MonoBehaviour
 
         _simulatedAverageFocus01 = UnityEngine.Random.Range(0.58f, 0.87f);
         return _simulatedAverageFocus01.Value;
+    }
+
+    public static bool IsHudEnabled
+    {
+        get
+        {
+            EnsureHudInitialized();
+            return s_hudEnabled;
+        }
+    }
+
+    public static void SetHudEnabled(bool enabled, bool persist = true)
+    {
+        EnsureHudInitialized();
+        s_hudEnabled = enabled;
+        if (persist)
+        {
+            PlayerPrefs.SetInt(BciHudPrefKey, enabled ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+        if (Instance != null)
+            Instance.UpdateHudVisibility();
+    }
+
+    private static void EnsureHudInitialized()
+    {
+        if (s_hudInitialized)
+            return;
+        s_hudInitialized = true;
+        s_hudEnabled = PlayerPrefs.GetInt(BciHudPrefKey, 1) == 1;
+    }
+
+    private void UpdateHudVisibility()
+    {
+        if (IsHudEnabled && focusText == null)
+            EnsureLabel();
+
+        if (_focusCanvas != null)
+            _focusCanvas.gameObject.SetActive(IsHudEnabled);
+
+        if (focusText != null)
+            focusText.gameObject.SetActive(IsHudEnabled);
     }
 
     private static float GetStaticSimulatedAverageFocus01()
