@@ -92,62 +92,62 @@ public class PythonDebugPadCinematic : MonoBehaviour
     private static readonly CodeChallenge[] MediumChallenges =
     {
         new CodeChallenge(
-            "Debugging 1 (Python)\n\nFuncția trebuie să dubleze valoarea primită și să o returneze.\n\nProblema:\n- se întoarce valoarea originală\n- lipsește înmulțirea cu 2\n\nRepară codul fără să schimbi numele funcției.",
-            "def multiply_by_two(value):\n    doubled = value\n    return value",
-            "def multiply_by_two(value):\n    doubled = value * 2\n    return doubled",
-            "Hint:\n`doubled` trebuie să fie `value * 2`, iar return-ul să folosească rezultatul calculat.",
+            "Practice 1 (Python)\n\nScrie o funcție `multiply_by_two` care dublează valoarea primită și afișează rezultatul pentru 6.\n\nCerințe:\n- funcția returnează `value * 2`\n- programul trebuie să afișeze rezultatul.",
+            "def multiply_by_two(value):\n    # TODO\n    return value\n\nprint(multiply_by_two(6))",
+            "def multiply_by_two(value):\n    return value * 2\n\nprint(multiply_by_two(6))",
+            "Hint:\nÎntoarce direct `value * 2` și folosește `print(multiply_by_two(6))`.",
             "py_medium_multiply"),
         new CodeChallenge(
-            "Debugging 2 (Python)\n\nFuncția trebuie să calculeze suma a două numere.\n\nProblema:\n- folosește operatorul greșit\n- în loc de sumă face scădere\n\nSchimbă doar linia greșită.",
-            "def add(a, b):\n    return a - b",
-            "def add(a, b):\n    return a + b",
-            "Hint:\nOperatorul trebuie să fie `+`, nu `-`.",
+            "Practice 2 (Python)\n\nScrie funcția `add(a, b)` și afișează suma pentru 4 și 6.\n\nCerințe:\n- folosește operatorul `+`\n- programul afișează rezultatul.",
+            "def add(a, b):\n    # TODO\n    return 0\n\nprint(add(4, 6))",
+            "def add(a, b):\n    return a + b\n\nprint(add(4, 6))",
+            "Hint:\nReturnează `a + b` și apoi afișează `add(4, 6)`.",
             "py_medium_sum"),
         new CodeChallenge(
-            "Debugging 3 (Python)\n\nCodul trebuie să verifice dacă un număr este par.\n\nProblema:\n- expresia logică este inversată\n- întoarce True pentru numere impare\n\nCorectează doar comparația.",
-            "def is_even(number):\n    return number % 2 != 0",
-            "def is_even(number):\n    return number % 2 == 0",
-            "Hint:\nUn număr par are restul 0 la împărțirea la 2, deci verifică `== 0`.",
+            "Practice 3 (Python)\n\nScrie funcția `is_even` și afișează `even` sau `odd` pentru numărul 8.\n\nCerințe:\n- întoarce True dacă numărul este par\n- afișează `even` când e par.",
+            "def is_even(n):\n    # TODO\n    return False\n\nprint(\"even\" if is_even(8) else \"odd\")",
+            "def is_even(n):\n    return n % 2 == 0\n\nprint(\"even\" if is_even(8) else \"odd\")",
+            "Hint:\nUn număr par are restul 0. Folosește `return n % 2 == 0`.",
             "py_medium_even"),
         new CodeChallenge(
-            "Debugging 4 (Python)\n\nFuncția adaugă un element într-o listă, dar folosește un argument implicit mutabil.\n\nProblema:\n- lista implicită este partajată între apeluri\n- rezultatele se amestecă între rulari\n\nÎnlocuiește parametrul implicit ca să eviți bug-ul.",
-            "def append_item(item, items=[]):\n    items.append(item)\n    return items",
-            "def append_item(item, items=None):\n    if items is None:\n        items = []\n    items.append(item)\n    return items",
-            "Hint:\nFolosește `items=None` și creează lista nouă în funcție când e cazul.",
+            "Practice 4 (Python)\n\nCalculează suma numerelor de la 1 la 5 și afișează rezultatul.\n\nCerințe:\n- folosește un `for` cu `range(1, 6)`\n- actualizează `total` în interiorul buclei.",
+            "total = 0\nfor i in range(1, 6):\n    # TODO\n\nprint(total)",
+            "total = 0\nfor i in range(1, 6):\n    total += i\n\nprint(total)",
+            "Hint:\nÎn interiorul buclei folosește `total += i`.",
             "py_medium_default")
     };
 
     private static readonly CodeChallenge[] HardChallenges =
     {
         new CodeChallenge(
-            "Cerinta 1 (Python)\n\nScrie funcția `is_even(n)`.\n\nCerințe:\n- primește un număr întreg\n- returnează True dacă numărul este par, altfel False.",
-            "def is_even(n):\n    pass",
-            "def is_even(n):\n    return n % 2 == 0",
-            "Explicație:\nUn număr par are restul 0 la împărțirea la 2. Poți folosi direct `return n % 2 == 0`.",
+            "Visual 1 (Python)\n\nAfișează un bar format din `#` cu lungimea `n`.\n\nDate: n = 8\nIeșire așteptată: ########",
+            "n = 8\n# TODO",
+            "n = 8\nprint(\"#\" * n)",
+            "Explicație:\nPoți folosi înmulțirea de șiruri: `\"#\" * n`.",
             "py_hard_is_even"),
         new CodeChallenge(
-            "Cerinta 2 (Python)\n\nScrie funcția `max_of_two(a, b)` care întoarce valoarea mai mare.",
-            "def max_of_two(a, b):\n    pass",
-            "def max_of_two(a, b):\n    return a if a > b else b",
-            "Explicație:\nPoți folosi expresia condițională `a if a > b else b` sau un if/else clasic.",
+            "Visual 2 (Python)\n\nConstruiește un bar de progres cu lungimea 10 folosind `#` și `-`.\n\nDate: percent = 60\nIeșire așteptată: ######----",
+            "percent = 60\nbar_length = 10\n# TODO",
+            "percent = 60\nbar_length = 10\nfilled = percent // 10\nbar = \"#\" * filled + \"-\" * (bar_length - filled)\nprint(bar)",
+            "Explicație:\nTransformă procentul în segmente și construiește șirul.",
             "py_hard_max"),
         new CodeChallenge(
-            "Cerinta 3 (Python)\n\nScrie funcția `square(x)` care întoarce pătratul lui x.",
-            "def square(x):\n    pass",
-            "def square(x):\n    return x * x",
-            "Explicație:\nFolosește înmulțirea cu sine însuși: `x * x`.",
+            "Visual 3 (Python)\n\nAfișează un pătrat 3x3 format din `*`.\n\nIeșire așteptată:\n***\n***\n***",
+            "size = 3\n# TODO",
+            "size = 3\nfor _ in range(size):\n    print(\"*\" * size)",
+            "Explicație:\nPrinți o linie de `*` de `size` ori.",
             "py_hard_square"),
         new CodeChallenge(
-            "Cerinta 4 (Python)\n\nScrie funcția `sum3(a, b, c)` care întoarce suma celor trei numere.",
-            "def sum3(a, b, c):\n    pass",
-            "def sum3(a, b, c):\n    return a + b + c",
-            "Explicație:\nPoți întoarce direct `a + b + c` fără variabile intermediare.",
+            "Visual 4 (Python)\n\nAfișează o scară de 4 trepte folosind `#`.\n\nIeșire așteptată:\n#\n##\n###\n####",
+            "steps = 4\n# TODO",
+            "steps = 4\nfor i in range(1, steps + 1):\n    print(\"#\" * i)",
+            "Explicație:\nCrești numărul de `#` la fiecare linie.",
             "py_hard_sum3"),
         new CodeChallenge(
-            "Cerinta 5 (Python)\n\nScrie funcția `factorial3()` care întoarce factorialul lui 3.",
-            "def factorial3():\n    pass",
-            "def factorial3():\n    return 3 * 2 * 1",
-            "Explicație:\nFactorialul lui 3 este 6. Poți întoarce `3 * 2 * 1` sau direct `6`.",
+            "Visual 5 (Python)\n\nAfișează un șir alternant `#.` de lungime 8.\n\nIeșire așteptată: #.#.#.#.",
+            "length = 8\n# TODO",
+            "length = 8\npattern = \"#.\" * (length // 2)\nprint(pattern)",
+            "Explicație:\nRepetă `#.` de 4 ori pentru lungime 8.",
             "py_hard_factorial3")
     };
 
@@ -788,13 +788,7 @@ public class PythonDebugPadCinematic : MonoBehaviour
 
     private IEnumerator EvaluateChallenge(CodeChallenge challenge, string submittedCode, System.Action<bool> onResult)
     {
-        if (mode != ChallengeMode.Medium)
-        {
-            bool localResult = IsChallengeCorrect(challenge, submittedCode);
-            RecordLearningEvent("code_verify", ResolveChallengeTopic(challenge), localResult ? 1 : 0, mode.ToString().ToLowerInvariant());
-            onResult?.Invoke(localResult);
-            yield break;
-        }
+        string modeLabel = mode == ChallengeMode.Medium ? "python_medium" : "python_hard";
 
         feedbackText.text = Localize("Rulez codul...", "Running code...");
         feedbackText.color = textColor;
@@ -884,7 +878,7 @@ public class PythonDebugPadCinematic : MonoBehaviour
             feedbackText.color = textColor;
         }
 
-        RecordLearningEvent("code_verify", ResolveChallengeTopic(challenge), finalCorrect ? 1 : 0, "python_medium");
+        RecordLearningEvent("code_verify", ResolveChallengeTopic(challenge), finalCorrect ? 1 : 0, modeLabel);
         onResult?.Invoke(finalCorrect);
     }
 
@@ -998,34 +992,24 @@ public class PythonDebugPadCinematic : MonoBehaviour
         switch (challenge.ValidationId)
         {
             case "py_medium_multiply":
-                return compact.Contains("defmultiply_by_two(value):doubled=value*2returndoubled")
-                    || compact.Contains("defmultiply_by_two(value):returnvalue*2");
+                return compact.Contains("defmultiply_by_two(value):returnvalue*2")
+                    && compact.Contains("print(multiply_by_two(6))");
             case "py_medium_sum":
-                return compact.Contains("defadd(a,b):returna+b");
+                return compact.Contains("defadd(a,b):returna+b") && compact.Contains("print(add(4,6))");
             case "py_medium_even":
-                return compact.Contains("defis_even(number):returnnumber%2==0");
+                return compact.Contains("defis_even(n):returnn%2==0") && compact.Contains("is_even(8)") && compact.Contains("even");
             case "py_medium_default":
-                return compact.Contains("defappend_item(item,items=None):") &&
-                       (compact.Contains("ifitemsisnone:items=[]") || compact.Contains("ifitemsisnone:items=list()")) &&
-                       compact.Contains("items.append(item)") &&
-                       compact.Contains("returnitems");
+                return compact.Contains("total=0") && compact.Contains("foriinrange(1,6):") && compact.Contains("total+=i") && compact.Contains("print(total)");
             case "py_hard_is_even":
-                return compact.Contains("defis_even(n):returnn%2==0")
-                    || compact.Contains("defis_even(n):returnnot(n%2)");
+                return compact.Contains("n=8") && (compact.Contains("print(\"#\"*n)") || compact.Contains("print('#'*n)"));
             case "py_hard_max":
-                return compact.Contains("defmax_of_two(a,b):returnaif a>b elseb")
-                    || compact.Contains("defmax_of_two(a,b):if(a>b):returnaelse:returnb")
-                    || compact.Contains("defmax_of_two(a,b):if(a>b):returnaelif(b>a):returnbreturnb");
+                return compact.Contains("percent=60") && compact.Contains("bar_length=10") && compact.Contains("print(") && compact.Contains("#") && compact.Contains("-");
             case "py_hard_square":
-                return compact.Contains("defsquare(x):returnx*x")
-                    || compact.Contains("defsquare(x):result=x*xreturnresult");
+                return compact.Contains("size=3") && (compact.Contains("print(\"*\"*size)") || compact.Contains("print('*'*size)"));
             case "py_hard_sum3":
-                return compact.Contains("defsum3(a,b,c):returna+b+c")
-                    || compact.Contains("defsum3(a,b,c):total=a+b+creturntotal");
+                return compact.Contains("steps=4") && compact.Contains("foriinrange(1,steps+1):") && (compact.Contains("print(\"#\"*i)") || compact.Contains("print('#'*i)"));
             case "py_hard_factorial3":
-                return compact.Contains("deffactorial3():return3*2*1")
-                    || compact.Contains("deffactorial3():return6")
-                    || compact.Contains("deffactorial3():result=3*2*1returnresult");
+                return compact.Contains("length=8") && (compact.Contains("pattern=\"#.\"*") || compact.Contains("pattern='#.'*")) && compact.Contains("print(pattern)");
             default:
                 return actual == expected;
         }
