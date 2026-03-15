@@ -727,6 +727,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
         answerChosen = true;
         answerWasCorrect = optionIndex == question.CorrectIndex;
         selectedAnswerIndex = optionIndex;
+        RecordLearningEvent("quiz_answer", ResolveQuestionTopic(question), answerWasCorrect ? 1 : 0, "cpp_quiz");
 
         for (int i = 0; i < optionButtons.Length; i++)
         {
@@ -750,6 +751,29 @@ public class CppQuestionPadCinematic : MonoBehaviour
                 image.color = optionColor * 0.92f;
             }
         }
+    }
+
+    private void RecordLearningEvent(string eventType, string topic, int correctness, string details)
+    {
+        if (GameClient.Instance == null)
+        {
+            return;
+        }
+
+        StartCoroutine(SendPacketWithConnect(new RecordLearningEventPacket(eventType, topic, correctness, details), null));
+    }
+
+    private string ResolveQuestionTopic(QuizQuestion question)
+    {
+        string prompt = selectedLanguage == QuizLanguage.Romanian ? question.PromptRo : question.PromptEn;
+        if (string.IsNullOrWhiteSpace(prompt))
+        {
+            return "cpp_quiz";
+        }
+
+        string[] lines = prompt.Split('\n');
+        string title = lines.Length > 0 ? lines[0].Trim() : "quiz";
+        return "cpp:" + title;
     }
 
     private void OnNextClicked()

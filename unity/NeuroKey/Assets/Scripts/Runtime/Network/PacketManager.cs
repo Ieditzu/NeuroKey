@@ -25,6 +25,9 @@ namespace NeuroKey.Network
                 29 => new ExecuteCPPCodeResponsePacket(),
                 30 => new AskAiPacket(),
                 31 => new AiResponsePacket(),
+                33 => new RecordLearningEventPacket(),
+                34 => new ExecutePythonCodePacket(),
+                35 => new ExecutePythonCodeResponsePacket(),
                 _ => throw new Exception("Unknown packet ID: " + id),
             };
         }
@@ -225,6 +228,33 @@ namespace NeuroKey.Network
         }
     }
 
+    public class ExecutePythonCodePacket : Packet
+    {
+        public string Code;
+        public ExecutePythonCodePacket(string code) : base(34) { Code = code; }
+        public ExecutePythonCodePacket() : base(34) { }
+        protected override void Write(BinaryWriter writer) { PutString(writer, Code ?? string.Empty); }
+        protected override void Read(BinaryReader reader) { Code = ReadString(reader); }
+    }
+
+    public class ExecutePythonCodeResponsePacket : Packet
+    {
+        public string Output;
+        public string Error;
+        public ExecutePythonCodeResponsePacket(string output, string error) : base(35) { Output = output; Error = error; }
+        public ExecutePythonCodeResponsePacket() : base(35) { }
+        protected override void Write(BinaryWriter writer)
+        {
+            PutString(writer, Output ?? string.Empty);
+            PutString(writer, Error ?? string.Empty);
+        }
+        protected override void Read(BinaryReader reader)
+        {
+            Output = ReadString(reader);
+            Error = ReadString(reader);
+        }
+    }
+
     public class AskAiPacket : Packet
     {
         public string Question;
@@ -250,5 +280,38 @@ namespace NeuroKey.Network
         public AiResponsePacket() : base(31) { }
         protected override void Write(BinaryWriter writer) { PutString(writer, Response ?? string.Empty); }
         protected override void Read(BinaryReader reader) { Response = ReadString(reader); }
+    }
+
+    public class RecordLearningEventPacket : Packet
+    {
+        public string EventType;
+        public string Topic;
+        public int Correctness;
+        public string Details;
+
+        public RecordLearningEventPacket() : base(33) { }
+        public RecordLearningEventPacket(string eventType, string topic, int correctness, string details) : base(33)
+        {
+            EventType = eventType;
+            Topic = topic;
+            Correctness = correctness;
+            Details = details;
+        }
+
+        protected override void Write(BinaryWriter writer)
+        {
+            PutString(writer, EventType ?? string.Empty);
+            PutString(writer, Topic ?? string.Empty);
+            WriteInt32BigEndian(writer, Correctness);
+            PutString(writer, Details ?? string.Empty);
+        }
+
+        protected override void Read(BinaryReader reader)
+        {
+            EventType = ReadString(reader);
+            Topic = ReadString(reader);
+            Correctness = ReadInt32BigEndian(reader);
+            Details = ReadString(reader);
+        }
     }
 }

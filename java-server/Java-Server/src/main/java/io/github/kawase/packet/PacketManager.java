@@ -9,6 +9,8 @@ import io.github.kawase.packet.impl.core.*;
 import io.github.kawase.packet.impl.game.*;
 import io.github.kawase.packet.impl.language.ExecuteCPPCodePacket;
 import io.github.kawase.packet.impl.language.ExecuteCPPCodeResponsePacket;
+import io.github.kawase.packet.impl.language.ExecutePythonCodePacket;
+import io.github.kawase.packet.impl.language.ExecutePythonCodeResponsePacket;
 import io.github.kawase.packet.impl.qr.*;
 
 public class PacketManager {
@@ -43,6 +45,10 @@ public class PacketManager {
             case 29 -> new ExecuteCPPCodeResponsePacket();
             case 30 -> new AskAiPacket();
             case 31 -> new AiResponsePacket();
+            case 32 -> new FetchChildStatsByParentPacket();
+            case 33 -> new RecordLearningEventPacket();
+            case 34 -> new ExecutePythonCodePacket();
+            case 35 -> new ExecutePythonCodeResponsePacket();
 
             default -> throw new PacketException("Unknown packet ID: " + id);
         };

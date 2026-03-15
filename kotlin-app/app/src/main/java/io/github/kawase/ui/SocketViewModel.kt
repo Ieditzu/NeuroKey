@@ -2,6 +2,7 @@ package io.github.kawase.ui
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -33,11 +34,24 @@ import android.content.SharedPreferences
 import android.util.Log
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.AndroidViewModel
+import org.json.JSONObject
 
 data class Child(val id: Long, val name: String, val points: Int, val isOnline: Boolean, val pfp: String? = null)
 data class Task(val id: Long, val name: String, val points: Int)
 data class Goal(val id: Long, val title: String, val reward: String, val completed: Boolean, val requiredPoints: Int)
 data class CompletedTask(val id: Long, val taskTitle: String, val pointValue: Int, val completedAt: String)
+data class AiProfile(
+    val level: String,
+    val totalInteractions: Int,
+    val correctCount: Int,
+    val incorrectCount: Int,
+    val hintsUsed: Int,
+    val chatTurns: Int,
+    val strengths: List<String>,
+    val needsHelp: List<String>,
+    val recentMistakes: List<String>,
+    val lastUpdated: String
+)
 
 class SocketViewModel(application: Application) : AndroidViewModel(application) {
     private var client: AndroidClientSocket? = null
@@ -102,6 +116,14 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _completedTasks = mutableStateListOf<CompletedTask>()
     val completedTasks: List<CompletedTask> = _completedTasks
+
+    private val _aiProfilesCpp = mutableStateMapOf<Long, AiProfile>()
+    val aiProfilesCpp: Map<Long, AiProfile> = _aiProfilesCpp
+    private val _aiProfilesPython = mutableStateMapOf<Long, AiProfile>()
+    val aiProfilesPython: Map<Long, AiProfile> = _aiProfilesPython
+    private val _aiProfilesGeneral = mutableStateMapOf<Long, AiProfile>()
+    val aiProfilesGeneral: Map<Long, AiProfile> = _aiProfilesGeneral
+    private var pendingChildStatsId: Long? = null
 
     private val _errorFlow = MutableSharedFlow<String>()
     val errorFlow: SharedFlow<String> = _errorFlow.asSharedFlow()
@@ -183,6 +205,11 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
 
     fun fetchCompletedTasks(childId: Long) {
         sendPacket(FetchCompletedTasksPacket(childId))
+    }
+
+    fun fetchChildProfile(childId: Long) {
+        pendingChildStatsId = childId
+        sendPacket(FetchChildStatsByParentPacket(childId))
     }
 
     fun addGoal(childId: Long, title: String, reward: String, points: Int, taskId: Long) {
@@ -334,6 +361,93 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
                     _completedTasks.add(CompletedTask(ct.id, ct.taskTitle, ct.pointValue, ct.completedAt))
                 }
             }
+            is FetchChildStatsResponsePacket -> {
+                val targetId = pendingChildStatsId
+                if (targetId != null) {
+                    parseAiProfile(packet.gameStatsJson, "aiProfileCpp")?.let { profile ->
+                        _aiProfilesCpp[targetId] = profile
+                    }
+                    parseAiProfile(packet.gameStatsJson, "aiProfilePython")?.let { profile ->
+                        _aiProfilesPython[targetId] = profile
+                    }
+                    parseAiProfile(packet.gameStatsJson, "aiProfileGeneral")?.let { profile ->
+                        _aiProfilesGeneral[targetId] = profile
+                    }
+                    pendingChildStatsId = null
+                }
+            }
         }
+    }
+
+    private fun parseAiProfile(gameStatsJson: String, key: String): AiProfile? {
+        return try {
+            val stats = JSONObject(gameStatsJson)
+            if (!stats.has(key)) return null
+            val profile = stats.getJSONObject(key)
+            val correct = profile.optInt("correctCount", 0)
+            val incorrect = profile.optInt("incorrectCount", 0)
+            val total = correct + incorrect
+            val accuracy = if (total == 0) 0.0 else correct.toDouble() / total.toDouble()
+            val level = when {
+                total < 4 -> "Beginner"
+                accuracy >= 0.85 && total >= 8 -> "Advanced"
+                accuracy >= 0.65 -> "Intermediate"
+                else -> "Beginner"
+            }
+
+            val topicsJson = profile.optJSONObject("topics")
+            val scores = mutableListOf<Pair<String, Int>>()
+            if (topicsJson != null) {
+                val keys = topicsJson.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    val t = topicsJson.optJSONObject(key) ?: continue
+                    val tCorrect = t.optInt("correct", 0)
+                    val tIncorrect = t.optInt("incorrect", 0)
+                    scores.add(normalizeTopic(key) to (tCorrect - tIncorrect))
+                }
+            }
+
+            val strengths = scores.sortedByDescending { it.second }.filter { it.second > 0 }.map { it.first }.take(3)
+            val needsHelp = scores.sortedBy { it.second }.filter { it.second < 0 }.map { it.first }.take(3)
+
+            val mistakes = mutableListOf<String>()
+            val recentEvents = profile.optJSONArray("recentEvents")
+            if (recentEvents != null) {
+                for (i in 0 until recentEvents.length()) {
+                    val ev = recentEvents.optJSONObject(i) ?: continue
+                    if (ev.optString("correctness") == "incorrect") {
+                        mistakes.add(normalizeTopic(ev.optString("topic", "unknown")))
+                    }
+                }
+            }
+
+            AiProfile(
+                level = level,
+                totalInteractions = profile.optInt("totalInteractions", 0),
+                correctCount = correct,
+                incorrectCount = incorrect,
+                hintsUsed = profile.optInt("hintsUsed", 0),
+                chatTurns = profile.optInt("chatTurns", 0),
+                strengths = strengths,
+                needsHelp = needsHelp,
+                recentMistakes = mistakes.take(3),
+                lastUpdated = profile.optString("lastUpdated", "")
+            )
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun normalizeTopic(topic: String): String {
+        var t = topic
+        if (t.startsWith("cpp:", true)) {
+            t = t.substring(4)
+        } else if (t.startsWith("python:", true)) {
+            t = t.substring(7)
+        } else if (t.startsWith("py:", true)) {
+            t = t.substring(3)
+        }
+        return t.trim().ifEmpty { "general" }
     }
 }

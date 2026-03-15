@@ -317,7 +317,7 @@ public class PythonDebugPadCinematic : MonoBehaviour
 
     private void OnPacketReceived(Packet packet)
     {
-        if (packet is ExecuteCPPCodeResponsePacket execResponse)
+        if (packet is ExecutePythonCodeResponsePacket execResponse)
         {
             UnityMainThreadDispatcher.Instance().Enqueue(() => HandleExecutionResponse(execResponse));
             return;
@@ -329,7 +329,7 @@ public class PythonDebugPadCinematic : MonoBehaviour
         }
     }
 
-    private void HandleExecutionResponse(ExecuteCPPCodeResponsePacket response)
+    private void HandleExecutionResponse(ExecutePythonCodeResponsePacket response)
     {
         if (!awaitingExecution)
         {
@@ -788,36 +788,160 @@ public class PythonDebugPadCinematic : MonoBehaviour
 
     private IEnumerator EvaluateChallenge(CodeChallenge challenge, string submittedCode, System.Action<bool> onResult)
     {
-        // Python challenges are verified local-only; we don't have a remote executor here.
-        feedbackText.text = Localize("Verific raspunsul...", "Checking answer locally...");
-        feedbackText.color = textColor;
-        yield return null;
-
-        bool correct = IsChallengeCorrect(challenge, submittedCode);
-        if (outputText != null)
+        if (mode != ChallengeMode.Medium)
         {
-            outputText.text = correct
-                ? Localize("Rezolvare valida dupa verificarea statica.", "Solution looks correct via static check.")
-                : Localize("Mai verifica logica. Executia reala nu este disponibila aici.", "Logic seems off. Runtime execution isn't available here.");
-            outputText.color = correct ? editorTextColor : wrongColor;
+            bool localResult = IsChallengeCorrect(challenge, submittedCode);
+            RecordLearningEvent("code_verify", ResolveChallengeTopic(challenge), localResult ? 1 : 0, mode.ToString().ToLowerInvariant());
+            onResult?.Invoke(localResult);
+            yield break;
         }
 
-        onResult?.Invoke(correct);
+        feedbackText.text = Localize("Rulez codul...", "Running code...");
+        feedbackText.color = textColor;
+        if (outputText != null)
+        {
+            outputText.text = Localize("Rulez codul pe server...", "Running code on server...");
+            outputText.color = editorTextColor;
+        }
+
+        awaitingExecution = true;
+        lastExecutionOutput = string.Empty;
+        lastExecutionError = string.Empty;
+        bool execSent = false;
+        yield return SendPacketWithConnect(new ExecutePythonCodePacket(submittedCode), success => execSent = success);
+        if (!execSent)
+        {
+            awaitingExecution = false;
+            if (outputText != null)
+            {
+                outputText.text = Localize("Nu pot contacta serverul de executie.", "Can't reach the execution server.");
+                outputText.color = wrongColor;
+            }
+            onResult?.Invoke(false);
+            yield break;
+        }
+
+        float execElapsed = 0f;
+        while (awaitingExecution && execElapsed < 12f && !leaveRequested)
+        {
+            execElapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (awaitingExecution)
+        {
+            awaitingExecution = false;
+            if (outputText != null)
+            {
+                outputText.text = Localize("Timeout la executie.", "Execution timed out.");
+                outputText.color = wrongColor;
+            }
+            onResult?.Invoke(false);
+            yield break;
+        }
+
+        if (outputText != null)
+        {
+            outputText.text = BuildOutputBlock(lastExecutionOutput, lastExecutionError);
+            outputText.color = string.IsNullOrWhiteSpace(lastExecutionError) ? editorTextColor : wrongColor;
+        }
+
+        feedbackText.text = Localize("Verific cu AI...", "Checking with AI...");
+        feedbackText.color = textColor;
+
+        awaitingAiResponse = true;
+        awaitingAiKind = AiRequestKind.Evaluation;
+        pendingAiResponse = string.Empty;
+        string evalQuestion = BuildAiEvaluationQuestion(challenge, submittedCode, lastExecutionOutput, lastExecutionError);
+        bool aiSent = false;
+        yield return SendPacketWithConnect(new AskAiPacket(evalQuestion, "python_eval"), success => aiSent = success);
+        if (!aiSent)
+        {
+            awaitingAiResponse = false;
+            onResult?.Invoke(false);
+            yield break;
+        }
+
+        float aiElapsed = 0f;
+        while (awaitingAiResponse && aiElapsed < 12f && !leaveRequested)
+        {
+            aiElapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (awaitingAiResponse)
+        {
+            awaitingAiResponse = false;
+            onResult?.Invoke(false);
+            yield break;
+        }
+
+        bool? aiCorrect = ParseAiCorrectness(pendingAiResponse);
+        bool finalCorrect = aiCorrect ?? IsChallengeCorrect(challenge, submittedCode);
+        if (!aiCorrect.HasValue)
+        {
+            feedbackText.text = Localize("AI a fost neclar. Folosesc verificarea locala.", "AI was unclear. Using local check.");
+            feedbackText.color = textColor;
+        }
+
+        RecordLearningEvent("code_verify", ResolveChallengeTopic(challenge), finalCorrect ? 1 : 0, "python_medium");
+        onResult?.Invoke(finalCorrect);
     }
 
     private IEnumerator RunCodeOnly(string submittedCode)
     {
-        feedbackText.text = Localize("Nu rulam codul aici.", "Execution not available here.");
+        if (mode != ChallengeMode.Medium)
+        {
+            yield break;
+        }
+
+        feedbackText.text = Localize("Rulez codul...", "Running code...");
         feedbackText.color = textColor;
         if (outputText != null)
         {
-            outputText.text = Localize(
-                "Acest pad verifica doar logică și sintaxă prin comparație statică.\nApasă Verify pentru a continua.",
-                "This pad only performs static checks of your answer.\nPress Verify to continue.");
+            outputText.text = Localize("Rulez codul pe server...", "Running code on server...");
             outputText.color = editorTextColor;
         }
 
-        yield return null;
+        awaitingExecution = true;
+        lastExecutionOutput = string.Empty;
+        lastExecutionError = string.Empty;
+        bool execSent = false;
+        yield return SendPacketWithConnect(new ExecutePythonCodePacket(submittedCode), success => execSent = success);
+        if (!execSent)
+        {
+            awaitingExecution = false;
+            if (outputText != null)
+            {
+                outputText.text = Localize("Nu pot contacta serverul de executie.", "Can't reach the execution server.");
+                outputText.color = wrongColor;
+            }
+            yield break;
+        }
+
+        float execElapsed = 0f;
+        while (awaitingExecution && execElapsed < 12f && !leaveRequested)
+        {
+            execElapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (awaitingExecution)
+        {
+            awaitingExecution = false;
+            if (outputText != null)
+            {
+                outputText.text = Localize("Timeout la executie.", "Execution timed out.");
+                outputText.color = wrongColor;
+            }
+            yield break;
+        }
+
+        if (outputText != null)
+        {
+            outputText.text = BuildOutputBlock(lastExecutionOutput, lastExecutionError);
+            outputText.color = string.IsNullOrWhiteSpace(lastExecutionError) ? editorTextColor : wrongColor;
+        }
     }
 
     private string BuildOutputBlock(string output, string error)
@@ -1118,6 +1242,33 @@ public class PythonDebugPadCinematic : MonoBehaviour
         string code = codeInput != null ? codeInput.text : string.Empty;
         return "Task:\\n" + prompt + "\\n\\nStudent code:\\n" + code + "\\n\\nQuestion:\\n" + userMessage
             + "\\n\\nGive a helpful hint without giving away the full solution.";
+    }
+
+    private void RecordLearningEvent(string eventType, string topic, int correctness, string details)
+    {
+        if (GameClient.Instance == null)
+        {
+            return;
+        }
+
+        StartCoroutine(SendPacketWithConnect(new RecordLearningEventPacket(eventType, topic, correctness, details), null));
+    }
+
+    private string ResolveChallengeTopic(CodeChallenge challenge)
+    {
+        if (!string.IsNullOrWhiteSpace(challenge.ValidationId))
+        {
+            return "python:" + challenge.ValidationId;
+        }
+
+        if (!string.IsNullOrWhiteSpace(challenge.Prompt))
+        {
+            string[] lines = challenge.Prompt.Split('\n');
+            string title = lines.Length > 0 ? lines[0].Trim() : "challenge";
+            return "python:" + title;
+        }
+
+        return "python:challenge";
     }
 
     private void ShowMainUi(bool visible)

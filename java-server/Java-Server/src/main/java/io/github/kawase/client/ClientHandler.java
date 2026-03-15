@@ -11,6 +11,8 @@ import io.github.kawase.packet.impl.core.*;
 import io.github.kawase.packet.impl.game.*;
 import io.github.kawase.packet.impl.language.ExecuteCPPCodePacket;
 import io.github.kawase.packet.impl.language.ExecuteCPPCodeResponsePacket;
+import io.github.kawase.packet.impl.language.ExecutePythonCodePacket;
+import io.github.kawase.packet.impl.language.ExecutePythonCodeResponsePacket;
 import io.github.kawase.packet.impl.qr.*;
 import io.github.kawase.socket.ServerSocket;
 import lombok.Getter;
@@ -163,6 +165,28 @@ public class ClientHandler {
                         e.printStackTrace();
                     }
                     
+                    connection.send(new FetchChildStatsResponsePacket(child.getName(), child.getTotalPoints(), json).encode());
+                }
+
+                case FetchChildStatsByParentPacket fetchChildStatsByParentPacket -> {
+                    if (client.getParentId() == null) {
+                        throw new RuntimeException("Not logged in as a parent.");
+                    }
+
+                    final var child = Server.getInstance().getChildService().findById(fetchChildStatsByParentPacket.getChildId())
+                            .orElseThrow(() -> new RuntimeException("Child not found"));
+
+                    if (!child.getParent().getId().equals(client.getParentId())) {
+                        throw new RuntimeException("Access denied: This child does not belong to you.");
+                    }
+
+                    String json = "{}";
+                    try {
+                        json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(child.getGameStats());
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
                     connection.send(new FetchChildStatsResponsePacket(child.getName(), child.getTotalPoints(), json).encode());
                 }
 
@@ -333,16 +357,53 @@ public class ClientHandler {
                     connection.send(new ExecuteCPPCodeResponsePacket(executionResult.getOutput(), executionResult.getError()).encode());
                 }
 
+                case ExecutePythonCodePacket executePythonCodePacket -> {
+                    final io.github.kawase.python.PythonExecutor.ExecutionResult executionResult =
+                            io.github.kawase.python.PythonExecutor.execute(executePythonCodePacket.getCode(), 120);
+
+                    connection.send(new ExecutePythonCodeResponsePacket(executionResult.getOutput(), executionResult.getError()).encode());
+                }
+
                 case AskAiPacket askAiPacket -> {
                     System.out.println("AI Question from " + (client.getChildId() != null ? "child " + client.getChildId() : "parent " + client.getParentId()) + ": " + askAiPacket.getQuestion());
                     
                     io.github.kawase.utility.GeminiAI ai = new io.github.kawase.utility.GeminiAI();
+                    String profileSummary = "";
+                    if (client.getChildId() != null) {
+                        Server.getInstance().getLearningProfileService().recordAiInteraction(client.getChildId(), askAiPacket.getContext(), askAiPacket.getQuestion());
+                        String language = null;
+                        if (askAiPacket.getContext() != null) {
+                            String ctx = askAiPacket.getContext().toLowerCase();
+                            if (ctx.contains("cpp")) {
+                                language = "cpp";
+                            } else if (ctx.contains("python") || ctx.contains("py")) {
+                                language = "python";
+                            }
+                        }
+                        profileSummary = Server.getInstance().getLearningProfileService().buildProfileSummary(client.getChildId(), language);
+                    }
+
                     String response = ai.ask(
-                            askAiPacket.getQuestion(), 
-                            askAiPacket.getContext()
+                            askAiPacket.getQuestion(),
+                            askAiPacket.getContext(),
+                            profileSummary
                     );
                     
                     connection.send(new AiResponsePacket(response).encode());
+                }
+
+                case RecordLearningEventPacket recordLearningEventPacket -> {
+                    if (client.getChildId() == null) {
+                        throw new RuntimeException("Not logged in as a child.");
+                    }
+
+                    Server.getInstance().getLearningProfileService().recordLearningEvent(
+                            client.getChildId(),
+                            recordLearningEventPacket.getEventType(),
+                            recordLearningEventPacket.getTopic(),
+                            recordLearningEventPacket.getCorrectness(),
+                            recordLearningEventPacket.getDetails()
+                    );
                 }
 
                 default -> throw new IllegalStateException("Unexpected Packet: " + packet);
