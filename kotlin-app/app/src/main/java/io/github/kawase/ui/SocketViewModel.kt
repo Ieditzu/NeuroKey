@@ -29,10 +29,14 @@ import io.github.kawase.ui.theme.BackgroundWhite
 import io.github.kawase.ui.theme.SurfaceGray
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Build
 import android.util.Log
 import androidx.compose.ui.graphics.toArgb
+import androidx.core.app.NotificationCompat
 import androidx.lifecycle.AndroidViewModel
 import org.json.JSONObject
 
@@ -63,6 +67,39 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
     private var client: AndroidClientSocket? = null
     private val packetManager = PacketManager()
     private val prefs: SharedPreferences = application.getSharedPreferences("neurokey_prefs", Context.MODE_PRIVATE)
+    private var notificationId = 100
+
+    companion object {
+        private const val CHANNEL_ID = "neurokey_activity"
+        private const val CHANNEL_NAME = "NeuroKey Activity"
+    }
+
+    init {
+        createNotificationChannel(application)
+    }
+
+    private fun createNotificationChannel(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "Notifications about your child's learning activity"
+            }
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun sendNotification(title: String, body: String) {
+        val context = getApplication<Application>()
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true)
+            .build()
+        manager.notify(notificationId++, notification)
+    }
 
     var isDarkMode = mutableStateOf(prefs.getBoolean("dark_mode", false))
     var primaryColor = mutableStateOf(Color(prefs.getInt("primary_color", PrimaryLight.toArgb())))
@@ -329,13 +366,17 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
                 viewModelScope.launch {
                     if (packet.isSuccess) {
                         _successFlow.emit(packet.message ?: "Success")
-                        if (packet.requestPacketId == 4 || packet.requestPacketId == 27) { 
+                        if (packet.requestPacketId == 4 || packet.requestPacketId == 27) {
                             fetchChildren()
                         }
                         if (packet.requestPacketId == 26) { // UpdatePfp
                             if (pendingPfpId == -1L) {
                                 _parentPfp.value = pendingPfp
                             }
+                            fetchChildren()
+                        }
+                        if (packet.requestPacketId == 8) { // Child completed a task
+                            sendNotification("Task Completed!", packet.message ?: "Your child completed a task")
                             fetchChildren()
                         }
                     } else {

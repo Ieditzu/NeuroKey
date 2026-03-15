@@ -193,6 +193,9 @@ namespace NeuroKey.Network
         public string Name;
         public int TotalPoints;
         public string GameStatsJson;
+        public int Streak;
+        public int CompletedTaskCount;
+        public int TotalTaskCount;
         public FetchChildStatsResponsePacket() : base(24) { }
         protected override void Write(BinaryWriter writer) { }
         protected override void Read(BinaryReader reader)
@@ -200,6 +203,9 @@ namespace NeuroKey.Network
             Name = ReadString(reader);
             TotalPoints = ReadInt32BigEndian(reader);
             GameStatsJson = ReadString(reader);
+            Streak = ReadInt32BigEndian(reader);
+            CompletedTaskCount = ReadInt32BigEndian(reader);
+            TotalTaskCount = ReadInt32BigEndian(reader);
         }
     }
 
