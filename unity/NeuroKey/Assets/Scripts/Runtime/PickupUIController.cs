@@ -11,6 +11,7 @@ public class PickupUIController : MonoBehaviour
     private const string BridgeVisibleLabel = "viewPod =";
 
     public static PickupUIController Instance { get; private set; }
+    public static bool IsBridgeRevealed => Instance != null && Instance.bridgeRevealActive;
 
     [SerializeField] private BeanController beanPlayer;
     [SerializeField] private FirstPersonControllerSimple fpsPlayer;

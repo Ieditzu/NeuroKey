@@ -229,7 +229,7 @@ public class BeanController : MonoBehaviour
         }
     }
 
-    private void RespawnNow()
+    public void RespawnNow()
     {
         jumpQueued = false;
         rb.velocity = Vector3.zero;

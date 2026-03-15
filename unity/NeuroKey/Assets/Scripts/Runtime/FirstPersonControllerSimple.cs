@@ -628,7 +628,7 @@ public class FirstPersonControllerSimple : MonoBehaviour
         controller.Move(new Vector3(0f, velocity.y, 0f) * Time.deltaTime);
     }
 
-    private void RespawnAtSpawnPoint()
+    public void RespawnAtSpawnPoint()
     {
         drownTimer = 0f;
         velocity = Vector3.zero;
