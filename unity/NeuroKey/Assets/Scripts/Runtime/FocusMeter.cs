@@ -29,6 +29,8 @@ public class FocusMeter : MonoBehaviour
     [SerializeField] private TMP_Text focusText;
 
     private Canvas _focusCanvas;
+    private GameObject _bciBarDockerUi;
+    private GameObject _signalQualityBarUi;
 
     private readonly List<float> _buffer = new List<float>(1024);
     private float _latestFocus01;
@@ -259,6 +261,23 @@ public class FocusMeter : MonoBehaviour
 
         if (focusText != null)
             focusText.gameObject.SetActive(IsHudEnabled);
+
+        UpdateBciStatusUiVisibility();
+    }
+
+    private void UpdateBciStatusUiVisibility()
+    {
+        if (_bciBarDockerUi == null)
+            _bciBarDockerUi = GameObject.Find("BCIBarDocker_UI");
+
+        if (_signalQualityBarUi == null)
+            _signalQualityBarUi = GameObject.Find("SignalQualityBar_UI");
+
+        if (_bciBarDockerUi != null)
+            _bciBarDockerUi.SetActive(IsHudEnabled);
+
+        if (_signalQualityBarUi != null)
+            _signalQualityBarUi.SetActive(IsHudEnabled);
     }
 
     private static float GetStaticSimulatedAverageFocus01()
