@@ -32,18 +32,22 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
     private struct CodeChallenge
     {
-        public string Prompt;
+        public string PromptRo;
+        public string PromptEn;
         public string InitialCode;
         public string ExpectedCode;
-        public string Hint;
+        public string HintRo;
+        public string HintEn;
         public string ValidationId;
 
-        public CodeChallenge(string prompt, string initialCode, string expectedCode, string hint, string validationId = "")
+        public CodeChallenge(string promptRo, string promptEn, string initialCode, string expectedCode, string hintRo, string hintEn, string validationId = "")
         {
-            Prompt = prompt;
+            PromptRo = promptRo;
+            PromptEn = promptEn;
             InitialCode = initialCode;
             ExpectedCode = expectedCode;
-            Hint = hint;
+            HintRo = hintRo;
+            HintEn = hintEn;
             ValidationId = validationId;
         }
     }
@@ -93,27 +97,35 @@ public class CodeChallengePadCinematic : MonoBehaviour
     {
         new CodeChallenge(
             "Debugging 1\n\nCodul trebuie sa dubleze valoarea primita si sa afiseze rezultatul.\n\nProblema:\n- functia intoarce doar valoarea initiala\n- lipseste inmultirea cu 2\n\nRepara codul din editorul din dreapta fara sa schimbi numele functiei.",
+            "Debugging 1\n\nThe code must double the given value and display the result.\n\nProblem:\n- the function returns only the initial value\n- multiplication by 2 is missing\n\nFix the code in the editor on the right without changing the function name.",
             "#include <iostream>\nusing namespace std;\n\nint MultiplyByTwo(int value)\n{\n    int doubled = value;\n    return doubled;\n}\n\nint main()\n{\n    cout << MultiplyByTwo(6) << endl;\n    return 0;\n}",
             "#include <iostream>\nusing namespace std;\n\nint MultiplyByTwo(int value)\n{\n    int doubled = value * 2;\n    return doubled;\n}\n\nint main()\n{\n    cout << MultiplyByTwo(6) << endl;\n    return 0;\n}",
             "Hint:\n\nBugul este in functia `MultiplyByTwo`.\nVariabila `doubled` trebuie sa primeasca `value * 2`, nu doar `value`.\n\nPartea corecta este:\n`int doubled = value * 2;`",
+            "Hint:\n\nThe bug is in `MultiplyByTwo`.\n`doubled` should be `value * 2`, not just `value`.\n\nCorrect line:\n`int doubled = value * 2;`",
             "medium_multiply"),
         new CodeChallenge(
             "Debugging 2\n\nCodul trebuie sa calculeze suma a doua numere.\n\nProblema:\n- functia foloseste operatorul gresit\n- in loc de suma face scadere\n\nSchimba doar linia gresita din functie.",
+            "Debugging 2\n\nThe code must compute the sum of two numbers.\n\nProblem:\n- the function uses the wrong operator\n- it subtracts instead of adding\n\nChange only the wrong line in the function.",
             "#include <iostream>\nusing namespace std;\n\nint Sum(int a, int b)\n{\n    return a - b;\n}\n\nint main()\n{\n    int total = Sum(4, 6);\n    cout << total << endl;\n    return 0;\n}",
             "#include <iostream>\nusing namespace std;\n\nint Sum(int a, int b)\n{\n    return a + b;\n}\n\nint main()\n{\n    int total = Sum(4, 6);\n    cout << total << endl;\n    return 0;\n}",
             "Hint:\n\nProblema este in instructiunea `return`.\nPentru suma trebuie folosit operatorul `+`, nu `-`.\n\nLinia corecta este:\n`return a + b;`",
+            "Hint:\n\nThe issue is in the `return` statement.\nFor sum you must use `+`, not `-`.\n\nCorrect line:\n`return a + b;`",
             "medium_sum"),
         new CodeChallenge(
             "Debugging 3\n\nCodul trebuie sa verifice daca un numar este par.\n\nProblema:\n- expresia logica este inversata\n- functia intoarce `true` pentru numere impare\n\nCorecteaza doar comparatia.",
+            "Debugging 3\n\nThe code must check if a number is even.\n\nProblem:\n- the logical expression is inverted\n- the function returns `true` for odd numbers\n\nFix only the comparison.",
             "#include <iostream>\nusing namespace std;\n\nbool IsEven(int number)\n{\n    return number % 2 != 0;\n}\n\nint main()\n{\n    cout << (IsEven(8) ? \"even\" : \"odd\") << endl;\n    return 0;\n}",
             "#include <iostream>\nusing namespace std;\n\nbool IsEven(int number)\n{\n    return number % 2 == 0;\n}\n\nint main()\n{\n    cout << (IsEven(8) ? \"even\" : \"odd\") << endl;\n    return 0;\n}",
             "Hint:\n\nUn numar par are restul `0` la impartirea la 2.\nComparatia corecta este `== 0`.\n\nLinia buna este:\n`return number % 2 == 0;`",
+            "Hint:\n\nAn even number has remainder `0` when divided by 2.\nThe correct comparison is `== 0`.\n\nCorrect line:\n`return number % 2 == 0;`",
             "medium_even"),
         new CodeChallenge(
             "Debugging 4\n\nCodul trebuie sa incrementeze variabila originala cu 1.\n\nProblema:\n- functia primeste parametrul prin valoare\n- modificarea nu ajunge inapoi in `main`\n\nRepara semnatura functiei.",
+            "Debugging 4\n\nThe code must increment the original variable by 1.\n\nProblem:\n- the function takes the parameter by value\n- the change does not reach `main`\n\nFix the function signature.",
             "#include <iostream>\nusing namespace std;\n\nvoid Increment(int n)\n{\n    n++;\n}\n\nint main()\n{\n    int value = 5;\n    Increment(value);\n    cout << value << endl;\n    return 0;\n}",
             "#include <iostream>\nusing namespace std;\n\nvoid Increment(int& n)\n{\n    n++;\n}\n\nint main()\n{\n    int value = 5;\n    Increment(value);\n    cout << value << endl;\n    return 0;\n}",
             "Hint:\n\nDaca vrei sa modifici variabila originala, parametrul trebuie trimis prin referinta.\nAsta inseamna ca functia trebuie sa primeasca `int& n`.\n\nPartea corecta este:\n`void Increment(int& n)`",
+            "Hint:\n\nTo modify the original variable, pass the parameter by reference.\nThat means the function should take `int& n`.\n\nCorrect line:\n`void Increment(int& n)`",
             "medium_increment")
     };
 
@@ -121,33 +133,43 @@ public class CodeChallengePadCinematic : MonoBehaviour
     {
         new CodeChallenge(
             "Cerinta 1\n\nScrie functia `bool IsEven(int n)`.\n\nCe trebuie sa faca:\n- primeste un numar intreg\n- intoarce `true` daca numarul este par\n- intoarce `false` daca numarul este impar\n\nPoti rezolva in mai multe moduri, dar functia trebuie sa mearga corect.",
+            "Task 1\n\nWrite the function `bool IsEven(int n)`.\n\nIt should:\n- take an integer\n- return `true` if the number is even\n- return `false` if the number is odd\n\nYou can solve it in several ways, but the function must work correctly.",
             "bool IsEven(int n)\n{\n    \n}",
             "bool IsEven(int n)\n{\n    return n % 2 == 0;\n}",
             "Explicatie:\n\nUn numar par are restul 0 la impartirea la 2.\nPoti scrie direct `return n % 2 == 0;` sau poti folosi un `if` care intoarce `true` si `false`.\nImportant este sa verifici corect paritatea.\n\nO rezolvare buna este:\n\nbool IsEven(int n)\n{\n    return n % 2 == 0;\n}",
+            "Explanation:\n\nAn even number has remainder 0 when divided by 2.\nYou can write `return n % 2 == 0;` or use an `if` that returns `true`/`false`.\nThe key is to check parity correctly.\n\nA good solution is:\n\nbool IsEven(int n)\n{\n    return n % 2 == 0;\n}",
             "hard_is_even"),
         new CodeChallenge(
             "Cerinta 2\n\nScrie functia `int MaxOfTwo(int a, int b)`.\n\nCe trebuie sa faca:\n- compara cele doua valori primite\n- intoarce numarul mai mare\n\nRezolva direct in editorul din dreapta.",
+            "Task 2\n\nWrite the function `int MaxOfTwo(int a, int b)`.\n\nIt should:\n- compare the two values\n- return the larger number\n\nSolve directly in the editor on the right.",
             "int MaxOfTwo(int a, int b)\n{\n    \n}",
             "int MaxOfTwo(int a, int b)\n{\n    return a > b ? a : b;\n}",
             "Explicatie:\n\nPoti rezolva cu operatorul ternar sau cu `if/else`.\nImportant este ca functia sa intoarca valoarea mai mare dintre `a` si `b`.\n\nO rezolvare buna este:\n\nint MaxOfTwo(int a, int b)\n{\n    return a > b ? a : b;\n}",
+            "Explanation:\n\nYou can solve this with the ternary operator or `if/else`.\nThe important part is to return the larger of `a` and `b`.\n\nA good solution is:\n\nint MaxOfTwo(int a, int b)\n{\n    return a > b ? a : b;\n}",
             "hard_max"),
         new CodeChallenge(
             "Cerinta 3\n\nScrie functia `int Square(int x)`.\n\nCe trebuie sa faca:\n- primeste un numar `x`\n- intoarce patratul lui\n\nScrie functia complet.",
+            "Task 3\n\nWrite the function `int Square(int x)`.\n\nIt should:\n- take a number `x`\n- return its square\n\nWrite the full function.",
             "int Square(int x)\n{\n    \n}",
             "int Square(int x)\n{\n    return x * x;\n}",
             "Explicatie:\n\nPatratul unui numar inseamna numarul inmultit cu el insusi.\nPoti scrie direct `return x * x;` sau poti folosi o variabila intermediara si apoi `return`.\n\nO rezolvare buna este:\n\nint Square(int x)\n{\n    return x * x;\n}",
+            "Explanation:\n\nThe square of a number is the number multiplied by itself.\nYou can write `return x * x;` or use an intermediate variable and return it.\n\nA good solution is:\n\nint Square(int x)\n{\n    return x * x;\n}",
             "hard_square"),
         new CodeChallenge(
             "Cerinta 4\n\nScrie functia `int Sum3(int a, int b, int c)`.\n\nCe trebuie sa faca:\n- primeste trei numere intregi\n- intoarce suma lor\n\nNu exista o singura forma corecta.",
+            "Task 4\n\nWrite the function `int Sum3(int a, int b, int c)`.\n\nIt should:\n- take three integers\n- return their sum\n\nThere isn't a single correct form.",
             "int Sum3(int a, int b, int c)\n{\n    \n}",
             "int Sum3(int a, int b, int c)\n{\n    return a + b + c;\n}",
             "Explicatie:\n\nPoti face suma direct in `return` sau printr-o variabila auxiliara.\nImportant este ca rezultatul final sa fie `a + b + c`.\n\nO rezolvare buna este:\n\nint Sum3(int a, int b, int c)\n{\n    return a + b + c;\n}",
+            "Explanation:\n\nYou can sum directly in `return` or use a helper variable.\nThe important part is that the final result is `a + b + c`.\n\nA good solution is:\n\nint Sum3(int a, int b, int c)\n{\n    return a + b + c;\n}",
             "hard_sum3"),
         new CodeChallenge(
             "Cerinta 5\n\nScrie functia `int Factorial3()`.\n\nCe trebuie sa faca:\n- intoarce factorialul lui 3\n\nAmintire:\nfactorialul unui numar inseamna produsul numerelor de la acel numar pana la 1.",
+            "Task 5\n\nWrite the function `int Factorial3()`.\n\nIt should:\n- return the factorial of 3\n\nReminder:\nThe factorial of a number is the product of all integers from that number down to 1.",
             "int Factorial3()\n{\n    \n}",
             "int Factorial3()\n{\n    return 3 * 2 * 1;\n}",
             "Explicatie:\n\nPoti intoarce direct `6`, poti scrie `3 * 2 * 1`, sau poti folosi o variabila si sa o inmultesti pe rand.\nImportant este ca functia sa intoarca rezultatul corect pentru factorialul lui 3.\n\nO rezolvare buna este:\n\nint Factorial3()\n{\n    return 3 * 2 * 1;\n}",
+            "Explanation:\n\nYou can return `6` directly, write `3 * 2 * 1`, or use a variable and multiply step by step.\nThe key is to return the correct factorial of 3.\n\nA good solution is:\n\nint Factorial3()\n{\n    return 3 * 2 * 1;\n}",
             "hard_factorial3")
     };
 
@@ -527,7 +549,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                 if (hintRequested)
                 {
                     hintRequested = false;
-                    yield return ShowHintScreen(challenge.Hint);
+                    yield return ShowHintScreen(GetChallengeHint(challenge));
                     if (leaveRequested)
                     {
                         yield break;
@@ -589,7 +611,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                     if (hintRequested)
                     {
                         hintRequested = false;
-                        yield return ShowHintScreen(challenge.Hint);
+                        yield return ShowHintScreen(GetChallengeHint(challenge));
                         if (leaveRequested)
                         {
                             yield break;
@@ -662,7 +684,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                 if (hintRequested)
                 {
                     hintRequested = false;
-                    yield return ShowHintScreen(challenge.Hint);
+                    yield return ShowHintScreen(GetChallengeHint(challenge));
                     if (leaveRequested)
                     {
                         yield break;
@@ -959,7 +981,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
     private string BuildAiEvaluationQuestion(CodeChallenge challenge, string submittedCode, string output, string error)
     {
         return "Check if the student's C++ solution is correct for the task. Reply with CORRECT or INCORRECT as the first word, then 1 short sentence.\\n\\nTask:\\n"
-            + challenge.Prompt + "\\n\\nStudent code:\\n" + submittedCode + "\\n\\nProgram output:\\n" + (string.IsNullOrWhiteSpace(output) ? "(no output)" : output.Trim())
+            + GetChallengePrompt(challenge) + "\\n\\nStudent code:\\n" + submittedCode + "\\n\\nProgram output:\\n" + (string.IsNullOrWhiteSpace(output) ? "(no output)" : output.Trim())
             + "\\n\\nErrors:\\n" + (string.IsNullOrWhiteSpace(error) ? "(none)" : error.Trim());
     }
 
@@ -1224,6 +1246,48 @@ public class CodeChallengePadCinematic : MonoBehaviour
         aiChatHistoryText.text = builder.ToString();
     }
 
+    private string GetChallengePrompt(CodeChallenge challenge)
+    {
+        if (selectedLanguage == QuizLanguage.English && !string.IsNullOrWhiteSpace(challenge.PromptEn))
+        {
+            return challenge.PromptEn;
+        }
+
+        if (!string.IsNullOrWhiteSpace(challenge.PromptRo))
+        {
+            return challenge.PromptRo;
+        }
+
+        return challenge.PromptEn ?? string.Empty;
+    }
+
+    private string GetChallengeHint(CodeChallenge challenge)
+    {
+        if (selectedLanguage == QuizLanguage.English && !string.IsNullOrWhiteSpace(challenge.HintEn))
+        {
+            return challenge.HintEn;
+        }
+
+        if (!string.IsNullOrWhiteSpace(challenge.HintRo))
+        {
+            return challenge.HintRo;
+        }
+
+        return challenge.HintEn ?? string.Empty;
+    }
+
+    private string GetChallengeTitle(CodeChallenge challenge)
+    {
+        string prompt = !string.IsNullOrWhiteSpace(challenge.PromptEn) ? challenge.PromptEn : challenge.PromptRo;
+        if (string.IsNullOrWhiteSpace(prompt))
+        {
+            return "challenge";
+        }
+
+        string[] lines = prompt.Split('\n');
+        return lines.Length > 0 ? lines[0].Trim() : "challenge";
+    }
+
     private string BuildAiChatContext()
     {
         if (mode == ChallengeMode.Medium)
@@ -1236,10 +1300,14 @@ public class CodeChallengePadCinematic : MonoBehaviour
 
     private string BuildAiChatQuestion(string userMessage)
     {
-        string prompt = activeChallenge.Prompt;
+        string prompt = GetChallengePrompt(activeChallenge);
         string code = codeInput != null ? codeInput.text : string.Empty;
-        return "Task:\\n" + prompt + "\\n\\nStudent code:\\n" + code + "\\n\\nQuestion:\\n" + userMessage
-            + "\\n\\nGive a helpful hint without giving away the full solution.";
+        string taskLabel = Localize("Cerinta", "Task");
+        string codeLabel = Localize("Cod elev", "Student code");
+        string questionLabel = Localize("Intrebare", "Question");
+        string instruction = Localize("Ofera un indiciu util fara sa dai solutia completa.", "Give a helpful hint without giving away the full solution.");
+        return taskLabel + ":\\n" + prompt + "\\n\\n" + codeLabel + ":\\n" + code + "\\n\\n" + questionLabel + ":\\n" + userMessage
+            + "\\n\\n" + instruction;
     }
 
     private void RecordLearningEvent(string eventType, string topic, int correctness, string details)
@@ -1259,14 +1327,8 @@ public class CodeChallengePadCinematic : MonoBehaviour
             return "cpp:" + challenge.ValidationId;
         }
 
-        if (!string.IsNullOrWhiteSpace(challenge.Prompt))
-        {
-            string[] lines = challenge.Prompt.Split('\n');
-            string title = lines.Length > 0 ? lines[0].Trim() : "challenge";
-            return "cpp:" + title;
-        }
-
-        return "cpp:challenge";
+        string title = GetChallengeTitle(challenge);
+        return "cpp:" + title;
     }
 
     private string BuildEventDetails(string modeLabel, string output, string error)
@@ -1343,7 +1405,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
             ? Localize("Debugging C++ Medium", "Medium C++ Debugging")
             : Localize("Programare C++ Hard", "Hard C++ Coding");
         counterText.text = Localize("Intrebarea ", "Question ") + (currentIndex + 1) + " / " + total;
-        promptText.text = challenge.Prompt;
+        promptText.text = GetChallengePrompt(challenge);
         codeInput.text = currentAnswer;
         feedbackText.text = Localize("Incercari ramase: ", "Attempts left: ") + attemptsLeft + " / " + GetAttemptsAllowed();
         feedbackText.color = textColor;
@@ -1371,7 +1433,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
             ApplyLocalizedStaticTexts();
             titleText.text = Localize("Refacere intrebari gresite", "Retry wrong questions");
             counterText.text = Localize("Refacere ", "Retry ") + (current + 1) + " / " + retryChallenges.Length;
-            promptText.text = challenge.Prompt;
+            promptText.text = GetChallengePrompt(challenge);
             codeInput.text = retryAnswers[current];
             feedbackText.text = Localize("Incercari ramase: ", "Attempts left: ") + retryAttempts[current] + " / " + GetAttemptsAllowed();
             feedbackText.color = textColor;
@@ -1402,7 +1464,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                 if (hintRequested)
                 {
                     hintRequested = false;
-                    yield return ShowHintScreen(challenge.Hint);
+                    yield return ShowHintScreen(GetChallengeHint(challenge));
                     if (leaveRequested)
                     {
                         yield break;
