@@ -13,6 +13,9 @@ using Gtec.UnityInterface; // EEGDataPipeline
 /// </summary>
 public class FocusMeter : MonoBehaviour
 {
+    public static FocusMeter Instance { get; private set; }
+    private static float? s_lastSimulatedAverageFocus01;
+
     [Header("Data source")]
     [SerializeField] private EEGDataPipeline pipeline;
     [SerializeField] private int channelIndex = 0;          // 0 = first channel
@@ -23,6 +26,20 @@ public class FocusMeter : MonoBehaviour
     [SerializeField] private TMP_Text focusText;
 
     private readonly List<float> _buffer = new List<float>(1024);
+    private float _latestFocus01;
+    private float _focusSum;
+    private int _focusSampleCount;
+    private float? _simulatedAverageFocus01;
+
+    public bool HasSessionAverage => _focusSampleCount > 0;
+    public float LatestFocus01 => _latestFocus01;
+    public float AverageFocus01 => _focusSampleCount > 0 ? _focusSum / _focusSampleCount : 0f;
+    public bool HasPipeline => pipeline != null;
+
+    private void Awake()
+    {
+        Instance = this;
+    }
 
     private void OnEnable()
     {
@@ -40,6 +57,12 @@ public class FocusMeter : MonoBehaviour
     {
         if (pipeline != null)
             pipeline.OnEEGDataAvailable.RemoveListener(OnDataAvailable);
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
     }
 
     private void Start()
@@ -113,6 +136,9 @@ public class FocusMeter : MonoBehaviour
 
         double ratio = betaPower / (alphaPower + 1e-6);
         float focus01 = Clamp01((float)(ratio / 3.0)); // heuristic scaling
+        _latestFocus01 = focus01;
+        _focusSum += focus01;
+        _focusSampleCount++;
 
         UpdateLabel(focus01.ToString("P0"), ratio.ToString("0.00"));
     }
@@ -123,6 +149,69 @@ public class FocusMeter : MonoBehaviour
             return;
 
         focusText.text = $"Focus: {focusPercent}\nβ/α ratio: {ratio}";
+    }
+
+    public string GetAverageSummary(bool romanian)
+    {
+        if (!HasSessionAverage)
+        {
+            if (ShouldUseSimulatedAverage())
+            {
+                float simulated = GetSimulatedAverageFocus01();
+                return romanian
+                    ? $"Focus mediu: {simulated:P0} (simulat - fara flux EEG primit)"
+                    : $"Average focus: {simulated:P0} (simulated - no EEG stream received)";
+            }
+
+            return romanian
+                ? "Focus mediu: dispozitivul BCI nu este conectat."
+                : "Average focus: BCI device is not connected.";
+        }
+
+        return romanian
+            ? $"Focus mediu: {AverageFocus01:P0}"
+            : $"Average focus: {AverageFocus01:P0}";
+    }
+
+    public static string GetAverageSummaryForCurrentScene(bool romanian)
+    {
+        if (Instance != null)
+            return Instance.GetAverageSummary(romanian);
+
+        if (UnicornCompatibility.IsAvailable)
+        {
+            float simulated = GetStaticSimulatedAverageFocus01();
+            return romanian
+                ? $"Focus mediu: {simulated:P0} (simulat - fara flux EEG primit)"
+                : $"Average focus: {simulated:P0} (simulated - no EEG stream received)";
+        }
+
+        return romanian
+            ? "Focus mediu: dispozitivul BCI nu este conectat."
+            : "Average focus: BCI device is not connected.";
+    }
+
+    private bool ShouldUseSimulatedAverage()
+    {
+        return HasPipeline || UnicornCompatibility.IsAvailable;
+    }
+
+    private float GetSimulatedAverageFocus01()
+    {
+        if (_simulatedAverageFocus01.HasValue)
+            return _simulatedAverageFocus01.Value;
+
+        _simulatedAverageFocus01 = UnityEngine.Random.Range(0.58f, 0.87f);
+        return _simulatedAverageFocus01.Value;
+    }
+
+    private static float GetStaticSimulatedAverageFocus01()
+    {
+        if (s_lastSimulatedAverageFocus01.HasValue)
+            return s_lastSimulatedAverageFocus01.Value;
+
+        s_lastSimulatedAverageFocus01 = UnityEngine.Random.Range(0.58f, 0.87f);
+        return s_lastSimulatedAverageFocus01.Value;
     }
 
     private double GoertzelPower(IReadOnlyList<float> data, double targetHz)

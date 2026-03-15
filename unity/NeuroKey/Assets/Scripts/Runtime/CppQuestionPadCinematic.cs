@@ -526,6 +526,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
         questionText.text = selectedLanguage == QuizLanguage.Romanian
             ? "Ai raspuns corect la " + correctCount + " din " + Questions.Length + ". Ai deblocat nivelul medium."
             : "You answered " + correctCount + " out of " + Questions.Length + " correctly. You unlocked the medium level.";
+        questionText.text += "\n" + FocusMeter.GetAverageSummaryForCurrentScene(selectedLanguage == QuizLanguage.Romanian);
         feedbackText.text = wrongCount > 0
             ? (selectedLanguage == QuizLanguage.Romanian
                 ? "Poti reface intrebarile gresite."

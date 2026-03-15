@@ -733,6 +733,7 @@ public class PythonDebugPadCinematic : MonoBehaviour
             : Localize("Hard complet", "Hard complete");
         counterText.text = Localize("Rezultat", "Result");
         promptText.text = Localize("Ai rezolvat corect ", "You solved ") + score + Localize(" din ", " out of ") + challenges.Length + Localize(" provocari.", " challenges correctly.");
+        promptText.text += "\n" + FocusMeter.GetAverageSummaryForCurrentScene(selectedLanguage == QuizLanguage.Romanian);
         feedbackText.text = Localize("Poti reface intrebarile gresite sau poti iesi.", "You can retry the wrong questions or leave.");
         feedbackText.color = correctColor;
         codeInput.gameObject.SetActive(false);
