@@ -8,6 +8,8 @@ using XRInputDevice = UnityEngine.XR.InputDevice;
 [RequireComponent(typeof(CharacterController))]
 public class FirstPersonControllerSimple : MonoBehaviour
 {
+    private const float MaxJumpValue = 10f;
+
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 6f;
     [SerializeField] private float sprintMultiplier = 3.2f;
@@ -89,7 +91,18 @@ public class FirstPersonControllerSimple : MonoBehaviour
 
     public void SetJumpVelocity(float newVelocity)
     {
+        if (newVelocity > MaxJumpValue)
+        {
+            Debug.LogWarning("max value 10");
+            return;
+        }
+
         jumpVelocity = Mathf.Max(0f, newVelocity);
+    }
+
+    public float GetJumpVelocity()
+    {
+        return jumpVelocity;
     }
 
     private void Awake()

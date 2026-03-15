@@ -39,7 +39,7 @@ public class CoinRotator : MonoBehaviour
             var ui = PickupUIController.Instance ?? FindObjectOfType<PickupUIController>();
             if (ui != null)
             {
-                ui.Show();
+                ui.Show(this);
             }
 
             SpawnRobot();
@@ -75,6 +75,11 @@ public class CoinRotator : MonoBehaviour
             spawned.AddComponent<RobotLookAt>();
         }
 
+    }
+
+    public void ResetPickup()
+    {
+        gameObject.SetActive(true);
     }
 
     private GameObject LoadRobotFromAssets()
