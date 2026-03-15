@@ -56,6 +56,11 @@ public class CoinRotator : MonoBehaviour
             if (ui != null)
             {
                 ui.Show(this, mode);
+                if (string.Equals(gameObject.name, "CoinCatva", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    PauseMenuManager.CompleteTaskByTitle("logic");
+                    ui.HideOverlayOnly();
+                }
             }
 
             SpawnNextCoinIfNeeded();

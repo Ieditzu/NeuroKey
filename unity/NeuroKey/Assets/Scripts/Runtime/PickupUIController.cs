@@ -7,7 +7,7 @@ using UnityEngine;
 public class PickupUIController : MonoBehaviour
 {
     private const float MaxJumpValue = 10f;
-    private const string IslandVisibleLabel = "islandVisible =";
+    private const string IslandVisibleLabel = "!islandVisible =";
     private const string BridgeVisibleLabel = "viewPod =";
 
     public static PickupUIController Instance { get; private set; }
@@ -21,6 +21,7 @@ public class PickupUIController : MonoBehaviour
     [SerializeField] private string firstCoinName = "Coin1";
     [SerializeField] private string firstBridgeCoinName = "Coin3";
     [SerializeField] private string firstBridgeCoinTargetName = "boxcoin3";
+    [SerializeField] private string coinCatvaName = "CoinCatva";
     [SerializeField] private float defaultJumpValue = 0f;
     [SerializeField] private float firstBridgeCoinVerticalOffset = 1.2f;
 
@@ -34,7 +35,8 @@ public class PickupUIController : MonoBehaviour
     private string jumpInput = "0";
     private bool boxPushable = false;
     private string boxInput = "false";
-    private string islandInput = "false";
+    // Default hidden: "!islandVisible = true"
+    private string islandInput = "true";
     private string jumpValidationMessage = string.Empty;
     private CoinRotator activeCoin;
     private CoinRotator.CoinMode activeMode = CoinRotator.CoinMode.JumpAndBox;
@@ -57,6 +59,7 @@ public class PickupUIController : MonoBehaviour
     private string bridgeInput = "false";
     private CoinRotator hiddenFirstCoin;
     private CoinRotator runtimeFirstBridgeCoin;
+    private CoinRotator coinCatva;
 
     private void Awake()
     {
@@ -225,6 +228,11 @@ public class PickupUIController : MonoBehaviour
                 fpsPlayer.SetJumpVelocity(jumpDefault);
             }
         }
+        else if (activeMode == CoinRotator.CoinMode.IslandReveal)
+        {
+            islandInput = "true"; // !islandVisible = true -> hidden by default
+            SetRevealIslandState(false);
+        }
 
         visible = true;
     }
@@ -304,6 +312,12 @@ public class PickupUIController : MonoBehaviour
         }
     }
 
+    public void HideOverlayOnly()
+    {
+        RestoreDefaults();
+        visible = false;
+    }
+
     private void OnGUI()
     {
         if (!visible)
@@ -311,8 +325,8 @@ public class PickupUIController : MonoBehaviour
             return;
         }
 
-        const float width = 320f;
-        const float height = 200f;
+        const float width = 480f;
+        const float height = 300f;
         Rect rect = new Rect(Screen.width - width - 16f, 16f, width, height);
         GUI.Box(rect, GUIContent.none);
 
@@ -322,9 +336,15 @@ public class PickupUIController : MonoBehaviour
 
         if (activeMode == CoinRotator.CoinMode.JumpAndBox)
         {
+            // Slightly larger font for readability.
+            var oldLabelSize = GUI.skin.label.fontSize;
+            var oldTextSize = GUI.skin.textField.fontSize;
+            GUI.skin.label.fontSize = 16;
+            GUI.skin.textField.fontSize = 16;
+
             GUI.SetNextControlName("JumpField");
             GUILayout.BeginHorizontal();
-            GUILayout.Label("jumpVelocity =", GUILayout.Width(100f));
+            GUILayout.Label("jumpVelocity =", GUILayout.Width(140f));
             jumpInput = GUILayout.TextField(jumpInput, 12);
             GUILayout.EndHorizontal();
 
@@ -368,6 +388,9 @@ public class PickupUIController : MonoBehaviour
                     ApplyTargetBoxPhysics();
                 }
             }
+
+            GUI.skin.label.fontSize = oldLabelSize;
+            GUI.skin.textField.fontSize = oldTextSize;
         }
         else
         {
@@ -389,7 +412,8 @@ public class PickupUIController : MonoBehaviour
             {
                 if (activeMode == CoinRotator.CoinMode.IslandReveal)
                 {
-                    SetRevealIslandState(islandInput == "true");
+                    bool hide = islandInput == "true";
+                    SetRevealIslandState(!hide);
                 }
                 else
                 {
@@ -421,12 +445,18 @@ public class PickupUIController : MonoBehaviour
         if (!revealIslandInitialized)
         {
             revealIslandRoot = FindRevealIslandRoot();
+            coinCatva = FindCoinByName(coinCatvaName);
             revealIslandInitialized = true;
         }
 
         if (revealIslandRoot != null)
         {
             SetRevealIslandState(false);
+        }
+
+        if (coinCatva != null)
+        {
+            coinCatva.gameObject.SetActive(false);
         }
     }
 
@@ -661,7 +691,8 @@ public class PickupUIController : MonoBehaviour
     private void SetRevealIslandState(bool enabled)
     {
         revealIslandActive = enabled;
-        islandInput = enabled ? "true" : "false";
+        // Field represents !islandVisible, so store inverted value.
+        islandInput = enabled ? "false" : "true";
 
         if (revealIslandRoot == null)
         {
@@ -680,6 +711,11 @@ public class PickupUIController : MonoBehaviour
         foreach (Collider collider in revealIslandRoot.GetComponentsInChildren<Collider>(true))
         {
             collider.enabled = enabled;
+        }
+
+        if (coinCatva != null)
+        {
+            coinCatva.gameObject.SetActive(enabled);
         }
     }
 

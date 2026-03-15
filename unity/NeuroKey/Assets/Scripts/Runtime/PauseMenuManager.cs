@@ -761,6 +761,8 @@ public class PauseMenuManager : MonoBehaviour
         UpdateSensitivityLabel(val);
     }
 
+    public static string GetLoggedInChildName() => instance != null ? instance.loggedInChildName : string.Empty;
+
     private void QuitGame()
     {
         SaveSettings();

@@ -376,7 +376,8 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
                             fetchChildren()
                         }
                         if (packet.requestPacketId == 8) { // Child completed a task
-                            sendNotification("Task Completed!", packet.message ?: "Your child completed a task")
+                            val childName = children.firstOrNull()?.name ?: "Your child"
+                            sendNotification("Task Completed!", "$childName compleated the logic minigames")
                             fetchChildren()
                         }
                     } else {
