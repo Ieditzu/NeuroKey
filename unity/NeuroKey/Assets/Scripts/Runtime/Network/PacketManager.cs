@@ -25,6 +25,8 @@ namespace NeuroKey.Network
                 29 => new ExecuteCPPCodeResponsePacket(),
                 30 => new AskAiPacket(),
                 31 => new AiResponsePacket(),
+                13 => new FetchGoalsPacket(),
+                14 => new FetchGoalsResponsePacket(),
                 33 => new RecordLearningEventPacket(),
                 34 => new ExecutePythonCodePacket(),
                 35 => new ExecutePythonCodeResponsePacket(),
@@ -280,6 +282,59 @@ namespace NeuroKey.Network
         public AiResponsePacket() : base(31) { }
         protected override void Write(BinaryWriter writer) { PutString(writer, Response ?? string.Empty); }
         protected override void Read(BinaryReader reader) { Response = ReadString(reader); }
+    }
+
+    public class FetchGoalsPacket : Packet
+    {
+        public long ChildId;
+        public FetchGoalsPacket(long childId) : base(13) { ChildId = childId; }
+        public FetchGoalsPacket() : base(13) { }
+        protected override void Write(BinaryWriter writer)
+        {
+            byte[] bytes = BitConverter.GetBytes(ChildId);
+            if (BitConverter.IsLittleEndian) Array.Reverse(bytes);
+            writer.Write(bytes);
+        }
+        protected override void Read(BinaryReader reader)
+        {
+            byte[] bytes = reader.ReadBytes(8);
+            if (BitConverter.IsLittleEndian) Array.Reverse(bytes);
+            ChildId = BitConverter.ToInt64(bytes, 0);
+        }
+    }
+
+    public class FetchGoalsResponsePacket : Packet
+    {
+        public struct GoalDto
+        {
+            public long Id;
+            public string Title;
+            public string Reward;
+            public bool IsCompleted;
+            public int RequiredPoints;
+            public long RequiredTaskId;
+        }
+        public List<GoalDto> Goals = new List<GoalDto>();
+        public FetchGoalsResponsePacket() : base(14) { }
+        protected override void Write(BinaryWriter writer) { }
+        protected override void Read(BinaryReader reader)
+        {
+            int size = ReadInt32BigEndian(reader);
+            for (int i = 0; i < size; i++)
+            {
+                byte[] idBytes = reader.ReadBytes(8);
+                if (BitConverter.IsLittleEndian) Array.Reverse(idBytes);
+                long id = BitConverter.ToInt64(idBytes, 0);
+                string title = ReadString(reader);
+                string reward = ReadString(reader);
+                bool isCompleted = reader.ReadByte() == 1;
+                int reqPoints = ReadInt32BigEndian(reader);
+                byte[] taskBytes = reader.ReadBytes(8);
+                if (BitConverter.IsLittleEndian) Array.Reverse(taskBytes);
+                long reqTaskId = BitConverter.ToInt64(taskBytes, 0);
+                Goals.Add(new GoalDto { Id = id, Title = title, Reward = reward, IsCompleted = isCompleted, RequiredPoints = reqPoints, RequiredTaskId = reqTaskId });
+            }
+        }
     }
 
     public class RecordLearningEventPacket : Packet

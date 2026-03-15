@@ -517,6 +517,11 @@ public class CppQuestionPadCinematic : MonoBehaviour
             }
         }
 
+        if (correctCount == Questions.Length)
+        {
+            PauseMenuManager.CompleteTaskByTitle("C++ Starter Quiz");
+        }
+
         counterText.text = selectedLanguage == QuizLanguage.Romanian ? "Rezultat final" : "Final result";
         questionText.text = selectedLanguage == QuizLanguage.Romanian
             ? "Ai raspuns corect la " + correctCount + " din " + Questions.Length + ". Ai deblocat nivelul medium."
