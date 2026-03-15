@@ -30,6 +30,7 @@ class MainActivity : ComponentActivity() {
                 primaryColor = primaryColor,
                 secondaryColor = secondaryColor
             ) {
+
                 if (isLoggedIn) {
                     MainDashboard(viewModel)
                 } else {
