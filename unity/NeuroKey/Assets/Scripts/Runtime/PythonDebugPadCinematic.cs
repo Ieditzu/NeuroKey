@@ -601,6 +601,7 @@ public class PythonDebugPadCinematic : MonoBehaviour
                 {
                     solved[current] = true;
                     score++;
+                    AutoCompleteTaskForChallenge(challenge);
                 }
 
                 feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
@@ -1306,6 +1307,28 @@ public class PythonDebugPadCinematic : MonoBehaviour
         StartCoroutine(SendPacketWithConnect(new RecordLearningEventPacket(eventType, topic, correctness, details), null));
     }
 
+    private static readonly System.Collections.Generic.Dictionary<string, string> ValidationIdToTaskTitle = new System.Collections.Generic.Dictionary<string, string>
+    {
+        { "py_medium_multiply", "Python Practice: Multiply By Two" },
+        { "py_medium_sum", "Python Practice: Add Function" },
+        { "py_medium_even", "Python Practice: Even Check" },
+        { "py_medium_default", "Python Practice: Loop Sum" },
+        { "py_hard_is_even", "Python Visual: Draw Bar Line" },
+        { "py_hard_max", "Python Visual: Build Progress Bar" },
+        { "py_hard_square", "Python Visual: Draw Square Grid" },
+        { "py_hard_sum3", "Python Visual: Draw Staircase" },
+        { "py_hard_factorial3", "Python Visual: Alternating Pattern" },
+    };
+
+    private void AutoCompleteTaskForChallenge(CodeChallenge challenge)
+    {
+        if (string.IsNullOrWhiteSpace(challenge.ValidationId)) return;
+        if (ValidationIdToTaskTitle.TryGetValue(challenge.ValidationId, out string taskTitle))
+        {
+            PauseMenuManager.CompleteTaskByTitle(taskTitle);
+        }
+    }
+
     private string ResolveChallengeTopic(CodeChallenge challenge)
     {
         if (!string.IsNullOrWhiteSpace(challenge.ValidationId))
@@ -1499,6 +1522,7 @@ public class PythonDebugPadCinematic : MonoBehaviour
             {
                 retrySolved[current] = true;
                 solved[retrySourceIndex[current]] = true;
+                AutoCompleteTaskForChallenge(challenge);
                 feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
                 feedbackText.color = correctColor;
                 ShowChallengeButtons(current > 0, true, true, false, true, false);

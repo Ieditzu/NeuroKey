@@ -601,6 +601,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
                 {
                     solved[current] = true;
                     score++;
+                    AutoCompleteTaskForChallenge(challenge);
                 }
 
                 feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
@@ -1320,6 +1321,28 @@ public class CodeChallengePadCinematic : MonoBehaviour
         StartCoroutine(SendPacketWithConnect(new RecordLearningEventPacket(eventType, topic, correctness, details), null));
     }
 
+    private static readonly System.Collections.Generic.Dictionary<string, string> ValidationIdToTaskTitle = new System.Collections.Generic.Dictionary<string, string>
+    {
+        { "medium_multiply", "Fix MultiplyByTwo" },
+        { "medium_sum", "Fix Sum Operator" },
+        { "medium_even", "Fix Even Number" },
+        { "medium_increment", "Fix Pass-by-Reference" },
+        { "hard_is_even", "Write IsEven" },
+        { "hard_max", "Write MaxOfTwo" },
+        { "hard_square", "Write Square" },
+        { "hard_sum3", "Write Sum3" },
+        { "hard_factorial3", "Write Factorial3" },
+    };
+
+    private void AutoCompleteTaskForChallenge(CodeChallenge challenge)
+    {
+        if (string.IsNullOrWhiteSpace(challenge.ValidationId)) return;
+        if (ValidationIdToTaskTitle.TryGetValue(challenge.ValidationId, out string titlePart))
+        {
+            PauseMenuManager.CompleteTaskByTitle(titlePart);
+        }
+    }
+
     private string ResolveChallengeTopic(CodeChallenge challenge)
     {
         if (!string.IsNullOrWhiteSpace(challenge.ValidationId))
@@ -1513,6 +1536,7 @@ public class CodeChallengePadCinematic : MonoBehaviour
             {
                 retrySolved[current] = true;
                 solved[retrySourceIndex[current]] = true;
+                AutoCompleteTaskForChallenge(challenge);
                 feedbackText.text = Localize("Raspuns corect. Apasa pe urmatoarea intrebare.", "Correct answer. Press next question.");
                 feedbackText.color = correctColor;
                 ShowChallengeButtons(current > 0, true, true, false, true, false);

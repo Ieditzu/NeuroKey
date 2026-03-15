@@ -44,7 +44,27 @@ public class PauseMenuManager : MonoBehaviour
     private GameObject goalListContainer;
     private List<FetchGoalsResponsePacket.GoalDto> childGoals = new List<FetchGoalsResponsePacket.GoalDto>();
 
+    private HashSet<string> completedTaskTitles = new HashSet<string>();
+
     private string SessionFilePath => Path.Combine(Application.persistentDataPath, "session.json");
+
+    public static void CompleteTaskByTitle(string titleSubstring)
+    {
+        if (instance == null || instance.loggedInChildId == -1) return;
+        if (GameClient.Instance == null || !GameClient.Instance.IsConnected) return;
+
+        foreach (var task in instance.availableTasks)
+        {
+            if (task.Title.IndexOf(titleSubstring, System.StringComparison.OrdinalIgnoreCase) >= 0
+                && !instance.completedTaskTitles.Contains(task.Title))
+            {
+                instance.completedTaskTitles.Add(task.Title);
+                _ = GameClient.Instance.SendPacket(new CompleteTaskPacket(instance.loggedInChildId, task.Id));
+                Debug.Log("Auto-completing task: " + task.Title);
+                return;
+            }
+        }
+    }
 
     [System.Serializable]
     private class SessionData { public long childId; public string token; }
@@ -348,7 +368,7 @@ public class PauseMenuManager : MonoBehaviour
         resumeButton.GetComponent<RectTransform>().sizeDelta = new Vector2(200f, 44f);
         resumeButton.onClick.AddListener(ResumeGame);
 
-        Button tasksBtn = CreateButton(actions.transform, "TasksBtn", "View Tasks", new Vector2(0f, 0f), new Color(0.2f, 0.6f, 0.8f, 1f));
+        Button tasksBtn = CreateButton(actions.transform, "TasksBtn", "Dev Options", new Vector2(0f, 0f), new Color(0.45f, 0.45f, 0.5f, 1f));
         tasksBtn.GetComponent<RectTransform>().sizeDelta = new Vector2(200f, 44f);
         tasksBtn.onClick.AddListener(() => {
             if (qrCodeImage != null) qrCodeImage.gameObject.SetActive(false);
@@ -376,14 +396,11 @@ public class PauseMenuManager : MonoBehaviour
         tasksPanel.AddComponent<Image>().color = new Color(0.05f, 0.1f, 0.2f, 0.98f);
         tasksPanel.AddComponent<Outline>().effectColor = Color.cyan;
 
-        CreateText("TasksTitle", tasksPanel.transform, "AVAILABLE TASKS", 26, FontStyle.Bold, TextAnchor.MiddleCenter, Color.cyan, new Vector2(0, 170), new Vector2(360, 48));
+        CreateText("TasksTitle", tasksPanel.transform, "DEV OPTIONS", 26, FontStyle.Bold, TextAnchor.MiddleCenter, Color.cyan, new Vector2(0, 190), new Vector2(360, 48));
 
-        taskListContainer = CreateUiObject("TaskList", tasksPanel.transform);
-        RectTransform tlRect = taskListContainer.GetComponent<RectTransform>();
-        tlRect.sizeDelta = new Vector2(460, 260);
-        tlRect.anchoredPosition = new Vector2(0, -10);
+        taskListContainer = CreateScrollableList("TaskScroll", tasksPanel.transform, new Vector2(520, 310), new Vector2(0, -10));
 
-        Button backBtn = CreateButton(tasksPanel.transform, "BackBtn", "Back", new Vector2(0, -170), new Color(0.4f, 0.4f, 0.4f));
+        Button backBtn = CreateButton(tasksPanel.transform, "BackBtn", "Back", new Vector2(0, -190), new Color(0.4f, 0.4f, 0.4f));
         backBtn.GetComponent<RectTransform>().sizeDelta = new Vector2(180, 38);
         backBtn.onClick.AddListener(() => {
             ShowPanel(mainPanel);
@@ -400,14 +417,11 @@ public class PauseMenuManager : MonoBehaviour
         goalsPanel.AddComponent<Image>().color = new Color(0.06f, 0.05f, 0.15f, 0.98f);
         goalsPanel.AddComponent<Outline>().effectColor = new Color(0.7f, 0.4f, 1f, 0.8f);
 
-        CreateText("GoalsTitle", goalsPanel.transform, "PARENT GOALS", 26, FontStyle.Bold, TextAnchor.MiddleCenter, new Color(0.7f, 0.5f, 1f), new Vector2(0, 170), new Vector2(360, 48));
+        CreateText("GoalsTitle", goalsPanel.transform, "PARENT GOALS", 26, FontStyle.Bold, TextAnchor.MiddleCenter, new Color(0.7f, 0.5f, 1f), new Vector2(0, 190), new Vector2(360, 48));
 
-        goalListContainer = CreateUiObject("GoalList", goalsPanel.transform);
-        RectTransform glRect = goalListContainer.GetComponent<RectTransform>();
-        glRect.sizeDelta = new Vector2(540, 280);
-        glRect.anchoredPosition = new Vector2(0, -10);
+        goalListContainer = CreateScrollableList("GoalScroll", goalsPanel.transform, new Vector2(540, 310), new Vector2(0, -10));
 
-        Button goalsBackBtn = CreateButton(goalsPanel.transform, "GoalsBackBtn", "Back", new Vector2(0, -170), new Color(0.4f, 0.4f, 0.4f));
+        Button goalsBackBtn = CreateButton(goalsPanel.transform, "GoalsBackBtn", "Back", new Vector2(0, -190), new Color(0.4f, 0.4f, 0.4f));
         goalsBackBtn.GetComponent<RectTransform>().sizeDelta = new Vector2(180, 38);
         goalsBackBtn.onClick.AddListener(() => {
             ShowPanel(mainPanel);
@@ -435,26 +449,47 @@ public class PauseMenuManager : MonoBehaviour
         if (taskListContainer == null) return;
         foreach (Transform child in taskListContainer.transform) Destroy(child.gameObject);
 
-        float y = 110;
+        float itemHeight = 50f;
+        float spacing = 4f;
+        float totalHeight = availableTasks.Count * (itemHeight + spacing);
+        RectTransform contentRect = taskListContainer.GetComponent<RectTransform>();
+        contentRect.sizeDelta = new Vector2(contentRect.sizeDelta.x, totalHeight);
+
+        float y = -spacing;
         foreach (var task in availableTasks)
         {
+            bool isCompleted = completedTaskTitles.Contains(task.Title);
+
             GameObject item = CreateUiObject("TaskItem_" + task.Id, taskListContainer.transform);
             RectTransform iRect = item.GetComponent<RectTransform>();
-            iRect.sizeDelta = new Vector2(440, 46);
+            iRect.anchorMin = new Vector2(0, 1); iRect.anchorMax = new Vector2(1, 1);
+            iRect.pivot = new Vector2(0.5f, 1);
+            iRect.sizeDelta = new Vector2(-20, itemHeight);
             iRect.anchoredPosition = new Vector2(0, y);
-            item.AddComponent<Image>().color = new Color(1,1,1,0.05f);
+            item.AddComponent<Image>().color = isCompleted
+                ? new Color(0.15f, 0.35f, 0.15f, 0.35f)
+                : new Color(1, 1, 1, 0.05f);
 
-            CreateText("Label", item.transform, task.Title + " (" + task.Points + " pts)", 16, FontStyle.Normal, TextAnchor.MiddleLeft, Color.white, new Vector2(-90, 0), new Vector2(280, 36));
-            
-            Button completeBtn = CreateButton(item.transform, "Btn", "Complete", new Vector2(150, 0), new Color(0.2f, 0.6f, 0.3f));
-            completeBtn.GetComponent<RectTransform>().sizeDelta = new Vector2(110, 34);
-            completeBtn.GetComponentInChildren<Text>().fontSize = 14;
-            long tid = task.Id;
-            completeBtn.onClick.AddListener(() => {
-                if (loggedInChildId != -1)
-                    _ = GameClient.Instance.SendPacket(new CompleteTaskPacket(loggedInChildId, tid));
-            });
-            y -= 54;
+            string label = (isCompleted ? "[DONE] " : "") + task.Title + " (" + task.Points + " pts)";
+            CreateText("Label", item.transform, label, 14, FontStyle.Normal, TextAnchor.MiddleLeft,
+                isCompleted ? new Color(0.6f, 1f, 0.6f) : Color.white, new Vector2(-50, 0), new Vector2(340, 40));
+
+            if (!isCompleted)
+            {
+                Button completeBtn = CreateButton(item.transform, "Btn", "Complete", new Vector2(200, 0), new Color(0.2f, 0.6f, 0.3f));
+                completeBtn.GetComponent<RectTransform>().sizeDelta = new Vector2(100, 34);
+                completeBtn.GetComponentInChildren<Text>().fontSize = 13;
+                long tid = task.Id;
+                string tTitle = task.Title;
+                completeBtn.onClick.AddListener(() => {
+                    if (loggedInChildId != -1)
+                    {
+                        completedTaskTitles.Add(tTitle);
+                        _ = GameClient.Instance.SendPacket(new CompleteTaskPacket(loggedInChildId, tid));
+                    }
+                });
+            }
+            y -= (itemHeight + spacing);
         }
     }
 
@@ -463,19 +498,29 @@ public class PauseMenuManager : MonoBehaviour
         if (goalListContainer == null) return;
         foreach (Transform child in goalListContainer.transform) Destroy(child.gameObject);
 
+        RectTransform contentRect = goalListContainer.GetComponent<RectTransform>();
+
         if (childGoals.Count == 0)
         {
+            contentRect.sizeDelta = new Vector2(contentRect.sizeDelta.x, 60);
             CreateText("NoGoals", goalListContainer.transform, loggedInChildId == -1 ? "Log in to see goals" : "No goals set by parent yet",
-                16, FontStyle.Italic, TextAnchor.MiddleCenter, new Color(1f, 1f, 1f, 0.5f), new Vector2(0, 40), new Vector2(400, 40));
+                16, FontStyle.Italic, TextAnchor.MiddleCenter, new Color(1f, 1f, 1f, 0.5f), new Vector2(0, -20), new Vector2(400, 40));
             return;
         }
 
-        float y = 120;
+        float itemHeight = 60f;
+        float spacing = 4f;
+        float totalHeight = childGoals.Count * (itemHeight + spacing);
+        contentRect.sizeDelta = new Vector2(contentRect.sizeDelta.x, totalHeight);
+
+        float y = -spacing;
         foreach (var goal in childGoals)
         {
             GameObject item = CreateUiObject("GoalItem_" + goal.Id, goalListContainer.transform);
             RectTransform iRect = item.GetComponent<RectTransform>();
-            iRect.sizeDelta = new Vector2(520, 56);
+            iRect.anchorMin = new Vector2(0, 1); iRect.anchorMax = new Vector2(1, 1);
+            iRect.pivot = new Vector2(0.5f, 1);
+            iRect.sizeDelta = new Vector2(-20, itemHeight);
             iRect.anchoredPosition = new Vector2(0, y);
             item.AddComponent<Image>().color = goal.IsCompleted
                 ? new Color(0.15f, 0.35f, 0.15f, 0.4f)
@@ -487,13 +532,13 @@ public class PauseMenuManager : MonoBehaviour
                 : goal.RequiredTaskId > 0 ? " (complete task)" : "";
 
             CreateText("GoalTitle", item.transform, statusIcon + goal.Title + requirement,
-                14, FontStyle.Normal, TextAnchor.MiddleLeft, Color.white, new Vector2(-30, 10), new Vector2(460, 28));
+                14, FontStyle.Normal, TextAnchor.MiddleLeft, Color.white, new Vector2(-10, 10), new Vector2(480, 28));
 
             Color rewardColor = goal.IsCompleted ? new Color(0.5f, 1f, 0.5f) : new Color(1f, 0.85f, 0.4f);
             CreateText("GoalReward", item.transform, "Reward: " + goal.Reward,
-                12, FontStyle.Italic, TextAnchor.MiddleLeft, rewardColor, new Vector2(-30, -10), new Vector2(460, 24));
+                12, FontStyle.Italic, TextAnchor.MiddleLeft, rewardColor, new Vector2(-10, -10), new Vector2(480, 24));
 
-            y -= 64;
+            y -= (itemHeight + spacing);
         }
     }
 
@@ -699,6 +744,39 @@ public class PauseMenuManager : MonoBehaviour
         GameObject go = new GameObject("EventSystem");
         go.AddComponent<EventSystem>();
         go.AddComponent<InputSystemUIInputModule>();
+    }
+
+    private static GameObject CreateScrollableList(string name, Transform parent, Vector2 viewportSize, Vector2 position)
+    {
+        GameObject scrollObj = CreateUiObject(name, parent);
+        RectTransform scrollRect = scrollObj.GetComponent<RectTransform>();
+        scrollRect.sizeDelta = viewportSize;
+        scrollRect.anchoredPosition = position;
+
+        Image scrollBg = scrollObj.AddComponent<Image>();
+        scrollBg.color = new Color(0, 0, 0, 0.01f);
+
+        ScrollRect scroll = scrollObj.AddComponent<ScrollRect>();
+        scroll.horizontal = false;
+        scroll.vertical = true;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        scroll.scrollSensitivity = 30f;
+
+        Mask mask = scrollObj.AddComponent<Mask>();
+        mask.showMaskGraphic = false;
+
+        GameObject content = CreateUiObject("Content", scrollObj.transform);
+        RectTransform contentRect = content.GetComponent<RectTransform>();
+        contentRect.anchorMin = new Vector2(0, 1);
+        contentRect.anchorMax = new Vector2(1, 1);
+        contentRect.pivot = new Vector2(0.5f, 1);
+        contentRect.sizeDelta = new Vector2(0, 0);
+        contentRect.anchoredPosition = Vector2.zero;
+
+        scroll.content = contentRect;
+        scroll.viewport = scrollRect;
+
+        return content;
     }
 
     private static GameObject CreateUiObject(string name, Transform parent)
