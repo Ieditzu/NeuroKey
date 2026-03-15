@@ -6,6 +6,7 @@ public class UnityMainThreadDispatcher : MonoBehaviour
 {
     private static readonly Queue<Action> ExecutionQueue = new Queue<Action>();
     private static UnityMainThreadDispatcher instance;
+    private readonly System.Collections.Generic.List<Action> workBuffer = new System.Collections.Generic.List<Action>(16);
 
     public void Enqueue(Action action)
     {
@@ -49,11 +50,29 @@ public class UnityMainThreadDispatcher : MonoBehaviour
     {
         lock (ExecutionQueue)
         {
+            if (ExecutionQueue.Count == 0)
+            {
+                return;
+            }
+
             while (ExecutionQueue.Count > 0)
             {
-                ExecutionQueue.Dequeue().Invoke();
+                workBuffer.Add(ExecutionQueue.Dequeue());
             }
         }
+
+        for (int i = 0; i < workBuffer.Count; i++)
+        {
+            try
+            {
+                workBuffer[i].Invoke();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+            }
+        }
+        workBuffer.Clear();
     }
 
     private void OnDestroy()

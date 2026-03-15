@@ -108,6 +108,7 @@ public class FirstPersonControllerSimple : MonoBehaviour
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
+        PlayerCache.Register(this);
         ApplyControllerSize();
         if (useOverrideSpawn)
         {
@@ -142,6 +143,21 @@ public class FirstPersonControllerSimple : MonoBehaviour
         EnsureBodyVisible();
 
         HideCursor();
+    }
+
+    private void OnEnable()
+    {
+        PlayerCache.Register(this);
+    }
+
+    private void OnDisable()
+    {
+        PlayerCache.Unregister(this);
+    }
+
+    private void OnDestroy()
+    {
+        PlayerCache.Unregister(this);
     }
 
     private void Update()
@@ -612,7 +628,7 @@ public class FirstPersonControllerSimple : MonoBehaviour
         controller.Move(new Vector3(0f, velocity.y, 0f) * Time.deltaTime);
     }
 
-    private void RespawnAtSpawnPoint()
+    public void RespawnAtSpawnPoint()
     {
         drownTimer = 0f;
         velocity = Vector3.zero;

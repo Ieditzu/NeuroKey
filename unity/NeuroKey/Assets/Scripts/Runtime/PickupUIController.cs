@@ -11,6 +11,7 @@ public class PickupUIController : MonoBehaviour
     private const string BridgeVisibleLabel = "viewPod =";
 
     public static PickupUIController Instance { get; private set; }
+    public static bool IsBridgeRevealed => Instance != null && Instance.bridgeRevealActive;
 
     [SerializeField] private BeanController beanPlayer;
     [SerializeField] private FirstPersonControllerSimple fpsPlayer;
@@ -84,12 +85,12 @@ public class PickupUIController : MonoBehaviour
     {
         if (beanPlayer == null)
         {
-            beanPlayer = FindObjectOfType<BeanController>();
+            beanPlayer = PlayerCache.GetBean();
         }
 
         if (fpsPlayer == null)
         {
-            fpsPlayer = FindObjectOfType<FirstPersonControllerSimple>();
+            fpsPlayer = PlayerCache.GetFps();
         }
 
         if (targetBox == null)
@@ -206,12 +207,12 @@ public class PickupUIController : MonoBehaviour
 
             if (beanPlayer == null)
             {
-                beanPlayer = FindObjectOfType<BeanController>();
+                beanPlayer = PlayerCache.GetBean();
             }
 
             if (fpsPlayer == null)
             {
-                fpsPlayer = FindObjectOfType<FirstPersonControllerSimple>();
+                fpsPlayer = PlayerCache.GetFps();
             }
 
             if (beanPlayer != null)
@@ -232,12 +233,12 @@ public class PickupUIController : MonoBehaviour
     {
         if (beanPlayer == null)
         {
-            beanPlayer = FindObjectOfType<BeanController>();
+            beanPlayer = PlayerCache.GetBean();
         }
 
         if (fpsPlayer == null)
         {
-            fpsPlayer = FindObjectOfType<FirstPersonControllerSimple>();
+            fpsPlayer = PlayerCache.GetFps();
         }
 
         if (!defaultsCaptured)
@@ -340,8 +341,8 @@ public class PickupUIController : MonoBehaviour
                     {
                         jumpValidationMessage = string.Empty;
 
-                        if (beanPlayer == null) beanPlayer = FindObjectOfType<BeanController>();
-                        if (fpsPlayer == null) fpsPlayer = FindObjectOfType<FirstPersonControllerSimple>();
+                        if (beanPlayer == null) beanPlayer = PlayerCache.GetBean();
+                        if (fpsPlayer == null) fpsPlayer = PlayerCache.GetFps();
 
                         if (beanPlayer != null) beanPlayer.SetJumpForce(jp);
                         if (fpsPlayer != null) fpsPlayer.SetJumpVelocity(jp);
