@@ -727,7 +727,7 @@ public class CppQuestionPadCinematic : MonoBehaviour
         answerChosen = true;
         answerWasCorrect = optionIndex == question.CorrectIndex;
         selectedAnswerIndex = optionIndex;
-        RecordLearningEvent("quiz_answer", ResolveQuestionTopic(question), answerWasCorrect ? 1 : 0, "cpp_quiz");
+        RecordLearningEvent("quiz_answer", ResolveQuestionTopic(question), answerWasCorrect ? 1 : 0, BuildQuizDetails(question));
 
         for (int i = 0; i < optionButtons.Length; i++)
         {
@@ -774,6 +774,17 @@ public class CppQuestionPadCinematic : MonoBehaviour
         string[] lines = prompt.Split('\n');
         string title = lines.Length > 0 ? lines[0].Trim() : "quiz";
         return "cpp:" + title;
+    }
+
+    private string BuildQuizDetails(QuizQuestion question)
+    {
+        string prompt = selectedLanguage == QuizLanguage.Romanian ? question.PromptRo : question.PromptEn;
+        if (string.IsNullOrWhiteSpace(prompt))
+        {
+            return "mode=cpp_quiz";
+        }
+        string title = prompt.Split('\n')[0].Trim();
+        return "mode=cpp_quiz;question=" + title;
     }
 
     private void OnNextClicked()

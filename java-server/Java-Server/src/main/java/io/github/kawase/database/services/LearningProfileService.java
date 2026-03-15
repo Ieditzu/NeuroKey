@@ -154,6 +154,14 @@ public class LearningProfileService {
             summary.append("Needs help with: ").append(String.join(", ", needsHelp)).append(". ");
         }
         summary.append("Accuracy: ").append(correct).append(" correct out of ").append(total).append(". ");
+        List<String> struggleConcepts = topConcepts(aiProfile, true);
+        if (!struggleConcepts.isEmpty()) {
+            summary.append("Struggles: ").append(String.join(", ", struggleConcepts)).append(". ");
+        }
+        List<String> commonMistakes = topMistakes(aiProfile);
+        if (!commonMistakes.isEmpty()) {
+            summary.append("Common mistakes: ").append(String.join(", ", commonMistakes)).append(". ");
+        }
         int genCorrect = getInt(generalProfile.get("correctCount"));
         int genIncorrect = getInt(generalProfile.get("incorrectCount"));
         int genTotal = genCorrect + genIncorrect;
@@ -161,6 +169,125 @@ public class LearningProfileService {
             summary.append("Overall programming accuracy: ").append(genCorrect).append(" correct out of ").append(genTotal).append(".");
         }
         return summary.toString();
+    }
+
+    @Transactional
+    public void ensureAiSummaries(final Long childId) {
+        if (childId == null) {
+            return;
+        }
+        Child child = childRepository.findById(childId).orElse(null);
+        if (child == null) {
+            return;
+        }
+        Map<String, Object> gameStats = child.getGameStats();
+        if (gameStats == null) {
+            return;
+        }
+
+        ensureAiSummaryForProfile(gameStats, "aiProfileCpp", "C++");
+        ensureAiSummaryForProfile(gameStats, "aiProfilePython", "Python");
+        ensureAiSummaryForProfile(gameStats, "aiProfileGeneral", "General");
+
+        child.setGameStats(gameStats);
+        childRepository.save(child);
+    }
+
+    private List<String> topConcepts(final Map<String, Object> profile, final boolean struggles) {
+        Map<String, Object> concepts = safeMap(profile.get("concepts"));
+        List<Map.Entry<String, Integer>> scored = new ArrayList<>();
+        for (Map.Entry<String, Object> entry : concepts.entrySet()) {
+            Map<String, Object> stats = safeMap(entry.getValue());
+            int correct = getInt(stats.get("correct"));
+            int incorrect = getInt(stats.get("incorrect"));
+            int score = incorrect - correct;
+            scored.add(Map.entry(entry.getKey(), score));
+        }
+        scored.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
+        List<String> results = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : scored) {
+            if (struggles && entry.getValue() <= 0) {
+                continue;
+            }
+            results.add(entry.getKey());
+            if (results.size() >= 3) break;
+        }
+        return results;
+    }
+
+    private List<String> topMistakes(final Map<String, Object> profile) {
+        Map<String, Object> mistakes = safeMap(profile.get("mistakes"));
+        List<Map.Entry<String, Integer>> scored = new ArrayList<>();
+        for (Map.Entry<String, Object> entry : mistakes.entrySet()) {
+            scored.add(Map.entry(entry.getKey(), getInt(entry.getValue())));
+        }
+        scored.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
+        List<String> results = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : scored) {
+            if (entry.getValue() <= 0) continue;
+            results.add(entry.getKey());
+            if (results.size() >= 3) break;
+        }
+        return results;
+    }
+
+    private void ensureAiSummaryForProfile(final Map<String, Object> gameStats, final String profileKey, final String label) {
+        Map<String, Object> profile = safeMap(gameStats.get(profileKey));
+        if (profile.isEmpty()) {
+            return;
+        }
+
+        String lastUpdated = profile.get("lastUpdated") != null ? profile.get("lastUpdated").toString() : "";
+        String summaryUpdated = profile.get("summaryUpdated") != null ? profile.get("summaryUpdated").toString() : "";
+        if (!summaryUpdated.isEmpty() && !lastUpdated.isEmpty() && summaryUpdated.compareTo(lastUpdated) >= 0) {
+            return;
+        }
+
+        String prompt = buildSummaryPrompt(profile, label);
+        io.github.kawase.utility.GeminiAI ai = new io.github.kawase.utility.GeminiAI();
+        String summary = ai.generate(prompt);
+        if (summary == null) {
+            return;
+        }
+
+        profile.put("summaryText", summary.trim());
+        profile.put("summaryUpdated", Instant.now().toString());
+        gameStats.put(profileKey, profile);
+    }
+
+    private String buildSummaryPrompt(final Map<String, Object> profile, final String label) {
+        int correct = getInt(profile.get("correctCount"));
+        int incorrect = getInt(profile.get("incorrectCount"));
+        List<String> struggles = topConcepts(profile, true);
+        List<String> mistakes = topMistakes(profile);
+        List<String> helpTopics = topHelpTopics(profile);
+
+        return "You are summarizing a student's learning profile for a parent.\n" +
+                "Language: " + label + "\n" +
+                "Correct submissions: " + correct + "\n" +
+                "Incorrect submissions: " + incorrect + "\n" +
+                "Struggle concepts: " + String.join(\", \", struggles) + "\n" +
+                "Common mistakes: " + String.join(\", \", mistakes) + "\n" +
+                "AI help topics: " + String.join(\", \", helpTopics) + "\n" +
+                "Write 2-3 short sentences. Keep it clear and parent-friendly.";
+    }
+
+    private List<String> topHelpTopics(final Map<String, Object> profile) {
+        Map<String, Object> concepts = safeMap(profile.get("concepts"));
+        List<Map.Entry<String, Integer>> scored = new ArrayList<>();
+        for (Map.Entry<String, Object> entry : concepts.entrySet()) {
+            Map<String, Object> stats = safeMap(entry.getValue());
+            int help = getInt(stats.get("helpRequests"));
+            scored.add(Map.entry(entry.getKey(), help));
+        }
+        scored.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
+        List<String> results = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : scored) {
+            if (entry.getValue() <= 0) continue;
+            results.add(entry.getKey());
+            if (results.size() >= 3) break;
+        }
+        return results;
     }
 
     private String deriveTopic(final String context, final String question) {
@@ -215,6 +342,8 @@ public class LearningProfileService {
     private void updateProfile(final Map<String, Object> gameStats, final String profileKey, final String eventType, final String topic, final int correctness, final String details) {
         Map<String, Object> aiProfile = ensureMap(gameStats, profileKey);
         Map<String, Object> topics = ensureMap(aiProfile, "topics");
+        Map<String, Object> concepts = ensureMap(aiProfile, "concepts");
+        Map<String, Object> mistakes = ensureMap(aiProfile, "mistakes");
 
         String resolvedTopic = (topic == null || topic.isBlank()) ? "general" : topic.trim();
         Map<String, Object> topicStats = ensureMap(topics, resolvedTopic);
@@ -241,6 +370,29 @@ public class LearningProfileService {
         topicStats.put("lastSeen", Instant.now().toString());
         topics.put(resolvedTopic, topicStats);
         aiProfile.put("topics", topics);
+
+        String concept = deriveConcept(resolvedTopic, details);
+        if (concept != null) {
+            Map<String, Object> conceptStats = ensureMap(concepts, concept);
+            if (correctness == 1) {
+                conceptStats.put("correct", getInt(conceptStats.get("correct")) + 1);
+            } else if (correctness == 0) {
+                conceptStats.put("incorrect", getInt(conceptStats.get("incorrect")) + 1);
+            }
+            if ("ai_chat".equals(eventType) || "ai_hint".equals(eventType)) {
+                conceptStats.put("helpRequests", getInt(conceptStats.get("helpRequests")) + 1);
+            }
+            conceptStats.put("lastSeen", Instant.now().toString());
+            concepts.put(concept, conceptStats);
+        }
+
+        String mistake = deriveMistake(details);
+        if (mistake != null) {
+            mistakes.put(mistake, getInt(mistakes.get(mistake)) + 1);
+        }
+
+        aiProfile.put("concepts", concepts);
+        aiProfile.put("mistakes", mistakes);
         aiProfile.put("lastUpdated", Instant.now().toString());
 
         List<Map<String, Object>> recentEvents = ensureList(aiProfile, "recentEvents");
@@ -257,6 +409,62 @@ public class LearningProfileService {
         aiProfile.put("recentEvents", recentEvents);
 
         gameStats.put(profileKey, aiProfile);
+    }
+
+    private String deriveConcept(final String topic, final String details) {
+        String text = (topic == null ? "" : topic) + " " + (details == null ? "" : details);
+        String normalized = text.toLowerCase();
+        if (normalized.contains("loop") || normalized.contains("for ") || normalized.contains("while") || normalized.contains("range(")) {
+            return "loops";
+        }
+        if (normalized.contains("if") || normalized.contains("else") || normalized.contains("switch") || normalized.contains("condition")) {
+            return "conditionals";
+        }
+        if (normalized.contains("function") || normalized.contains("def ") || normalized.contains("return")) {
+            return "functions";
+        }
+        if (normalized.contains("print") || normalized.contains("cout") || normalized.contains("output")) {
+            return "output_formatting";
+        }
+        if (normalized.contains("list") || normalized.contains("array") || normalized.contains("vector")) {
+            return "collections";
+        }
+        if (normalized.contains("string") || normalized.contains("char")) {
+            return "strings";
+        }
+        if (normalized.contains("operator") || normalized.contains("+") || normalized.contains("-") || normalized.contains("*") || normalized.contains("/")) {
+            return "operators";
+        }
+        if (normalized.contains("syntax") || normalized.contains("indentation") || normalized.contains("expected")) {
+            return "syntax";
+        }
+        if (normalized.contains("error") || normalized.contains("exception")) {
+            return "debugging";
+        }
+        return "general";
+    }
+
+    private String deriveMistake(final String details) {
+        if (details == null) {
+            return null;
+        }
+        String normalized = details.toLowerCase();
+        if (normalized.contains("syntax") || normalized.contains("indentation")) {
+            return "syntax error";
+        }
+        if (normalized.contains("timeout") || normalized.contains("timed out")) {
+            return "infinite loop or slow code";
+        }
+        if (normalized.contains("typeerror") || normalized.contains("type mismatch")) {
+            return "type mismatch";
+        }
+        if (normalized.contains("nameerror") || normalized.contains("undefined")) {
+            return "undefined variable";
+        }
+        if (normalized.contains("output")) {
+            return "wrong output format";
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")

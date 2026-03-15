@@ -50,7 +50,11 @@ data class AiProfile(
     val strengths: List<String>,
     val needsHelp: List<String>,
     val recentMistakes: List<String>,
-    val lastUpdated: String
+    val struggleConcepts: List<String>,
+    val commonMistakes: List<String>,
+    val helpTopics: List<String>,
+    val lastUpdated: String,
+    val summaryText: String
 )
 
 class SocketViewModel(application: Application) : AndroidViewModel(application) {
@@ -422,6 +426,36 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
 
+            val struggleConcepts = mutableListOf<Pair<String, Int>>()
+            val helpConcepts = mutableListOf<Pair<String, Int>>()
+            val conceptsJson = profile.optJSONObject("concepts")
+            if (conceptsJson != null) {
+                val keys = conceptsJson.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    val c = conceptsJson.optJSONObject(key) ?: continue
+                    val cCorrect = c.optInt("correct", 0)
+                    val cIncorrect = c.optInt("incorrect", 0)
+                    val help = c.optInt("helpRequests", 0)
+                    struggleConcepts.add(key to (cIncorrect - cCorrect))
+                    helpConcepts.add(key to help)
+                }
+            }
+
+            val struggleList = struggleConcepts.sortedByDescending { it.second }.filter { it.second > 0 }.map { it.first }.take(3)
+            val helpTopics = helpConcepts.sortedByDescending { it.second }.filter { it.second > 0 }.map { it.first }.take(3)
+
+            val commonMistakes = mutableListOf<Pair<String, Int>>()
+            val mistakesJson = profile.optJSONObject("mistakes")
+            if (mistakesJson != null) {
+                val keys = mistakesJson.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    commonMistakes.add(key to mistakesJson.optInt(key, 0))
+                }
+            }
+            val commonMistakeList = commonMistakes.sortedByDescending { it.second }.filter { it.second > 0 }.map { it.first }.take(3)
+
             AiProfile(
                 level = level,
                 totalInteractions = profile.optInt("totalInteractions", 0),
@@ -432,7 +466,11 @@ class SocketViewModel(application: Application) : AndroidViewModel(application) 
                 strengths = strengths,
                 needsHelp = needsHelp,
                 recentMistakes = mistakes.take(3),
-                lastUpdated = profile.optString("lastUpdated", "")
+                struggleConcepts = struggleList,
+                commonMistakes = commonMistakeList,
+                helpTopics = helpTopics,
+                lastUpdated = profile.optString("lastUpdated", ""),
+                summaryText = profile.optString("summaryText", "")
             )
         } catch (e: Exception) {
             null

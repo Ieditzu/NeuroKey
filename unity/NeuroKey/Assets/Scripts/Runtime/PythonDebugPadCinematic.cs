@@ -32,18 +32,22 @@ public class PythonDebugPadCinematic : MonoBehaviour
 
     private struct CodeChallenge
     {
-        public string Prompt;
+        public string PromptRo;
+        public string PromptEn;
         public string InitialCode;
         public string ExpectedCode;
-        public string Hint;
+        public string HintRo;
+        public string HintEn;
         public string ValidationId;
 
-        public CodeChallenge(string prompt, string initialCode, string expectedCode, string hint, string validationId = "")
+        public CodeChallenge(string promptRo, string promptEn, string initialCode, string expectedCode, string hintRo, string hintEn, string validationId = "")
         {
-            Prompt = prompt;
+            PromptRo = promptRo;
+            PromptEn = promptEn;
             InitialCode = initialCode;
             ExpectedCode = expectedCode;
-            Hint = hint;
+            HintRo = hintRo;
+            HintEn = hintEn;
             ValidationId = validationId;
         }
     }
@@ -93,27 +97,35 @@ public class PythonDebugPadCinematic : MonoBehaviour
     {
         new CodeChallenge(
             "Practice 1 (Python)\n\nScrie o funcție `multiply_by_two` care dublează valoarea primită și afișează rezultatul pentru 6.\n\nCerințe:\n- funcția returnează `value * 2`\n- programul trebuie să afișeze rezultatul.",
+            "Practice 1 (Python)\n\nWrite a `multiply_by_two` function that doubles the given value and prints the result for 6.\n\nRequirements:\n- the function returns `value * 2`\n- the program prints the result.",
             "def multiply_by_two(value):\n    # TODO\n    return value\n\nprint(multiply_by_two(6))",
             "def multiply_by_two(value):\n    return value * 2\n\nprint(multiply_by_two(6))",
             "Hint:\nÎntoarce direct `value * 2` și folosește `print(multiply_by_two(6))`.",
+            "Hint:\nReturn `value * 2` directly and use `print(multiply_by_two(6))`.",
             "py_medium_multiply"),
         new CodeChallenge(
             "Practice 2 (Python)\n\nScrie funcția `add(a, b)` și afișează suma pentru 4 și 6.\n\nCerințe:\n- folosește operatorul `+`\n- programul afișează rezultatul.",
+            "Practice 2 (Python)\n\nWrite the function `add(a, b)` and print the sum for 4 and 6.\n\nRequirements:\n- use the `+` operator\n- the program prints the result.",
             "def add(a, b):\n    # TODO\n    return 0\n\nprint(add(4, 6))",
             "def add(a, b):\n    return a + b\n\nprint(add(4, 6))",
             "Hint:\nReturnează `a + b` și apoi afișează `add(4, 6)`.",
+            "Hint:\nReturn `a + b` and then print `add(4, 6)`.",
             "py_medium_sum"),
         new CodeChallenge(
             "Practice 3 (Python)\n\nScrie funcția `is_even` și afișează `even` sau `odd` pentru numărul 8.\n\nCerințe:\n- întoarce True dacă numărul este par\n- afișează `even` când e par.",
+            "Practice 3 (Python)\n\nWrite the `is_even` function and print `even` or `odd` for the number 8.\n\nRequirements:\n- return True if the number is even\n- print `even` when it is even.",
             "def is_even(n):\n    # TODO\n    return False\n\nprint(\"even\" if is_even(8) else \"odd\")",
             "def is_even(n):\n    return n % 2 == 0\n\nprint(\"even\" if is_even(8) else \"odd\")",
             "Hint:\nUn număr par are restul 0. Folosește `return n % 2 == 0`.",
+            "Hint:\nAn even number has remainder 0. Use `return n % 2 == 0`.",
             "py_medium_even"),
         new CodeChallenge(
             "Practice 4 (Python)\n\nCalculează suma numerelor de la 1 la 5 și afișează rezultatul.\n\nCerințe:\n- folosește un `for` cu `range(1, 6)`\n- actualizează `total` în interiorul buclei.",
+            "Practice 4 (Python)\n\nCompute the sum of numbers from 1 to 5 and print the result.\n\nRequirements:\n- use a `for` with `range(1, 6)`\n- update `total` inside the loop.",
             "total = 0\nfor i in range(1, 6):\n    # TODO\n\nprint(total)",
             "total = 0\nfor i in range(1, 6):\n    total += i\n\nprint(total)",
             "Hint:\nÎn interiorul buclei folosește `total += i`.",
+            "Hint:\nInside the loop use `total += i`.",
             "py_medium_default")
     };
 
@@ -121,33 +133,43 @@ public class PythonDebugPadCinematic : MonoBehaviour
     {
         new CodeChallenge(
             "Visual 1 (Python)\n\nAfișează un bar format din `#` cu lungimea `n`.\n\nDate: n = 8\nIeșire așteptată: ########",
+            "Visual 1 (Python)\n\nPrint a bar made of `#` with length `n`.\n\nGiven: n = 8\nExpected output: ########",
             "n = 8\n# TODO",
             "n = 8\nprint(\"#\" * n)",
             "Explicație:\nPoți folosi înmulțirea de șiruri: `\"#\" * n`.",
+            "Explanation:\nYou can use string multiplication: `\"#\" * n`.",
             "py_hard_is_even"),
         new CodeChallenge(
             "Visual 2 (Python)\n\nConstruiește un bar de progres cu lungimea 10 folosind `#` și `-`.\n\nDate: percent = 60\nIeșire așteptată: ######----",
+            "Visual 2 (Python)\n\nBuild a progress bar of length 10 using `#` and `-`.\n\nGiven: percent = 60\nExpected output: ######----",
             "percent = 60\nbar_length = 10\n# TODO",
             "percent = 60\nbar_length = 10\nfilled = percent // 10\nbar = \"#\" * filled + \"-\" * (bar_length - filled)\nprint(bar)",
             "Explicație:\nTransformă procentul în segmente și construiește șirul.",
+            "Explanation:\nConvert the percent to segments and build the string.",
             "py_hard_max"),
         new CodeChallenge(
             "Visual 3 (Python)\n\nAfișează un pătrat 3x3 format din `*`.\n\nIeșire așteptată:\n***\n***\n***",
+            "Visual 3 (Python)\n\nPrint a 3x3 square made of `*`.\n\nExpected output:\n***\n***\n***",
             "size = 3\n# TODO",
             "size = 3\nfor _ in range(size):\n    print(\"*\" * size)",
             "Explicație:\nPrinți o linie de `*` de `size` ori.",
+            "Explanation:\nPrint a line of `*` of length `size` for each row.",
             "py_hard_square"),
         new CodeChallenge(
             "Visual 4 (Python)\n\nAfișează o scară de 4 trepte folosind `#`.\n\nIeșire așteptată:\n#\n##\n###\n####",
+            "Visual 4 (Python)\n\nPrint a 4-step staircase using `#`.\n\nExpected output:\n#\n##\n###\n####",
             "steps = 4\n# TODO",
             "steps = 4\nfor i in range(1, steps + 1):\n    print(\"#\" * i)",
             "Explicație:\nCrești numărul de `#` la fiecare linie.",
+            "Explanation:\nIncrease the number of `#` on each line.",
             "py_hard_sum3"),
         new CodeChallenge(
             "Visual 5 (Python)\n\nAfișează un șir alternant `#.` de lungime 8.\n\nIeșire așteptată: #.#.#.#.",
+            "Visual 5 (Python)\n\nPrint an alternating `#.` pattern of length 8.\n\nExpected output: #.#.#.#.",
             "length = 8\n# TODO",
             "length = 8\npattern = \"#.\" * (length // 2)\nprint(pattern)",
             "Explicație:\nRepetă `#.` de 4 ori pentru lungime 8.",
+            "Explanation:\nRepeat `#.` four times to reach length 8.",
             "py_hard_factorial3")
     };
 
@@ -527,7 +549,7 @@ public class PythonDebugPadCinematic : MonoBehaviour
                 if (hintRequested)
                 {
                     hintRequested = false;
-                    yield return ShowHintScreen(challenge.Hint);
+                    yield return ShowHintScreen(GetChallengeHint(challenge));
                     if (leaveRequested)
                     {
                         yield break;
@@ -589,7 +611,7 @@ public class PythonDebugPadCinematic : MonoBehaviour
                     if (hintRequested)
                     {
                         hintRequested = false;
-                        yield return ShowHintScreen(challenge.Hint);
+                        yield return ShowHintScreen(GetChallengeHint(challenge));
                         if (leaveRequested)
                         {
                             yield break;
@@ -662,7 +684,7 @@ public class PythonDebugPadCinematic : MonoBehaviour
                 if (hintRequested)
                 {
                     hintRequested = false;
-                    yield return ShowHintScreen(challenge.Hint);
+                    yield return ShowHintScreen(GetChallengeHint(challenge));
                     if (leaveRequested)
                     {
                         yield break;
@@ -878,7 +900,7 @@ public class PythonDebugPadCinematic : MonoBehaviour
             feedbackText.color = textColor;
         }
 
-        RecordLearningEvent("code_verify", ResolveChallengeTopic(challenge), finalCorrect ? 1 : 0, modeLabel);
+        RecordLearningEvent("code_verify", ResolveChallengeTopic(challenge), finalCorrect ? 1 : 0, BuildEventDetails(modeLabel, lastExecutionOutput, lastExecutionError));
         onResult?.Invoke(finalCorrect);
     }
 
@@ -953,7 +975,7 @@ public class PythonDebugPadCinematic : MonoBehaviour
     private string BuildAiEvaluationQuestion(CodeChallenge challenge, string submittedCode, string output, string error)
     {
         return "Check if the student's Python solution is correct for the task. Reply with CORRECT or INCORRECT as the first word, then 1 short sentence.\\n\\nTask:\\n"
-            + challenge.Prompt + "\\n\\nStudent code:\\n" + submittedCode + "\\n\\nProgram output:\\n" + (string.IsNullOrWhiteSpace(output) ? "(no output)" : output.Trim())
+            + GetChallengePrompt(challenge) + "\\n\\nStudent code:\\n" + submittedCode + "\\n\\nProgram output:\\n" + (string.IsNullOrWhiteSpace(output) ? "(no output)" : output.Trim())
             + "\\n\\nErrors:\\n" + (string.IsNullOrWhiteSpace(error) ? "(none)" : error.Trim());
     }
 
@@ -1210,6 +1232,48 @@ public class PythonDebugPadCinematic : MonoBehaviour
         aiChatHistoryText.text = builder.ToString();
     }
 
+    private string GetChallengePrompt(CodeChallenge challenge)
+    {
+        if (selectedLanguage == QuizLanguage.English && !string.IsNullOrWhiteSpace(challenge.PromptEn))
+        {
+            return challenge.PromptEn;
+        }
+
+        if (!string.IsNullOrWhiteSpace(challenge.PromptRo))
+        {
+            return challenge.PromptRo;
+        }
+
+        return challenge.PromptEn ?? string.Empty;
+    }
+
+    private string GetChallengeHint(CodeChallenge challenge)
+    {
+        if (selectedLanguage == QuizLanguage.English && !string.IsNullOrWhiteSpace(challenge.HintEn))
+        {
+            return challenge.HintEn;
+        }
+
+        if (!string.IsNullOrWhiteSpace(challenge.HintRo))
+        {
+            return challenge.HintRo;
+        }
+
+        return challenge.HintEn ?? string.Empty;
+    }
+
+    private string GetChallengeTitle(CodeChallenge challenge)
+    {
+        string prompt = !string.IsNullOrWhiteSpace(challenge.PromptEn) ? challenge.PromptEn : challenge.PromptRo;
+        if (string.IsNullOrWhiteSpace(prompt))
+        {
+            return "challenge";
+        }
+
+        string[] lines = prompt.Split('\n');
+        return lines.Length > 0 ? lines[0].Trim() : "challenge";
+    }
+
     private string BuildAiChatContext()
     {
         if (mode == ChallengeMode.Medium)
@@ -1222,10 +1286,14 @@ public class PythonDebugPadCinematic : MonoBehaviour
 
     private string BuildAiChatQuestion(string userMessage)
     {
-        string prompt = activeChallenge.Prompt;
+        string prompt = GetChallengePrompt(activeChallenge);
         string code = codeInput != null ? codeInput.text : string.Empty;
-        return "Task:\\n" + prompt + "\\n\\nStudent code:\\n" + code + "\\n\\nQuestion:\\n" + userMessage
-            + "\\n\\nGive a helpful hint without giving away the full solution.";
+        string taskLabel = Localize("Cerinta", "Task");
+        string codeLabel = Localize("Cod elev", "Student code");
+        string questionLabel = Localize("Intrebare", "Question");
+        string instruction = Localize("Ofera un indiciu util fara sa dai solutia completa.", "Give a helpful hint without giving away the full solution.");
+        return taskLabel + ":\\n" + prompt + "\\n\\n" + codeLabel + ":\\n" + code + "\\n\\n" + questionLabel + ":\\n" + userMessage
+            + "\\n\\n" + instruction;
     }
 
     private void RecordLearningEvent(string eventType, string topic, int correctness, string details)
@@ -1245,14 +1313,18 @@ public class PythonDebugPadCinematic : MonoBehaviour
             return "python:" + challenge.ValidationId;
         }
 
-        if (!string.IsNullOrWhiteSpace(challenge.Prompt))
-        {
-            string[] lines = challenge.Prompt.Split('\n');
-            string title = lines.Length > 0 ? lines[0].Trim() : "challenge";
-            return "python:" + title;
-        }
+        string title = GetChallengeTitle(challenge);
+        return "python:" + title;
+    }
 
-        return "python:challenge";
+    private string BuildEventDetails(string modeLabel, string output, string error)
+    {
+        string cleanError = string.IsNullOrWhiteSpace(error) ? "" : error.Trim();
+        if (cleanError.Length > 140)
+        {
+            cleanError = cleanError.Substring(0, 140);
+        }
+        return "mode=" + modeLabel + ";error=" + cleanError;
     }
 
     private void ShowMainUi(bool visible)
@@ -1319,7 +1391,7 @@ public class PythonDebugPadCinematic : MonoBehaviour
             ? Localize("Medium Python Debugging", "Medium Python Debugging")
             : Localize("Hard Python Coding", "Hard Python Coding");
         counterText.text = Localize("Intrebarea ", "Question ") + (currentIndex + 1) + " / " + total;
-        promptText.text = challenge.Prompt;
+        promptText.text = GetChallengePrompt(challenge);
         codeInput.text = currentAnswer;
         feedbackText.text = Localize("Incercari ramase: ", "Attempts left: ") + attemptsLeft + " / " + GetAttemptsAllowed();
         feedbackText.color = textColor;
@@ -1347,7 +1419,7 @@ public class PythonDebugPadCinematic : MonoBehaviour
             ApplyLocalizedStaticTexts();
             titleText.text = Localize("Refacere intrebari gresite", "Retry wrong questions");
             counterText.text = Localize("Refacere ", "Retry ") + (current + 1) + " / " + retryChallenges.Length;
-            promptText.text = challenge.Prompt;
+            promptText.text = GetChallengePrompt(challenge);
             codeInput.text = retryAnswers[current];
             feedbackText.text = Localize("Incercari ramase: ", "Attempts left: ") + retryAttempts[current] + " / " + GetAttemptsAllowed();
             feedbackText.color = textColor;
@@ -1378,7 +1450,7 @@ public class PythonDebugPadCinematic : MonoBehaviour
                 if (hintRequested)
                 {
                     hintRequested = false;
-                    yield return ShowHintScreen(challenge.Hint);
+                    yield return ShowHintScreen(GetChallengeHint(challenge));
                     if (leaveRequested)
                     {
                         yield break;
