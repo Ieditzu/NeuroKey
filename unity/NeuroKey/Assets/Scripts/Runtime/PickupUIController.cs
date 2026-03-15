@@ -7,12 +7,21 @@ using UnityEngine;
 public class PickupUIController : MonoBehaviour
 {
     private const float MaxJumpValue = 10f;
+    private const string IslandVisibleLabel = "islandVisible =";
+    private const string BridgeVisibleLabel = "viewPod =";
 
     public static PickupUIController Instance { get; private set; }
 
     [SerializeField] private BeanController beanPlayer;
     [SerializeField] private FirstPersonControllerSimple fpsPlayer;
     [SerializeField] private Rigidbody targetBox;
+    [SerializeField] private string revealIslandName = "islande";
+    [SerializeField] private string bridgeRevealName = "podfull";
+    [SerializeField] private string firstCoinName = "Coin1";
+    [SerializeField] private string firstBridgeCoinName = "Coin3";
+    [SerializeField] private string firstBridgeCoinTargetName = "boxcoin3";
+    [SerializeField] private float defaultJumpValue = 0f;
+    [SerializeField] private float firstBridgeCoinVerticalOffset = 1.2f;
 
     [SerializeField] private bool showOnStart = false;
     [SerializeField] private float pushableBoxMass = 8f;
@@ -24,8 +33,10 @@ public class PickupUIController : MonoBehaviour
     private string jumpInput = "0";
     private bool boxPushable = false;
     private string boxInput = "false";
+    private string islandInput = "false";
     private string jumpValidationMessage = string.Empty;
     private CoinRotator activeCoin;
+    private CoinRotator.CoinMode activeMode = CoinRotator.CoinMode.JumpAndBox;
     private Vector3 targetBoxSpawnPosition;
     private Quaternion targetBoxSpawnRotation;
     private float targetBoxOriginalMass;
@@ -35,6 +46,16 @@ public class PickupUIController : MonoBehaviour
     private float defaultBeanJumpValue;
     private float defaultFpsJumpValue;
     private bool defaultsCaptured;
+    private Transform revealIslandRoot;
+    private bool revealIslandActive;
+    private bool revealIslandInitialized;
+    private Transform bridgeRevealRoot;
+    private bool bridgeRevealActive;
+    private bool bridgeRevealInitialized;
+    private bool bridgeRevealLocked;
+    private string bridgeInput = "false";
+    private CoinRotator hiddenFirstCoin;
+    private CoinRotator runtimeFirstBridgeCoin;
 
     private void Awake()
     {
@@ -92,18 +113,13 @@ public class PickupUIController : MonoBehaviour
 
         if (!defaultsCaptured)
         {
-            if (beanPlayer != null)
-            {
-                defaultBeanJumpValue = beanPlayer.GetJumpForce();
-            }
-
-            if (fpsPlayer != null)
-            {
-                defaultFpsJumpValue = fpsPlayer.GetJumpVelocity();
-            }
-
+            defaultBeanJumpValue = Mathf.Clamp(defaultJumpValue, 0f, MaxJumpValue);
+            defaultFpsJumpValue = Mathf.Clamp(defaultJumpValue, 0f, MaxJumpValue);
             defaultsCaptured = beanPlayer != null || fpsPlayer != null;
         }
+
+        EnsureRevealIslandSetup();
+        EnsureBridgeRevealSetup();
     }
 
     private void Update()
@@ -178,30 +194,35 @@ public class PickupUIController : MonoBehaviour
         targetBox.Sleep();
     }
 
-    public void Show(CoinRotator coin)
+    public void Show(CoinRotator coin, CoinRotator.CoinMode mode)
     {
         activeCoin = coin;
+        activeMode = mode;
         RestoreDefaults();
-        jumpInput = "0";
-
-        if (beanPlayer == null)
+        if (activeMode == CoinRotator.CoinMode.JumpAndBox)
         {
-            beanPlayer = FindObjectOfType<BeanController>();
-        }
+            float jumpDefault = Mathf.Clamp(defaultJumpValue, 0f, MaxJumpValue);
+            jumpInput = jumpDefault.ToString("0.###");
 
-        if (fpsPlayer == null)
-        {
-            fpsPlayer = FindObjectOfType<FirstPersonControllerSimple>();
-        }
+            if (beanPlayer == null)
+            {
+                beanPlayer = FindObjectOfType<BeanController>();
+            }
 
-        if (beanPlayer != null)
-        {
-            beanPlayer.SetJumpForce(0f);
-        }
+            if (fpsPlayer == null)
+            {
+                fpsPlayer = FindObjectOfType<FirstPersonControllerSimple>();
+            }
 
-        if (fpsPlayer != null)
-        {
-            fpsPlayer.SetJumpVelocity(0f);
+            if (beanPlayer != null)
+            {
+                beanPlayer.SetJumpForce(jumpDefault);
+            }
+
+            if (fpsPlayer != null)
+            {
+                fpsPlayer.SetJumpVelocity(jumpDefault);
+            }
         }
 
         visible = true;
@@ -253,11 +274,21 @@ public class PickupUIController : MonoBehaviour
             }
         }
 
-        boxPushable = false;
-        boxInput = "false";
+        if (activeMode == CoinRotator.CoinMode.JumpAndBox)
+        {
+            boxPushable = false;
+            boxInput = "false";
+            ApplyTargetBoxPhysics();
+            RespawnTargetBox();
+        }
+        else
+        {
+            boxInput = boxPushable ? "true" : "false";
+        }
+
+        islandInput = revealIslandActive ? "true" : "false";
+        bridgeInput = bridgeRevealActive ? "true" : "false";
         jumpValidationMessage = string.Empty;
-        ApplyTargetBoxPhysics();
-        RespawnTargetBox();
     }
 
     private void ExitMode()
@@ -288,52 +319,89 @@ public class PickupUIController : MonoBehaviour
 
         bool enterPressed = Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.Return;
 
-        GUI.SetNextControlName("JumpField");
-        GUILayout.BeginHorizontal();
-        GUILayout.Label($"jumpVelocity =", GUILayout.Width(100f));
-        jumpInput = GUILayout.TextField(jumpInput, 12);
-        GUILayout.EndHorizontal();
-
-        if (float.TryParse(jumpInput, out float jp))
+        if (activeMode == CoinRotator.CoinMode.JumpAndBox)
         {
-            bool applyNow = enterPressed ? GUI.GetNameOfFocusedControl() == "JumpField" : true;
-            if (applyNow)
+            GUI.SetNextControlName("JumpField");
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("jumpVelocity =", GUILayout.Width(100f));
+            jumpInput = GUILayout.TextField(jumpInput, 12);
+            GUILayout.EndHorizontal();
+
+            if (float.TryParse(jumpInput, out float jp))
             {
-                if (jp > MaxJumpValue)
+                bool applyNow = enterPressed ? GUI.GetNameOfFocusedControl() == "JumpField" : true;
+                if (applyNow)
                 {
-                    jumpValidationMessage = "max value 10";
+                    if (jp > MaxJumpValue)
+                    {
+                        jumpValidationMessage = "max value 10";
+                    }
+                    else
+                    {
+                        jumpValidationMessage = string.Empty;
+
+                        if (beanPlayer == null) beanPlayer = FindObjectOfType<BeanController>();
+                        if (fpsPlayer == null) fpsPlayer = FindObjectOfType<FirstPersonControllerSimple>();
+
+                        if (beanPlayer != null) beanPlayer.SetJumpForce(jp);
+                        if (fpsPlayer != null) fpsPlayer.SetJumpVelocity(jp);
+                    }
                 }
-                else
+            }
+
+            if (!string.IsNullOrEmpty(jumpValidationMessage))
+            {
+                GUILayout.Label(jumpValidationMessage);
+            }
+
+            GUILayout.Space(6f);
+            GUI.SetNextControlName("BoxField");
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("boxRigidbody =", GUILayout.Width(100f));
+            boxInput = GUILayout.TextField(boxInput, 8).ToLowerInvariant();
+            GUILayout.EndHorizontal();
+            if (enterPressed && GUI.GetNameOfFocusedControl() == "BoxField")
+            {
+                bool parsed = boxInput == "true";
+                if (parsed != boxPushable)
                 {
-                    jumpValidationMessage = string.Empty;
-
-                    if (beanPlayer == null) beanPlayer = FindObjectOfType<BeanController>();
-                    if (fpsPlayer == null) fpsPlayer = FindObjectOfType<FirstPersonControllerSimple>();
-
-                    if (beanPlayer != null) beanPlayer.SetJumpForce(jp);
-                    if (fpsPlayer != null) fpsPlayer.SetJumpVelocity(jp);
+                    boxPushable = parsed;
+                    ApplyTargetBoxPhysics();
                 }
             }
         }
-
-        if (!string.IsNullOrEmpty(jumpValidationMessage))
+        else
         {
-            GUILayout.Label(jumpValidationMessage);
-        }
-
-        GUILayout.Space(6f);
-        GUI.SetNextControlName("BoxField");
-        GUILayout.BeginHorizontal();
-        GUILayout.Label("boxRigidbody =", GUILayout.Width(100f));
-        boxInput = GUILayout.TextField(boxInput, 8).ToLowerInvariant();
-        GUILayout.EndHorizontal();
-        if (enterPressed && GUI.GetNameOfFocusedControl() == "BoxField")
-        {
-            bool parsed = boxInput == "true";
-            if (parsed != boxPushable)
+            string fieldName = activeMode == CoinRotator.CoinMode.IslandReveal ? "IslandField" : "BridgeField";
+            string label = activeMode == CoinRotator.CoinMode.IslandReveal ? IslandVisibleLabel : BridgeVisibleLabel;
+            GUI.SetNextControlName(fieldName);
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(label, GUILayout.Width(100f));
+            if (activeMode == CoinRotator.CoinMode.IslandReveal)
             {
-                boxPushable = parsed;
-                ApplyTargetBoxPhysics();
+                islandInput = GUILayout.TextField(islandInput, 8).ToLowerInvariant();
+            }
+            else
+            {
+                bridgeInput = GUILayout.TextField(bridgeInput, 8).ToLowerInvariant();
+            }
+            GUILayout.EndHorizontal();
+            if (enterPressed && GUI.GetNameOfFocusedControl() == fieldName)
+            {
+                if (activeMode == CoinRotator.CoinMode.IslandReveal)
+                {
+                    SetRevealIslandState(islandInput == "true");
+                }
+                else
+                {
+                    SetBridgeRevealState(bridgeInput == "true");
+                    if (bridgeRevealActive)
+                    {
+                        RestoreDefaults();
+                        visible = false;
+                        activeCoin = null;
+                    }
+                }
             }
         }
 
@@ -342,6 +410,317 @@ public class PickupUIController : MonoBehaviour
         if (enterPressed)
         {
             GUI.FocusControl(null); // exit any focused field when Enter is pressed
+        }
+    }
+
+    private void EnsureRevealIslandSetup()
+    {
+        if (!revealIslandInitialized)
+        {
+            revealIslandRoot = FindRevealIslandRoot();
+            revealIslandInitialized = true;
+        }
+
+        if (revealIslandRoot != null)
+        {
+            SetRevealIslandState(false);
+        }
+    }
+
+    private void EnsureBridgeRevealSetup()
+    {
+        if (bridgeRevealInitialized)
+        {
+            return;
+        }
+
+        hiddenFirstCoin = FindCoinByName(firstCoinName);
+        if (hiddenFirstCoin == null)
+        {
+            bridgeRevealInitialized = true;
+            return;
+        }
+
+        bridgeRevealRoot = FindBridgeRevealRoot(hiddenFirstCoin.transform);
+
+        runtimeFirstBridgeCoin = FindCoinByName(firstBridgeCoinName);
+        if (runtimeFirstBridgeCoin == null)
+        {
+            runtimeFirstBridgeCoin = SpawnFirstBridgeCoin(hiddenFirstCoin);
+        }
+        else
+        {
+            runtimeFirstBridgeCoin.ConfigureRuntime(CoinRotator.CoinMode.BridgeReveal, false);
+        }
+
+        hiddenFirstCoin.gameObject.SetActive(false);
+        if (bridgeRevealRoot != null)
+        {
+            SetObjectTreeVisible(bridgeRevealRoot, false);
+        }
+
+        bridgeRevealActive = false;
+        bridgeRevealLocked = false;
+        bridgeRevealInitialized = true;
+    }
+
+    private Transform FindRevealIslandRoot()
+    {
+        if (!string.IsNullOrWhiteSpace(revealIslandName))
+        {
+            GameObject direct = GameObject.Find(revealIslandName);
+            if (direct != null)
+            {
+                return direct.transform;
+            }
+        }
+
+        string[] candidates = { "islande", "HardOuterIsland", "MainDifficultyIsland" };
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            GameObject direct = GameObject.Find(candidates[i]);
+            if (direct != null)
+            {
+                return direct.transform;
+            }
+        }
+
+        foreach (Transform candidate in FindObjectsOfType<Transform>(true))
+        {
+            if (candidate != null && candidate.name.ToLowerInvariant().Contains("islande"))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private CoinRotator FindCoinByName(string coinName)
+    {
+        if (string.IsNullOrWhiteSpace(coinName))
+        {
+            return null;
+        }
+
+        CoinRotator[] coins = FindObjectsOfType<CoinRotator>(true);
+        for (int i = 0; i < coins.Length; i++)
+        {
+            if (coins[i] != null && coins[i].name == coinName)
+            {
+                return coins[i];
+            }
+        }
+
+        return null;
+    }
+
+    private CoinRotator SpawnFirstBridgeCoin(CoinRotator sourceCoin)
+    {
+        if (sourceCoin == null)
+        {
+            return null;
+        }
+
+        Transform target = FindFirstBridgeCoinTarget();
+        if (target == null)
+        {
+            return null;
+        }
+
+        Vector3 spawnPosition = CalculateTargetTopCoinPosition(target);
+
+        GameObject clone = Instantiate(sourceCoin.gameObject, spawnPosition, Quaternion.identity);
+        clone.name = firstBridgeCoinName;
+        clone.SetActive(true);
+
+        CoinRotator cloneCoin = clone.GetComponent<CoinRotator>();
+        if (cloneCoin != null)
+        {
+            cloneCoin.ConfigureRuntime(CoinRotator.CoinMode.BridgeReveal, false);
+        }
+
+        return cloneCoin;
+    }
+
+    private Transform FindFirstBridgeCoinTarget()
+    {
+        string[] candidates = { firstBridgeCoinTargetName, "boxcoin3", "boxcoins3", "boxcoin 3", "boxcoin_3" };
+        Transform[] allTransforms = FindObjectsOfType<Transform>(true);
+
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            string wanted = candidates[i];
+            if (string.IsNullOrWhiteSpace(wanted))
+            {
+                continue;
+            }
+
+            for (int j = 0; j < allTransforms.Length; j++)
+            {
+                Transform candidate = allTransforms[j];
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                string lower = candidate.name.ToLowerInvariant();
+                string wantedLower = wanted.ToLowerInvariant();
+                if (lower == wantedLower || lower.Contains(wantedLower))
+                {
+                    return candidate;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private Vector3 CalculateTargetTopCoinPosition(Transform target)
+    {
+        Collider targetCollider = target.GetComponent<Collider>();
+        if (targetCollider != null)
+        {
+            return new Vector3(
+                targetCollider.bounds.center.x,
+                targetCollider.bounds.max.y + firstBridgeCoinVerticalOffset,
+                targetCollider.bounds.center.z);
+        }
+
+        return target.position + Vector3.up * firstBridgeCoinVerticalOffset;
+    }
+
+    private Transform FindBridgeRevealRoot(Transform referenceCoin)
+    {
+        if (!string.IsNullOrWhiteSpace(bridgeRevealName))
+        {
+            Transform[] allTransformsByName = FindObjectsOfType<Transform>(true);
+            string wanted = bridgeRevealName.ToLowerInvariant();
+            for (int i = 0; i < allTransformsByName.Length; i++)
+            {
+                Transform candidate = allTransformsByName[i];
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                string lower = candidate.name.ToLowerInvariant();
+                if (lower == wanted || lower.Contains(wanted))
+                {
+                    return candidate;
+                }
+            }
+        }
+
+        if (referenceCoin == null)
+        {
+            return null;
+        }
+
+        Transform[] allTransforms = FindObjectsOfType<Transform>(true);
+        Transform nearest = null;
+        float nearestDistance = float.MaxValue;
+        Vector3 referencePoint = referenceCoin.position;
+
+        for (int i = 0; i < allTransforms.Length; i++)
+        {
+            Transform candidate = allTransforms[i];
+            if (candidate == null)
+            {
+                continue;
+            }
+
+            string lowerName = candidate.name.ToLowerInvariant();
+            if (!lowerName.Contains("bridge") ||
+                lowerName.Contains("collider") ||
+                lowerName.Contains("water") ||
+                lowerName.Contains("join"))
+            {
+                continue;
+            }
+
+            if (candidate.GetComponentInChildren<Renderer>(true) == null)
+            {
+                continue;
+            }
+
+            float distance = Vector3.SqrMagnitude(candidate.position - referencePoint);
+            if (distance < nearestDistance)
+            {
+                nearest = candidate;
+                nearestDistance = distance;
+            }
+        }
+
+        return nearest;
+    }
+
+    private void SetRevealIslandState(bool enabled)
+    {
+        revealIslandActive = enabled;
+        islandInput = enabled ? "true" : "false";
+
+        if (revealIslandRoot == null)
+        {
+            revealIslandRoot = FindRevealIslandRoot();
+            if (revealIslandRoot == null)
+            {
+                return;
+            }
+        }
+
+        foreach (Renderer renderer in revealIslandRoot.GetComponentsInChildren<Renderer>(true))
+        {
+            renderer.enabled = enabled;
+        }
+
+        foreach (Collider collider in revealIslandRoot.GetComponentsInChildren<Collider>(true))
+        {
+            collider.enabled = enabled;
+        }
+    }
+
+    private void SetBridgeRevealState(bool enabled)
+    {
+        if (!enabled && bridgeRevealLocked)
+        {
+            bridgeRevealActive = true;
+            bridgeInput = "true";
+            return;
+        }
+
+        bridgeRevealActive = enabled;
+        bridgeInput = enabled ? "true" : "false";
+        bridgeRevealLocked |= enabled;
+
+        if (bridgeRevealRoot != null)
+        {
+            SetObjectTreeVisible(bridgeRevealRoot, enabled);
+        }
+
+        if (hiddenFirstCoin != null)
+        {
+            hiddenFirstCoin.gameObject.SetActive(enabled);
+        }
+    }
+
+    private void SetObjectTreeVisible(Transform root, bool enabled)
+    {
+        if (root == null)
+        {
+            return;
+        }
+
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            renderers[i].enabled = enabled;
+        }
+
+        Collider[] colliders = root.GetComponentsInChildren<Collider>(true);
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            colliders[i].enabled = enabled;
         }
     }
 }

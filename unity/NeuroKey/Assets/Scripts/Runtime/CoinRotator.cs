@@ -6,10 +6,26 @@ using UnityEditor;
 [RequireComponent(typeof(Collider))]
 public class CoinRotator : MonoBehaviour
 {
+    public enum CoinMode
+    {
+        JumpAndBox = 0,
+        IslandReveal = 1,
+        BridgeReveal = 2,
+    }
+
     [SerializeField] private float rotationSpeed = 120f;
     [SerializeField] private GameObject robotPrefab;
     [SerializeField] private Vector3 robotSpawnPosition = new Vector3(46f, 5f, 312f);
     [SerializeField] private Vector3 robotScale = Vector3.one * 0.2f;
+    [SerializeField] private CoinMode mode = CoinMode.JumpAndBox;
+    [SerializeField] private bool spawnNextCoinOnCollect = true;
+    [SerializeField] private string nextCoinTargetObjectName = "boxcoins";
+    [SerializeField] private string nextCoinName = "Coin2";
+    [SerializeField] private float nextCoinVerticalOffset = 1.2f;
+    [SerializeField] private float nextCoinScaleMultiplier = 1f;
+    [SerializeField] private float nextCoinTriggerSizeMultiplier = 0.65f;
+
+    private CoinRotator spawnedNextCoin;
 
     private void Awake()
     {
@@ -39,9 +55,10 @@ public class CoinRotator : MonoBehaviour
             var ui = PickupUIController.Instance ?? FindObjectOfType<PickupUIController>();
             if (ui != null)
             {
-                ui.Show(this);
+                ui.Show(this, mode);
             }
 
+            SpawnNextCoinIfNeeded();
             SpawnRobot();
             gameObject.SetActive(false);
         }
@@ -82,6 +99,100 @@ public class CoinRotator : MonoBehaviour
         gameObject.SetActive(true);
     }
 
+    public void ConfigureRuntime(CoinMode newMode, bool canSpawnNextCoin)
+    {
+        mode = newMode;
+        spawnNextCoinOnCollect = canSpawnNextCoin;
+        spawnedNextCoin = null;
+    }
+
+    private void SpawnNextCoinIfNeeded()
+    {
+        if (!spawnNextCoinOnCollect || spawnedNextCoin != null || mode != CoinMode.JumpAndBox)
+        {
+            return;
+        }
+
+        Transform target = FindSpawnTarget();
+        if (target == null)
+        {
+            Debug.LogWarning("Coin 2 spawn target not found.");
+            return;
+        }
+
+        Vector3 spawnPosition = target.position + Vector3.up * nextCoinVerticalOffset;
+        Collider targetCollider = target.GetComponent<Collider>();
+        if (targetCollider != null)
+        {
+            spawnPosition = new Vector3(
+                targetCollider.bounds.center.x,
+                targetCollider.bounds.max.y + nextCoinVerticalOffset,
+                targetCollider.bounds.center.z);
+        }
+
+        GameObject clone = Instantiate(gameObject, spawnPosition, Quaternion.identity);
+        clone.name = string.IsNullOrWhiteSpace(nextCoinName)
+            ? $"{gameObject.name}_IslandReveal"
+            : nextCoinName;
+        clone.SetActive(true);
+
+        spawnedNextCoin = clone.GetComponent<CoinRotator>();
+        if (spawnedNextCoin == null)
+        {
+            return;
+        }
+
+        spawnedNextCoin.mode = CoinMode.IslandReveal;
+        spawnedNextCoin.spawnNextCoinOnCollect = false;
+        spawnedNextCoin.spawnedNextCoin = null;
+        spawnedNextCoin.transform.localScale = transform.localScale * nextCoinScaleMultiplier;
+        spawnedNextCoin.ShrinkTrigger(nextCoinTriggerSizeMultiplier);
+
+        Debug.Log($"Coin 2 spawned on {target.name} at {spawnPosition}");
+    }
+
+    private Transform FindSpawnTarget()
+    {
+        if (!string.IsNullOrWhiteSpace(nextCoinTargetObjectName))
+        {
+            foreach (Transform candidate in FindObjectsOfType<Transform>(true))
+            {
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                string candidateName = candidate.name.ToLowerInvariant();
+                string targetName = nextCoinTargetObjectName.ToLowerInvariant();
+                if (candidateName == targetName || candidateName.Contains(targetName))
+                {
+                    return candidate;
+                }
+            }
+        }
+
+        foreach (Transform candidate in FindObjectsOfType<Transform>())
+        {
+            if (candidate == null)
+            {
+                continue;
+            }
+
+            string lower = candidate.name.ToLowerInvariant();
+            if (lower.Contains("boxcoin") ||
+                lower.Contains("coinbox") ||
+                lower.Contains("cube (3)") ||
+                lower.Contains("box(3)") ||
+                lower.Contains("box (3)") ||
+                lower.Contains("box3"))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
     private GameObject LoadRobotFromAssets()
     {
 #if UNITY_EDITOR
@@ -112,6 +223,35 @@ public class CoinRotator : MonoBehaviour
         {
             col.isTrigger = true;
             col.enabled = true;
+        }
+    }
+
+    private void ShrinkTrigger(float multiplier)
+    {
+        if (multiplier <= 0f || Mathf.Approximately(multiplier, 1f))
+        {
+            return;
+        }
+
+        if (TryGetComponent(out BoxCollider box))
+        {
+            box.size *= multiplier;
+            box.center *= multiplier;
+            return;
+        }
+
+        if (TryGetComponent(out SphereCollider sphere))
+        {
+            sphere.radius *= multiplier;
+            sphere.center *= multiplier;
+            return;
+        }
+
+        if (TryGetComponent(out CapsuleCollider capsule))
+        {
+            capsule.radius *= multiplier;
+            capsule.height *= multiplier;
+            capsule.center *= multiplier;
         }
     }
 }
